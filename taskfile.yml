@@ -1,0 +1,181 @@
+version: '3'
+
+includes:
+  devenv:
+    taskfile: ./infra/devenv/taskfile.yml
+    dir: .
+
+vars:
+  PROFILE: '{{default "local-cpu" .PROFILE}}'
+
+env:
+  PROFILE: '{{.PROFILE}}'
+  SESSION: '{{default "" .SESSION}}'
+
+tasks:
+  lab:limit-requests:
+    desc: Limit model requests to one per minute for the 429 exercise
+    cmds:
+      - bash scripts/helm-guest.sh upgrade ai-inference-basics charts/ai-inference-basics -n ai-inference-basics --reuse-values --set faults.rateLimit=true
+  lab:restore:
+    desc: Remove the rate-limit exercise and restore read-oriented workspaces
+    cmds:
+      - bash scripts/helm-guest.sh upgrade ai-inference-basics charts/ai-inference-basics -n ai-inference-basics --reuse-values --set faults.rateLimit=false --set workspaces.installerMode=false
+      - task: workspace:ready
+      - task: workspace:credentials
+      - task: workspace:seed
+  lab:enable-installer:
+    desc: Temporarily elevate dedicated workspace installer identities
+    cmds:
+      - bash scripts/helm-guest.sh upgrade ai-inference-basics charts/ai-inference-basics -n ai-inference-basics --reuse-values --set workspaces.installerMode=true
+      - task: workspace:ready
+      - task: workspace:credentials
+      - task: workspace:seed
+  up:
+    desc: Start and validate the local CPU platform
+    preconditions:
+      - sh: test "$PROFILE" = local-cpu
+        msg: Cloud platform bootstrap is not qualified; use infra:plan and explicit infra:up.
+    cmds:
+      - task: doctor
+      - task: infra:up
+      - task: k0s:install
+      - task: platform:up
+      - task: access:tunnel
+      - task: verify
+  platform:up:
+    desc: Install local platform stages and wait for model readiness
+    cmds:
+      - bash scripts/install-phases.sh foundation
+      - task: auth:init
+      - task: workspace:build
+      - bash scripts/install-phases.sh access
+      - bash scripts/install-phases.sh certificates
+      - bash scripts/install-phases.sh ai-crds
+      - bash scripts/install-phases.sh ai-controllers
+      - bash scripts/install-phases.sh models
+      - task: workspace:seed
+  workspace:build:
+    desc: Build, smoke-test and import the exact AMD64 terminal image
+    cmds:
+      - bash scripts/build-workspace.sh
+  workspace:ready:
+    internal: true
+    cmds:
+      - bash scripts/guest.sh 'sudo /usr/local/bin/k0s kubectl -n ai-inference-basics rollout status deployment/workspace-a --timeout=180s && sudo /usr/local/bin/k0s kubectl -n ai-inference-basics rollout status deployment/workspace-b --timeout=180s'
+  workspace:credentials:
+    desc: Save native Zellij login tokens to protected local files
+    cmds:
+      - .local/venv/bin/python scripts/workspace-credentials.py
+  workspace:seed:
+    desc: Place the local umbrella archive and participant Taskfile in both workspaces
+    cmds:
+      - .local/venv/bin/python scripts/seed-workspaces.py
+  access:tunnel:
+    desc: Expose the private HTTPS gateway on workstation loopback
+    cmds:
+      - bash scripts/tunnel.sh
+  models:verify:
+    desc: Verify API keys, chat/SSE, embeddings, reranking and prefix caching
+    preconditions:
+      - sh: test "$PROFILE" = local-cpu
+        msg: This acceptance runner currently targets the local CPU lab only.
+    cmds:
+      - .local/venv/bin/python scripts/verify-models.py
+      - .local/venv/bin/python scripts/verify-prefix-cache.py
+  auth:verify:
+    desc: Exercise two Dex accounts, browser terminals and previews
+    preconditions:
+      - sh: test "$PROFILE" = local-cpu
+        msg: This browser runner currently targets the local CPU lab only.
+    cmds:
+      - .local/venv/bin/python scripts/verify-browser.py
+  preview:verify:
+    desc: Exercise previews as part of the authenticated browser journey
+    cmds:
+      - task: auth:verify
+  observability:verify:
+    desc: Query OTel metrics, logs and traces
+    preconditions:
+      - sh: test "$PROFILE" = local-cpu
+        msg: This telemetry runner currently targets the local CPU lab only.
+    cmds:
+      - .local/venv/bin/python scripts/verify-telemetry.py
+  verify:
+    desc: Run implemented local acceptance checks
+    cmds:
+      - bash scripts/verify-k0s.sh
+      - task: models:verify
+      - task: auth:verify
+      - task: observability:verify
+      - .local/venv/bin/python scripts/verify-access-isolation.py
+  versions:check:
+    desc: Verify chart bytes, render contracts and active image pin syntax
+    cmds:
+      - task: helm:deps
+      - 'PATH="$PWD/.local/bin:$PATH" .local/venv/bin/python .github/scripts/validate-chart.py'
+  report:
+    desc: Record sanitized cluster and dependency evidence
+    cmds:
+      - .local/venv/bin/python scripts/record-evidence.py
+  auth:init:
+    desc: Generate and install two disposable local Dex accounts
+    cmds:
+      - .local/venv/bin/python scripts/init-local-secrets.py
+  helm:deps:
+    desc: Verify vendored upstream chart artifacts
+    dir: charts/ai-inference-basics
+    cmds:
+      - sha256sum -c dependencies.sha256
+  platform:foundation:
+    desc: Install Gateway CRDs and controller using the umbrella
+    cmds:
+      - bash scripts/install-phases.sh foundation
+  bootstrap:access:
+    desc: Install Dex and protected browser access (requires existing Secrets)
+    cmds:
+      - bash scripts/install-phases.sh access
+  k0s:install:
+    desc: Install and verify pinned native k0s in the local VM
+    preconditions:
+      - sh: test '{{.PROFILE}}' = local-cpu
+        msg: This bootstrap currently supports local-cpu only.
+    cmds:
+      - bash scripts/install-k0s.sh
+  doctor:
+    desc: Check local VM prerequisites
+    cmds:
+      - bash scripts/preflight.sh
+  infra:up:
+    desc: Start QEMU or apply a reviewed Terraform pilot plan
+    interactive: true
+    cmds:
+      - |
+        if [ "$PROFILE" = local-cpu ]; then
+          bash scripts/devenv.sh up attach=false
+        else
+          bash scripts/terraform.sh apply
+        fi
+  infra:plan:
+    desc: Create and display a saved Terraform pilot plan
+    cmds:
+      - bash scripts/terraform.sh plan
+  down:
+    desc: Stop the local VM while preserving its disk
+    preconditions:
+      - sh: test "$PROFILE" = local-cpu
+        msg: Use explicit infra:destroy for the cloud pilot.
+    cmds:
+      - 'systemctl --user stop "ai-inference-basics-browser-$(cat .devenv/.uuid)" || true'
+      - bash scripts/devenv.sh stop
+  infra:destroy:
+    desc: Destroy this checkout's VM or the selected Terraform pilot
+    interactive: true
+    cmds:
+      - |
+        if [ "$PROFILE" = local-cpu ]; then
+          systemctl --user stop "ai-inference-basics-browser-$(cat .devenv/.uuid)" || true
+          bash scripts/devenv.sh down
+        else
+          bash scripts/terraform.sh destroy
+        fi

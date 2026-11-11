@@ -1,0 +1,20 @@
+version: '3'
+tasks:
+  pods:
+    desc: Inspect all lab workloads
+    cmds: ['kubectl get pods -A']
+  preview:
+    desc: Forward the fixed demo preview port (keep this pane open)
+    cmds: ['kubectl -n demo port-forward --address 127.0.0.1 svc/whoami 18080:80']
+  platform:inspect:
+    desc: Inspect the instructor-provided umbrella archive
+    cmds: ['helm show chart platform.tgz']
+  platform:install:
+    desc: Reinstall the umbrella using current release values (installer identity required)
+    preconditions:
+      - sh: test -s platform.tgz
+        msg: Ask the instructor to run task workspace:seed.
+      - sh: kubectl auth can-i create customresourcedefinitions.apiextensions.k8s.io
+        msg: This workspace has a read identity; the instructor must enable the installer phase.
+    cmds:
+      - helm upgrade --install ai-inference-basics platform.tgz -n ai-inference-basics --reuse-values --timeout 10m

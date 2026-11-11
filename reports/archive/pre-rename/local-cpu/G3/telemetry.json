@@ -1,0 +1,13 @@
+{
+  "gateway_scrape_up": true,
+  "otlp_log_retrieved": true,
+  "otlp_trace_retrieved": true,
+  "trace_id": "75912eb8bc1948f081b8eabcfb09aa71",
+  "model_trace_id": "2a6917f9fef34428aefe2837cb491e42",
+  "correlated_services": [
+    "agent-router",
+    "wkk-chat",
+    "wkk.wkk"
+  ],
+  "scope": "Collector/backend pipeline plus correlated public chat request"
+}

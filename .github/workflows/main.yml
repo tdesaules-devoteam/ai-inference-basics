@@ -1,0 +1,73 @@
+name: main
+on:
+  push:
+    branches: ['**']
+permissions:
+  contents: read
+concurrency:
+  group: main-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      has_build: ${{ steps.plan.outputs.has_build }}
+      has_tests: ${{ steps.plan.outputs.has_tests }}
+      shell_files: ${{ steps.plan.outputs.shell_files }}
+      yaml_files: ${{ steps.plan.outputs.yaml_files }}
+      markdown_files: ${{ steps.plan.outputs.markdown_files }}
+      container_files: ${{ steps.plan.outputs.container_files }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {fetch-depth: 0}
+      - uses: ./.github/actions/check
+        id: plan
+  lint:
+    needs: [check]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Validate shell
+        uses: tdesaules/github-actions/lint/shellcheck@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: ${{ needs.check.outputs.shell_files }}
+      - name: Validate YAML
+        uses: tdesaules/github-actions/lint/yaml@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: ${{ needs.check.outputs.yaml_files }}
+      - name: Validate documentation
+        uses: tdesaules/github-actions/lint/markdownlint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: ${{ needs.check.outputs.markdown_files }}
+      - name: Validate workflows
+        uses: tdesaules/github-actions/lint/actionlint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: '[".github/workflows/main.yml", ".github/workflows/release.yml", ".github/workflows/maintenance.yml"]'
+      - name: Validate Helm
+        uses: ./.github/actions/lint-helm
+      - name: Validate Containerfiles
+        uses: tdesaules/github-actions/lint/hadolint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: ${{ needs.check.outputs.container_files }}
+      - name: Validate Terraform
+        uses: ./.github/actions/lint-terraform
+  build:
+    needs: [check, lint]
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: ./.github/actions/build-helm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: chart-candidate, path: dist/, if-no-files-found: error}
+  test:
+    needs: [check, lint, build]
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.build.result == 'success' && needs.check.outputs.has_tests == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {name: chart-candidate, path: dist/}
+      - uses: ./.github/actions/test-helm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: chart-qualified, path: dist/, if-no-files-found: error}

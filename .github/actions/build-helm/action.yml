@@ -1,0 +1,5 @@
+name: Package platform chart
+description: Produce the exact candidate archive and checksum for subsequent qualification
+runs:
+  using: docker
+  image: Dockerfile

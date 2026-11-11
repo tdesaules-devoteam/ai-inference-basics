@@ -1,0 +1,12 @@
+name: Plan platform checks
+description: Select repository validation and chart qualification from the event and changed files
+outputs:
+  has_build: {description: Whether a chart candidate is required}
+  has_tests: {description: Whether chart tests are required}
+  shell_files: {description: JSON shell file list}
+  yaml_files: {description: JSON YAML file list}
+  markdown_files: {description: JSON Markdown file list}
+  container_files: {description: JSON Containerfile list}
+runs:
+  using: docker
+  image: Dockerfile

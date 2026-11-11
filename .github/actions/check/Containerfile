@@ -1,0 +1,8 @@
+FROM quay.io/fedora/fedora@sha256:b68e9c913030593d87875f7b6441b3d8a909aa434579a10dc7dea255a8d7d894 AS builder
+RUN dnf install -y golang-1.27.3-1.fc45 && dnf clean all
+COPY main.go /src/main.go
+RUN CGO_ENABLED=0 go build -trimpath -o /operation /src/main.go
+FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS runtime
+RUN microdnf install -y git-core-2.56.0-1.fc45 && microdnf clean all
+COPY --from=builder /operation /operation
+ENTRYPOINT ["/operation"]

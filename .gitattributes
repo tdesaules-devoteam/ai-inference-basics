@@ -1,0 +1,2 @@
+# Unified diffs intentionally contain space-prefixed empty context lines.
+infra/devenv/patches/*.patch -whitespace

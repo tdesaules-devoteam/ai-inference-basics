@@ -1,0 +1,32 @@
+[
+  {
+    "account": 1,
+    "invalid_password_rejected": true,
+    "unknown_account_rejected": true,
+    "login": true,
+    "secure_cookie": true,
+    "logout": true,
+    "terminal_websocket": true,
+    "k9s_live_ui": true,
+    "preview_without_forward": 502,
+    "preview_with_forward": 200,
+    "terminal": "Zellij 0.46.0",
+    "native_token_rejection": 401,
+    "native_cookie_path_isolated": true
+  },
+  {
+    "account": 2,
+    "invalid_password_rejected": true,
+    "unknown_account_rejected": true,
+    "login": true,
+    "secure_cookie": true,
+    "logout": true,
+    "terminal_websocket": true,
+    "k9s_live_ui": true,
+    "preview_without_forward": 502,
+    "preview_with_forward": 200,
+    "terminal": "Zellij 0.46.0",
+    "native_token_rejection": 401,
+    "native_cookie_path_isolated": true
+  }
+]

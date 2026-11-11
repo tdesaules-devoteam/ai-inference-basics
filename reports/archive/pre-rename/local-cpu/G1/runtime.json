@@ -1,0 +1,244 @@
+{
+  "recorded_at": "2026-11-11T19:10:36.570048+00:00",
+  "cpu_features": [
+    "avx2",
+    "avx512f",
+    "avx512_bf16"
+  ],
+  "nodes": [
+    {
+      "os": "Fedora CoreOS 45.20261030.2.1",
+      "kubelet": "v1.37.2+k0s",
+      "runtime": "containerd://2.3.6",
+      "cpu": "12",
+      "memory": "32850484Ki",
+      "ready": "True"
+    }
+  ],
+  "workloads": [
+    {
+      "namespace": "demo",
+      "name": "whoami-7dc6d44c5-c5699",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "coredns-c58d5dff8-gvs8n",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/k0sproject/coredns:1.14.7-k0s.1@sha256:4e96879ebe60146d9082c2746ae3640ab2336a42d6c6dae40ace8f84a4aa403b"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-proxy-ghzkd",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/k0sproject/kube-proxy:v1.37.2@sha256:b24d9f8b5e0265ac14fb532856e84af957eae2fb8fd38f8240c42b76e76e09a7"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-router-775lj",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/k0sproject/cni-node:v1.9.1-k0s.2@sha256:5d8ba4095bf5ebe92ffefda79c7686f574c03de45ccaa7308b2b0249017aad79",
+        "quay.io/k0sproject/kube-router:v2.11.1-iptables1.8.13-k0s.2@sha256:d54312816a3f5d6ffbbd1130b6ddea47596e1a0aedae27527c67f7e54ca2ce07",
+        "quay.io/k0sproject/kube-router:v2.11.1-iptables1.8.13-k0s.2@sha256:d54312816a3f5d6ffbbd1130b6ddea47596e1a0aedae27527c67f7e54ca2ce07"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "metrics-server-86bf7dcf88-hhdsk",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/k0sproject/metrics-server:v0.9.0-k0s.2@sha256:f88174cb39de0710fd127a198bc39441faa5b95d302209347f5f4c755943efde"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "ai-gateway-controller-69f7867d8c-f47nm",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/envoyproxy/ai-gateway-controller:v1.2.1@sha256:bf8feef1ed87c9aafd7318c835261d45308be0eaa475519ac930f0809532a4e7"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "cert-manager-9bb4f74f-d7pwk",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/jetstack/cert-manager-controller@sha256:9f4f96a33c7774cef24466fcd85031997531a03a8d117f151126baa8d1290dcc"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "cert-manager-cainjector-d87fb4c6f-tc972",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/jetstack/cert-manager-cainjector@sha256:083d0e906f8eb44e255fe4ff817ae54e49f9ed82e22f1011bb4e9e4f4b8a641f"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "cert-manager-webhook-58ccf5b5c5-f4gz6",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/jetstack/cert-manager-webhook@sha256:055ac8e9de6a0ba6763794838fe38944acc650f68ebe1b01dd8be079e580f458"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "dex-99d8c44d6-fxxlj",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "ghcr.io/dexidp/dex@sha256:65b72ca0f4b0bf6d4ada84ec21da8851782563404ac7b8f926923d27ceced9ab"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "envoy-gateway-c766b7f96-vzq76",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/envoyproxy/gateway@sha256:c2243d43518bed91d3ed8c2db849a4b7a14ac9b96eb019f2ab104bb1ca8572b1"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "headlamp-7d574d76d-vj9qh",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "ghcr.io/headlamp-k8s/headlamp:v0.46.0@sha256:8a0ef97527544baa2b35825940ddf4db6e2d09c30cd5aa31fd269ff604cc8b75"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "kserve-controller-manager-65889d56dc-5bzkr",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/kserve/kserve-controller:v0.21.0@sha256:74c5de4f166f04a12e5926af37751554e8f4be900bdf3368d0a348abf5f7b0a6",
+        "quay.io/brancz/kube-rbac-proxy@sha256:754ab2a723c8fc7ea8e09ae1224f8af5be91849b8b2f2a3735c6237f1c534187"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "llmisvc-controller-manager-55b77ff4f-t4pdm",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/kserve/llmisvc-controller:v0.21.0@sha256:be2261cc76509324d80a5b9998cd35c9d9e8d681453f21223c37fe0b5ea9f52c"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "oauth2-proxy-5bdd7d4d6c-6kqsb",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "quay.io/oauth2-proxy/oauth2-proxy@sha256:c3415e8660af553f5e18f5d90db050614c02493c0ac6260ac59442f6d9b12048"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "telemetry-6574d6c87c-2m44r",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/grafana/otel-lgtm@sha256:72e05804790e6e0d8c0b70a6d5ff1f721ef7b203463374631e99aa3429bd0cf6"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "wkk-bf56c7dc9-mffqj",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/envoyproxy/ai-gateway-extproc:v1.2.1@sha256:0b89182007856fa5402d7ec346ba093ce74239d1da45618af631b4a65febb424",
+        "docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a",
+        "docker.io/envoyproxy/gateway@sha256:c2243d43518bed91d3ed8c2db849a4b7a14ac9b96eb019f2ab104bb1ca8572b1"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "wkk-chat-kserve-5d98589999-p8bfx",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/kserve/storage-initializer:v0.21.0@sha256:3a3a6a8053478c8d8d90f96fc5e54c1892c07784102dda70104374d4f89a3672",
+        "docker.io/vllm/vllm-openai-cpu@sha256:ffaba3989b9b96d95a576143c872a4110ce9800f5199b6a36eb27bdff1cbbe05"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "wkk-embeddings-predictor-66dbd8c49-zjn6n",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/vllm/vllm-openai-cpu@sha256:ffaba3989b9b96d95a576143c872a4110ce9800f5199b6a36eb27bdff1cbbe05"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "wkk-rerank-predictor-66fc6894b8-sc8rp",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "docker.io/vllm/vllm-openai-cpu@sha256:ffaba3989b9b96d95a576143c872a4110ce9800f5199b6a36eb27bdff1cbbe05"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "workspace-a-7ffcbbbc4d-92hdj",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "localhost/wkk-admin@sha256:92a001b58647a023cc9ae12dcfb0b481ed9bca29df00d8c584b417fad7d6f9f1",
+        "docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
+      ]
+    },
+    {
+      "namespace": "wkk",
+      "name": "workspace-b-5db6b8b6cf-jr27m",
+      "phase": "Running",
+      "ready": true,
+      "images": [
+        "localhost/wkk-admin@sha256:92a001b58647a023cc9ae12dcfb0b481ed9bca29df00d8c584b417fad7d6f9f1",
+        "docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "kind": "LLMInferenceService",
+      "name": "wkk-chat",
+      "ready": "True"
+    },
+    {
+      "kind": "InferenceService",
+      "name": "wkk-embeddings",
+      "ready": "True"
+    },
+    {
+      "kind": "InferenceService",
+      "name": "wkk-rerank",
+      "ready": "True"
+    }
+  ],
+  "disk": "64G   26G   39G  40%"
+}

@@ -1,0 +1,9 @@
+name: Publish qualified chart
+description: Push exact qualified Helm bytes to repository GHCR and verify their digest
+inputs:
+  token: {description: GitHub package-write token, required: true}
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    REGISTRY_TOKEN: ${{ inputs.token }}

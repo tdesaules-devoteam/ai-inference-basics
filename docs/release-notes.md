@@ -7,5 +7,7 @@
 - Defer llm-d/EPP to the next course; retain the requested KServe resource types.
 - Specify static Bearer API keys, explicit prefix caching and OpenTelemetry.
 - Start local development with a 64-GiB Fedora CoreOS 45 testing disk.
+- Replace ttyd with Zellij 0.46.0's native web client on Fedora Minimal 45,
+  keeping Dex plus the user-approved per-workspace Zellij token.
 
 No published release or completed runtime acceptance is claimed.

@@ -1,0 +1,141 @@
+{{- if .Values.models.enabled }}
+# Minimal explicit single-node preset. No scheduler or routing sidecar is injected.
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceServiceConfig
+metadata:
+  name: kserve-config-llm-template
+spec:
+  template:
+    containers:
+      - name: main
+        image: {{ .Values.models.image | quote }}
+        command: [vllm]
+        args: [serve, /mnt/models, --served-model-name, ai-inference-basics-chat, --port, "8000", --max-model-len, {{ .Values.models.maxModelLen | quote }}, --enable-prefix-caching, --dtype, bfloat16, --gpu-memory-utilization, {{ if eq .Values.models.hardware "gpu" }}"0.85"{{ else }}"0.5"{{ end }}, --max-num-seqs, "2", --otlp-traces-endpoint, "http://telemetry:4317"]
+        securityContext:
+          runAsNonRoot: false
+        env:
+          {{- if eq .Values.models.hardware "cpu" }}
+          - {name: VLLM_CPU_KVCACHE_SPACE, value: "1"}
+          - {name: OMP_NUM_THREADS, value: "4"}
+          - {name: VLLM_CPU_OMP_THREADS_BIND, value: "0-3"}
+          {{- end }}
+          - {name: HF_HUB_DISABLE_TELEMETRY, value: "1"}
+          - {name: OTEL_SERVICE_NAME, value: ai-inference-basics-chat}
+        ports: [{name: http, containerPort: 8000}]
+        resources:
+          requests: {cpu: "2", memory: 4Gi}
+          {{- if eq .Values.models.hardware "gpu" }}
+          limits:
+            memory: 16Gi
+            nvidia.com/gpu: 1
+            nvidia.com/gpumem: 20480
+            nvidia.com/gpucores: 30
+          {{- else }}
+          limits: {cpu: "4", memory: 8Gi}
+          {{- end }}
+        startupProbe:
+          httpGet: {path: /health, port: 8000}
+          periodSeconds: 10
+          failureThreshold: 90
+        readinessProbe:
+          httpGet: {path: /health, port: 8000}
+          periodSeconds: 5
+        volumeMounts:
+          - {name: shm, mountPath: /dev/shm}
+    volumes:
+      - name: shm
+        emptyDir: {medium: Memory, sizeLimit: 1Gi}
+---
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceService
+metadata:
+  name: ai-inference-basics-chat
+spec:
+  model:
+    uri: {{ printf "hf://%s:%s" .Values.models.chat.checkpoint .Values.models.chat.revision | quote }}
+    name: ai-inference-basics-chat
+  replicas: {{ .Values.models.chat.replicas }}
+  template:
+    containers:
+      - name: main
+        image: {{ .Values.models.image | quote }}
+{{- range $name := list "embeddings" "rerank" }}
+{{- $model := index $.Values.models $name }}
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: ai-inference-basics-{{ $name }}
+  annotations:
+    serving.kserve.io/deploymentMode: Standard
+    serving.kserve.io/autoscalerClass: external
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    containers:
+      - name: kserve-container
+        image: {{ $.Values.models.image | quote }}
+        command: [vllm]
+        args:
+          - serve
+          - {{ $model.checkpoint | quote }}
+          - --revision
+          - {{ $model.revision | quote }}
+          - --served-model-name
+          - ai-inference-basics-{{ $name }}
+          - --port
+          - "8080"
+          - --runner
+          - pooling
+          - --max-model-len
+          - "2048"
+          - --dtype
+          - bfloat16
+          - --gpu-memory-utilization
+          - {{ if eq $.Values.models.hardware "gpu" }}"0.85"{{ else }}"0.5"{{ end }}
+          - --max-num-seqs
+          - "4"
+          - --otlp-traces-endpoint
+          - http://telemetry:4317
+          {{- if eq $name "rerank" }}
+          - --convert
+          - classify
+          - --hf-overrides
+          - '{"architectures":["Qwen3ForSequenceClassification"],"classifier_from_token":["no","yes"],"is_original_qwen3_reranker":true}'
+          {{- end }}
+        env:
+          {{- if eq $.Values.models.hardware "cpu" }}
+          - {name: OMP_NUM_THREADS, value: "2"}
+          - {name: VLLM_CPU_OMP_THREADS_BIND, value: {{ if eq $name "embeddings" }}"4-5"{{ else }}"6-7"{{ end }}}
+          {{- end }}
+          - {name: HF_HUB_DISABLE_TELEMETRY, value: "1"}
+          - {name: OTEL_SERVICE_NAME, value: ai-inference-basics-{{ $name }}}
+        ports: [{name: http1, containerPort: 8080}]
+        resources:
+          requests: {cpu: "1", memory: 3Gi}
+          {{- if eq $.Values.models.hardware "gpu" }}
+          limits:
+            memory: 16Gi
+            nvidia.com/gpu: 1
+            nvidia.com/gpumem: 13312
+            nvidia.com/gpucores: 20
+          {{- else }}
+          limits: {cpu: "2", memory: 6Gi}
+          {{- end }}
+        startupProbe:
+          httpGet: {path: /health, port: 8080}
+          periodSeconds: 10
+          failureThreshold: 90
+        readinessProbe:
+          httpGet: {path: /health, port: 8080}
+        volumeMounts:
+          - {name: shm, mountPath: /dev/shm}
+          - {name: cache, mountPath: /root/.cache}
+    volumes:
+      - name: shm
+        emptyDir: {medium: Memory, sizeLimit: 1Gi}
+      - name: cache
+        emptyDir: {sizeLimit: {{ if eq $.Values.models.hardware "gpu" }}16Gi{{ else }}4Gi{{ end }}}
+{{- end }}
+{{- end }}

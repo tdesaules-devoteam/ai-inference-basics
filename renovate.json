@@ -1,0 +1,6 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "docker:pinDigests"],
+  "enabledManagers": ["dockerfile", "github-actions", "helm-values", "helmv3", "pip_requirements"],
+  "packageRules": [{"matchManagers": ["helmv3"], "automerge": false}]
+}

@@ -25,6 +25,20 @@ requests. CPU support and metric names must be checked against the selected vers
 The KV cache is local to each replica; standard balancing does not provide
 cache-aware affinity. It is neither response caching nor an embedding cache.
 
+The recorded local run observed first-content latency about 0.355 s cold and
+0.084 s warm, with 384 cache-hit tokens out of 454 queried tokens on repeat.
+This is a functional caching check, not a production benchmark. Exact results:
+`reports/archive/pre-rename/local-cpu/G2/prefix-cache.json`.
+
+The current implementation uses official otel-lgtm 0.40.0 inside k0s with a custom
+Collector configuration, an 8-GiB ephemeral data volume and a 3-GiB memory limit.
+It scrapes vLLM and Envoy Gateway, reads lab Pod logs and accepts OTLP. Backend
+defaults still need explicit per-signal retention/cardinality tuning before training.
+The archived pre-rename chat trace contains gateway, router and model spans under
+one trace ID, using the original runtime labels. See
+`reports/archive/pre-rename/local-cpu/G3/telemetry.json`; no new-name runtime trace
+has been collected during the source-only rename.
+
 ## GPU
 
 Standalone DCGM Exporter runs on H100 only and is scraped by OTel. Measure physical

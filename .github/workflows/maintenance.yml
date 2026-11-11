@@ -1,0 +1,27 @@
+name: maintenance
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  maintenance:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Validate event policy
+        uses: ./.github/actions/check
+      - name: Create repository-scoped bot token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ai-inference-basics
+      - name: Update dependencies
+        uses: tdesaules/github-actions/maintenance/update-dependencies@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ steps.bot.outputs.token }}

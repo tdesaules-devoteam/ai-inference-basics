@@ -17,7 +17,7 @@ flowchart TB
   Browser -->|HTTPS| Envoy[Envoy Gateway / Envoy Proxy]
   Envoy --> OAuth[oauth2-proxy]
   OAuth --> Dex[Dex: two email accounts]
-  OAuth --> Tools[ttyd / Headlamp / Grafana / Caddy previews]
+  OAuth --> Tools[Zellij web / Headlamp / Grafana / Caddy previews]
   Client -->|Bearer API key| Envoy
   Router[Agent Router: Envoy AI Gateway] -. configures .-> Envoy
   Envoy --> Chat[vLLM chat]
@@ -49,7 +49,7 @@ is an implementation gate, not assumed from CRD availability.
 | Browser identity | Dex + oauth2-proxy | Same | Same, two accounts per lab |
 | HAMi/DCGM | Disabled | Disabled | Enabled |
 
-Aliases remain `wkk-chat`, `wkk-embeddings`, `wkk-rerank`. Pin HF commit revisions.
+Aliases remain `ai-inference-basics-chat`, `ai-inference-basics-embeddings`, `ai-inference-basics-rerank`. Pin HF commit revisions.
 CPU starts at context 2048, output 128 tokens, one active pipeline, bounded threads
 and KV memory; BF16 requires verified guest CPU support, otherwise test FP32.
 H100 starts at context 4096 with bounded concurrency; provisional HAMi allocations

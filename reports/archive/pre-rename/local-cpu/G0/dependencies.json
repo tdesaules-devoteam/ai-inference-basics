@@ -1,0 +1,156 @@
+{
+  "chart": {
+    "apiVersion": "v2",
+    "name": "who-killed-kubernetes",
+    "description": "Browser-first single-node Kubernetes inference lab",
+    "type": "application",
+    "version": "0.3.0-alpha.1",
+    "appVersion": "0.3.0-alpha.1",
+    "kubeVersion": ">=1.32.0-0",
+    "home": "https://github.com/tdesaules-devoteam/ai-inference-basics",
+    "icon": "https://raw.githubusercontent.com/tdesaules-devoteam/ai-inference-basics/main/logo.png",
+    "annotations": {
+      "org.opencontainers.image.source": "https://github.com/tdesaules-devoteam/ai-inference-basics"
+    },
+    "dependencies": [
+      {
+        "name": "hami",
+        "version": "2.11.0",
+        "repository": "https://project-hami.github.io/HAMi/",
+        "condition": "hami.enabled"
+      },
+      {
+        "name": "dcgm-exporter",
+        "version": "4.9.0",
+        "repository": "https://nvidia.github.io/dcgm-exporter/helm-charts",
+        "condition": "dcgm-exporter.enabled"
+      },
+      {
+        "name": "cert-manager",
+        "version": "v1.21.3",
+        "repository": "oci://quay.io/jetstack/charts",
+        "condition": "cert-manager.enabled"
+      },
+      {
+        "name": "kserve-crd-minimal",
+        "alias": "kserveCRDs",
+        "version": "v0.21.0",
+        "repository": "oci://ghcr.io/kserve/charts",
+        "condition": "kserveCRDs.enabled"
+      },
+      {
+        "name": "kserve-llmisvc-crd-minimal",
+        "alias": "llmCRDs",
+        "version": "v0.21.0",
+        "repository": "oci://ghcr.io/kserve/charts",
+        "condition": "llmCRDs.enabled"
+      },
+      {
+        "name": "kserve-resources",
+        "alias": "kserveController",
+        "version": "v0.21.0",
+        "repository": "oci://ghcr.io/kserve/charts",
+        "condition": "kserveController.enabled"
+      },
+      {
+        "name": "kserve-llmisvc-resources",
+        "alias": "llmController",
+        "version": "v0.21.0",
+        "repository": "oci://ghcr.io/kserve/charts",
+        "condition": "llmController.enabled"
+      },
+      {
+        "name": "ai-gateway-crds-helm",
+        "alias": "aiCRDs",
+        "version": "v1.2.1",
+        "repository": "oci://docker.io/envoyproxy",
+        "condition": "aiCRDs.enabled"
+      },
+      {
+        "name": "ai-gateway-helm",
+        "alias": "agent-router",
+        "version": "v1.2.1",
+        "repository": "oci://docker.io/envoyproxy",
+        "condition": "agent-router.enabled"
+      },
+      {
+        "name": "gateway-helm",
+        "alias": "envoyGateway",
+        "version": "v1.10.0",
+        "repository": "oci://docker.io/envoyproxy",
+        "condition": "envoyGateway.enabled"
+      },
+      {
+        "name": "dex",
+        "version": "0.26.0",
+        "repository": "https://charts.dexidp.io",
+        "condition": "dex.enabled"
+      },
+      {
+        "name": "headlamp",
+        "version": "0.46.0",
+        "repository": "https://kubernetes-sigs.github.io/headlamp/",
+        "condition": "headlamp.enabled"
+      }
+    ]
+  },
+  "image_references_and_tags": [
+    "docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a",
+    "docker.io/envoyproxy/gateway@sha256:c2243d43518bed91d3ed8c2db849a4b7a14ac9b96eb019f2ab104bb1ca8572b1",
+    "docker.io/envoyproxy/ratelimit@sha256:b95206e32b1a5f824fb06062fbb85bbdfb7f5de54135e92afe8462f22c979681",
+    "docker.io/grafana/otel-lgtm@sha256:72e05804790e6e0d8c0b70a6d5ff1f721ef7b203463374631e99aa3429bd0cf6",
+    "docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d",
+    "docker.io/vllm/vllm-openai-cpu@sha256:ffaba3989b9b96d95a576143c872a4110ce9800f5199b6a36eb27bdff1cbbe05",
+    "quay.io/brancz/kube-rbac-proxy@sha256:754ab2a723c8fc7ea8e09ae1224f8af5be91849b8b2f2a3735c6237f1c534187",
+    "quay.io/oauth2-proxy/oauth2-proxy@sha256:c3415e8660af553f5e18f5d90db050614c02493c0ac6260ac59442f6d9b12048",
+    "registry.k8s.io/kubectl@sha256:fe049faa65ae483ac200009a949a68fa4c9985daea12c9cb1195c9c7965301fc",
+    "v0.21.0@sha256:3a3a6a8053478c8d8d90f96fc5e54c1892c07784102dda70104374d4f89a3672",
+    "v0.21.0@sha256:74c5de4f166f04a12e5926af37751554e8f4be900bdf3368d0a348abf5f7b0a6",
+    "v0.21.0@sha256:be2261cc76509324d80a5b9998cd35c9d9e8d681453f21223c37fe0b5ea9f52c",
+    "v0.21.0@sha256:ccd726163e61932f592551132cf347be04aa28ecace2b5ed4681780cb5a867ec",
+    "v0.21.0@sha256:eb4d4cc887a414500b22f2c79d4f939f3fd5e273ce5e33cc2bbdeebe800b6236",
+    "v0.46.0@sha256:8a0ef97527544baa2b35825940ddf4db6e2d09c30cd5aa31fd269ff604cc8b75",
+    "v1.2.1@sha256:0b89182007856fa5402d7ec346ba093ce74239d1da45618af631b4a65febb424",
+    "v1.2.1@sha256:bf8feef1ed87c9aafd7318c835261d45308be0eaa475519ac930f0809532a4e7",
+    "v1.37.2@sha256:028c847fc321b8a7f9787f7b1c0840f832d6b68439be2e5c09279ffb14203d6b",
+    "v2.11.0@sha256:caab978ed50e53163c31ed7c4650c4e6e5d8facf157f377c26e021ff5fa3e5ce"
+  ],
+  "cpu_model_pins": {
+    "enabled": false,
+    "hardware": "cpu",
+    "maxModelLen": 2048,
+    "image": "docker.io/vllm/vllm-openai-cpu@sha256:ffaba3989b9b96d95a576143c872a4110ce9800f5199b6a36eb27bdff1cbbe05",
+    "chat": {
+      "checkpoint": "Qwen/Qwen3-0.6B",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "replicas": 1
+    },
+    "embeddings": {
+      "checkpoint": "Qwen/Qwen3-Embedding-0.6B",
+      "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    },
+    "rerank": {
+      "checkpoint": "Qwen/Qwen3-Reranker-0.6B",
+      "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473"
+    }
+  },
+  "archive_checksums": [
+    "7244dfa601a1772a756b3d0d3b5b916c3894290cb9a29ee179d1f65543fa5a9c  charts/ai-gateway-crds-helm-v1.2.1.tgz",
+    "690efdcb6a221ba59b797208cc99e998612b6091eb430c156ed364b23d73cf86  charts/ai-gateway-helm-v1.2.1.tgz",
+    "9ec67938b2981d8b333af61b3fcf53e26b4f6f5deb7ccda3de4ea116bb373a17  charts/cert-manager-v1.21.3.tgz",
+    "912363f217914b33c993628a7471ca4497b9ee7e0c3e99016f9b55ed205b5e3e  charts/dcgm-exporter-4.9.0.tgz",
+    "3b22c1447935221a040870508274bff85a68b2b841902097d6fcacb3e9badd03  charts/dex-0.26.0.tgz",
+    "0f72c9050c33dbaab39b865e8cb5ed77f263720b22368eda4ce687077649e659  charts/gateway-helm-v1.10.0.tgz",
+    "2530d25ba1a953a5ffa8070c308a373f756c6108c5bb39fce49943f614dd9315  charts/hami-2.11.0.tgz",
+    "faa471a8c5c55125b3dceed1cf73000e1ced18f07e2088e5e12e75292fb9ae62  charts/headlamp-0.46.0.tgz",
+    "7a8b0542c92d4e02ffe51246308426999349dee8923049cde97b6de53c1e05ae  charts/kserve-crd-minimal-v0.21.0.tgz",
+    "4b351817736d459ea5d646819cfc6f0f023aa904101f25fa75ba9030e7c6cf9d  charts/kserve-llmisvc-crd-minimal-v0.21.0.tgz",
+    "471d56d3f8b20dfe5dcf5772d0577f18eebd7016aed59a2cda34e522bbb64a5b  charts/kserve-llmisvc-resources-v0.21.0.tgz",
+    "cf3a7dc3b44ebc6cd508d20cd99808041a9a66ef366383789f19fe6d9be32241  charts/kserve-resources-v0.21.0.tgz"
+  ],
+  "workspace": {
+    "image": "localhost/wkk-admin@sha256:92a001b58647a023cc9ae12dcfb0b481ed9bca29df00d8c584b417fad7d6f9f1",
+    "platform": "linux/amd64",
+    "publication": "local containerd import only"
+  }
+}

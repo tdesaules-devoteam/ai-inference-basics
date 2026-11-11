@@ -1,0 +1,5 @@
+name: Validate Terraform
+description: Check formatting and provider-schema validity without cloud credentials or apply
+runs:
+  using: docker
+  image: Dockerfile

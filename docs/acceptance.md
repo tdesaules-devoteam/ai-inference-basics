@@ -15,7 +15,7 @@ evidence: artifact digest and pull verification, not just workflow syntax.
 ## G1: local cluster and access
 
 VM boot, correct shared project root, CPU flags, disk/memory, native k0s Ready,
-CoreDNS/service networking and reboot persistence. Browser ttyd/k9s, Helm/Task,
+CoreDNS/service networking and reboot persistence. Browser Zellij/k9s, Helm/Task,
 Headlamp navigation and Caddy fixed-port preview work. OAuth is tested with Dex
 locally, including invalid account, logout, CSRF, cookies and WebSocket terminal.
 

@@ -1,0 +1,5 @@
+name: Fetch released chart
+description: Retrieve the digest-pinned chart for tag qualification without rebuilding
+runs:
+  using: docker
+  image: Dockerfile

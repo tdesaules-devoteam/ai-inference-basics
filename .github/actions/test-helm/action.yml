@@ -1,0 +1,5 @@
+name: Qualify chart archive
+description: Verify and render the exact archive without rebuilding it
+runs:
+  using: docker
+  image: Dockerfile

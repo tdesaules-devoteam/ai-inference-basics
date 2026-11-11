@@ -1,0 +1,67 @@
+apiVersion: v2
+name: ai-inference-basics
+description: Browser-first single-node Kubernetes inference lab
+type: application
+version: 0.3.0-alpha.1
+appVersion: "0.3.0-alpha.1"
+kubeVersion: '>=1.32.0-0'
+home: https://github.com/tdesaules-devoteam/ai-inference-basics
+icon: https://raw.githubusercontent.com/tdesaules-devoteam/ai-inference-basics/main/docs/logo.png
+annotations:
+  org.opencontainers.image.source: https://github.com/tdesaules-devoteam/ai-inference-basics
+dependencies:
+  - name: hami
+    version: 2.11.0
+    repository: https://project-hami.github.io/HAMi/
+    condition: hami.enabled
+  - name: dcgm-exporter
+    version: 4.9.0
+    repository: https://nvidia.github.io/dcgm-exporter/helm-charts
+    condition: dcgm-exporter.enabled
+  - name: cert-manager
+    version: v1.21.3
+    repository: oci://quay.io/jetstack/charts
+    condition: cert-manager.enabled
+  - name: kserve-crd-minimal
+    alias: kserveCRDs
+    version: v0.21.0
+    repository: oci://ghcr.io/kserve/charts
+    condition: kserveCRDs.enabled
+  - name: kserve-llmisvc-crd-minimal
+    alias: llmCRDs
+    version: v0.21.0
+    repository: oci://ghcr.io/kserve/charts
+    condition: llmCRDs.enabled
+  - name: kserve-resources
+    alias: kserveController
+    version: v0.21.0
+    repository: oci://ghcr.io/kserve/charts
+    condition: kserveController.enabled
+  - name: kserve-llmisvc-resources
+    alias: llmController
+    version: v0.21.0
+    repository: oci://ghcr.io/kserve/charts
+    condition: llmController.enabled
+  - name: ai-gateway-crds-helm
+    alias: aiCRDs
+    version: v1.2.1
+    repository: oci://docker.io/envoyproxy
+    condition: aiCRDs.enabled
+  - name: ai-gateway-helm
+    alias: agent-router
+    version: v1.2.1
+    repository: oci://docker.io/envoyproxy
+    condition: agent-router.enabled
+  - name: gateway-helm
+    alias: envoyGateway
+    version: v1.10.0
+    repository: oci://docker.io/envoyproxy
+    condition: envoyGateway.enabled
+  - name: dex
+    version: 0.26.0
+    repository: https://charts.dexidp.io
+    condition: dex.enabled
+  - name: headlamp
+    version: 0.46.0
+    repository: https://kubernetes-sigs.github.io/headlamp/
+    condition: headlamp.enabled

@@ -1,0 +1,23 @@
+{
+  "/v1/chat/completions": {
+    "status": 200,
+    "seconds": 9.04577656800393,
+    "missing_and_wrong_key": 401
+  },
+  "/v1/embeddings": {
+    "status": 200,
+    "seconds": 3.660610264982097,
+    "missing_and_wrong_key": 401
+  },
+  "/cohere/v2/rerank": {
+    "status": 200,
+    "seconds": 4.451887606992386,
+    "missing_and_wrong_key": 401
+  },
+  "streaming": {
+    "valid_sse": true,
+    "terminated": true,
+    "chunks": 11,
+    "seconds": 0.40136026800610125
+  }
+}

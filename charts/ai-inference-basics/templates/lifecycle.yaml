@@ -1,0 +1,100 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-inference-basics-lifecycle
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-inference-basics-lifecycle
+rules:
+  - apiGroups: [serving.kserve.io]
+    resources: [llminferenceservices, inferenceservices, llminferenceserviceconfigs]
+    resourceNames: [ai-inference-basics-chat, ai-inference-basics-embeddings, ai-inference-basics-rerank, kserve-config-llm-template]
+    verbs: [get, list, watch, delete]
+  - apiGroups: [aigateway.envoyproxy.io]
+    resources: [aigatewayroutes, aiservicebackends]
+    resourceNames: [model-api, ai-inference-basics-chat, ai-inference-basics-embeddings, ai-inference-basics-rerank]
+    verbs: [get, list, watch, delete]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [gateways]
+    resourceNames: [ai-inference-basics]
+    verbs: [get, list, watch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-inference-basics-lifecycle
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-inference-basics-lifecycle}
+subjects:
+  - {kind: ServiceAccount, name: ai-inference-basics-lifecycle, namespace: {{ .Release.Namespace }}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ai-inference-basics-lifecycle-preset-cleanup
+rules:
+  - apiGroups: [admissionregistration.k8s.io]
+    resources: [validatingwebhookconfigurations]
+    resourceNames: [llminferenceserviceconfig.serving.kserve.io]
+    verbs: [get, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ai-inference-basics-lifecycle-preset-cleanup
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: ai-inference-basics-lifecycle-preset-cleanup}
+subjects:
+  - {kind: ServiceAccount, name: ai-inference-basics-lifecycle, namespace: {{ .Release.Namespace }}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-inference-basics-drain
+  annotations:
+    helm.sh/hook: pre-delete
+    helm.sh/hook-weight: '-10'
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: ai-inference-basics-lifecycle
+      restartPolicy: Never
+      {{- if or .Values.api.enabled .Values.models.enabled }}
+      initContainers:
+        {{- if .Values.api.enabled }}
+        - name: remove-ai-route
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [--namespace, {{ .Release.Namespace }}, delete, aigatewayroute/model-api, --ignore-not-found=true, --wait=true, --timeout=120s]
+        - name: remove-ai-backends
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [--namespace, {{ .Release.Namespace }}, delete, aiservicebackend/ai-inference-basics-chat, aiservicebackend/ai-inference-basics-embeddings, aiservicebackend/ai-inference-basics-rerank, --ignore-not-found=true, --wait=true, --timeout=120s]
+        {{- end }}
+        {{- if .Values.models.enabled }}
+        - name: remove-models
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [--namespace, {{ .Release.Namespace }}, delete, llminferenceservice/ai-inference-basics-chat, inferenceservice/ai-inference-basics-embeddings, inferenceservice/ai-inference-basics-rerank, --ignore-not-found=true, --wait=true, --timeout=180s]
+        # KServe deliberately prevents deleting well-known presets while this
+        # validator exists. Remove only that validator after its workloads drain.
+        - name: release-preset-protection
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [delete, validatingwebhookconfiguration/llminferenceserviceconfig.serving.kserve.io, --ignore-not-found=true, --wait=true]
+        - name: remove-model-preset
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [--namespace, {{ .Release.Namespace }}, delete, llminferenceserviceconfig/kserve-config-llm-template, --ignore-not-found=true, --wait=true, --timeout=120s]
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: remove-gateway
+          image: {{ .Values.lifecycle.kubectlImage | quote }}
+          command: [kubectl]
+          args: [--namespace, {{ .Release.Namespace }}, delete, gateway/ai-inference-basics, --ignore-not-found=true, --wait=true, --timeout=120s]
+{{- end }}

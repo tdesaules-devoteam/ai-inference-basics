@@ -1,0 +1,5 @@
+name: Lint platform Helm chart
+description: Verify dependency checksums and lint all supported profiles
+runs:
+  using: docker
+  image: Dockerfile

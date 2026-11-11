@@ -1,0 +1,16 @@
+{
+  "platform": "linux/amd64",
+  "hosted_execution": false,
+  "passed": [
+    "selection",
+    "wrong_manual_ref_rejected",
+    "missing_history_rejected",
+    "helm_lint",
+    "mutable_image_rejected",
+    "archive_package",
+    "archive_render",
+    "corruption_rejected",
+    "unqualified_publication_rejected",
+    "missing_oci_receipt_rejected"
+  ]
+}

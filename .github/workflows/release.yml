@@ -1,0 +1,78 @@
+name: release
+on:
+  push:
+    tags: ['*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      shell_files: ${{ steps.plan.outputs.shell_files }}
+      yaml_files: ${{ steps.plan.outputs.yaml_files }}
+      container_files: ${{ steps.plan.outputs.container_files }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {fetch-depth: 0}
+      - uses: ./.github/actions/check
+        id: plan
+  lint:
+    needs: [check]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: tdesaules/github-actions/lint/shellcheck@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with: {files: '${{ needs.check.outputs.shell_files }}'}
+      - uses: tdesaules/github-actions/lint/yaml@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with: {files: '${{ needs.check.outputs.yaml_files }}'}
+      - uses: tdesaules/github-actions/lint/actionlint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with:
+          files: '[".github/workflows/main.yml", ".github/workflows/release.yml", ".github/workflows/maintenance.yml"]'
+      - uses: ./.github/actions/lint-helm
+      - uses: tdesaules/github-actions/lint/hadolint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        with: {files: '${{ needs.check.outputs.container_files }}'}
+      - uses: ./.github/actions/lint-terraform
+  build:
+    needs: [check, lint]
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: ./.github/actions/build-helm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: release-candidate, path: dist/, if-no-files-found: error}
+  test:
+    needs: [check, lint, build]
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && (needs.build.result == 'success' || (github.ref_type == 'tag' && needs.build.result == 'skipped')) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        with: {name: release-candidate, path: dist/}
+      - uses: ./.github/actions/fetch-helm
+        if: ${{ github.ref_type == 'tag' }}
+      - uses: ./.github/actions/test-helm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: release-qualified, path: dist/, if-no-files-found: error}
+  release:
+    needs: [check, lint, build, test]
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success' && (needs.build.result == 'success' || (github.ref_type == 'tag' && needs.build.result == 'skipped')) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {name: release-qualified, path: dist/}
+      - name: Publish exact qualified chart
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: ./.github/actions/publish-helm
+        with: {token: '${{ github.token }}'}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: release-evidence, path: dist/, if-no-files-found: error}
