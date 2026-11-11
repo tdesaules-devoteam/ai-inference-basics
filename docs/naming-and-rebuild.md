@@ -33,10 +33,10 @@ Inside the VM:
 
 ```sh
 cat /etc/os-release
-sudo k0s status
-sudo k0s kubectl get nodes
-sudo k0s kubectl get pods -A
-sudo k0s kubectl -n ai-inference-basics get llmisvc,isvc,gateway,httproute
+sudo /usr/local/bin/k0s status
+sudo /usr/local/bin/k0s kubectl get nodes
+sudo /usr/local/bin/k0s kubectl get pods -A
+sudo /usr/local/bin/k0s kubectl -n ai-inference-basics get llmisvc,isvc,gateway,httproute
 exit
 ```
 
