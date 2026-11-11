@@ -1,43 +1,6 @@
-version: '3'
-
-env:
-  AI_INFERENCE_BASICS_ROOT: '{{.ROOT_DIR}}'
+version: "3"
 
 includes:
   devenv:
     taskfile: ./.devenv/taskfile.qemu.yaml
     dir: ./.devenv
-    internal: true
-  oci:
-    taskfile: ./oci/taskfile.oci.yml
-    dir: .
-    internal: true
-  cluster:
-    taskfile: ./cluster/taskfile.cluster.yml
-    dir: .
-    internal: true
-
-tasks:
-  up:
-    desc: Create and provision the local lab
-    cmds:
-      - task: devenv:generate-uuid
-      - task: oci:prepare
-      - task: cluster:prepare
-      - task: devenv:up
-        vars:
-          attach: 'false'
-      - task: cluster:wait
-  down:
-    desc: Destroy the local VM
-    cmds:
-      - task: devenv:down
-      - task: cluster:clean
-  ssh:
-    desc: Connect to the local VM
-    interactive: true
-    preconditions:
-      - sh: test -s .devenv/.uuid
-        msg: No VM identity found in .devenv/.uuid.
-    cmds:
-      - ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand=none "$(id -un)@$(cat .devenv/.uuid).local"
