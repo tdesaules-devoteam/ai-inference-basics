@@ -10,7 +10,8 @@ task down
 
 `up` creates/provisions the lab and waits for readiness. `down` destroys the guest
 disk; there is no separate stop/destroy operator interface in this version.
-The original devenv runtime manages VM identity, SSH and disk lifecycle.
+The original devenv runtime manages VM identity and disk lifecycle. SSH uses that
+persisted identity and the same SSH options directly, without KCL evaluation.
 
 Inside the VM, mise supplies kubectl, k9s, Helm and Task. Bootstrap writes the
 instructor's private kubeconfig to `~/.kube/config`.

@@ -33,5 +33,8 @@ tasks:
   ssh:
     desc: Connect to the local VM
     interactive: true
+    preconditions:
+      - sh: test -s .devenv/.uuid
+        msg: No VM identity found in .devenv/.uuid.
     cmds:
-      - task: devenv:ssh
+      - ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand=none "$(id -un)@$(cat .devenv/.uuid).local"

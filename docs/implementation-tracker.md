@@ -7,6 +7,7 @@
 - [x] Only local config.k adapted within .devenv, preserving normal units/defaults.
 - [x] Reverted the local KCL download and Taskfile PATH override at the user's request.
 - [ ] Resolve native devenv compatibility with the operator's KCL environment.
+- [x] Restore task ssh without KCL evaluation; a connection to the existing VM succeeded.
 - [x] OCI sources moved to oci/bastion; obsolete cloud/profile/wrapper code removed.
 - [x] infra/k0s/k0s.yaml defines the ordered local Helm-deployer configuration.
 - [x] Guest bootstrap prepares credentials/artifacts and waits for k0s reconciliation.

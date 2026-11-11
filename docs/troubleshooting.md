@@ -3,7 +3,9 @@
 - **KCL 0.13.3 rejects external file probes:** the unmodified devenv schema probes
   host paths, including an EDK2 candidate. The attempted local KCL selection was
   reverted at the user's request. Tools now use the existing operator environment;
-  this compatibility issue remains unresolved. No runtime patch is applied.
+  this compatibility issue remains unresolved for up/down. `task ssh` connects
+  directly using the persisted VM identity without evaluating KCL. No runtime
+  patch is applied.
 - **VM startup fails:** use the original devenv dependency/network diagnostics.
   The host must already provide KVM, br-qemu, bridge-helper permissions and mDNS.
 - **Provisioning fails:** `task ssh`, then inspect the journals for

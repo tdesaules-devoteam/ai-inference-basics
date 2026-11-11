@@ -15,8 +15,9 @@ the operator's existing environment: the local KCL download and Taskfile PATH
 override have been reverted. No global tool installation or configuration is changed.
 
 The currently installed KCL 0.13.3 rejects the upstream runtime's external file
-probes. This remains an unresolved compatibility issue; removing the local overrides
-does not establish that `task up`, `task down` or `task ssh` now work with that version.
+probes. This compatibility issue still affects the native up/down lifecycle.
+`task ssh` reads the persisted .devenv/.uuid and connects directly with the runtime's
+SSH options; connecting to an existing VM does not evaluate KCL.
 
 ```sh
 git submodule update --init --recursive
