@@ -1,3 +1,0 @@
-# Supply the environment's DNS name and existing trusted TLS Secret at deployment.
-gateway:
-  nodePort: 30443

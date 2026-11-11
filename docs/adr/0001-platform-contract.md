@@ -1,18 +1,16 @@
-# ADR 0001: platform contract
+# ADR 0001: local disposable platform
 
-Status: accepted design; runtime qualification tracked separately.
+Status: accepted design; revised runtime provisioning awaits operator qualification.
 
-- Native single-node k0s gives the local and cloud labs the same Kubernetes surface.
-- Fedora CoreOS via the existing devenv submodule owns local VM mechanics. Start
-  with 64 GiB disk; retain Ubuntu/cloud-init for Scaleway and GPU OS 13 for H100.
-- One umbrella configuration with phased installation accommodates CRDs/webhooks.
-- Keep LLMInferenceService for chat and InferenceService for pooling models;
-  remove llm-d/EPP from this course and prove the no-EPP combination explicitly.
-- Dex with two email accounts plus oauth2-proxy replaces Google and Keycloak.
-- A static opaque Bearer key protects APIs independently from browser sessions.
-- OpenTelemetry collects all signals; Prometheus/Loki/Tempo retain them.
-- HAMi shares H100; standalone DCGM measures physical GPU state. No GPU Operator.
-- Images use immutable digests; chart dependencies additionally require exact
-  archive hashes/OCI manifest digests because Chart.lock alone is not content pinning.
-- GHCR under this repository distributes the umbrella; qualify the exact package
-  before publication and use its digest for deployment.
+- The first version is local-only, with up/down/ssh and the original devenv lifecycle.
+- config.k extends the upstream example; no schema patches or no-op provisioning units.
+- Native k0s is bootstrapped inside the VM, together with instructor CLI tools.
+- infra/k0s/k0s.yaml owns four ordered releases of one locked local umbrella package.
+- Releases partition foundations, CRDs, controllers and applications without shared
+  Helm ownership. This respects cross-controller bootstrap requirements.
+- Dex/oauth2-proxy protects browser tools; native Zellij adds a per-bastion token.
+- Static Bearer keys protect inference APIs independently from browser cookies.
+- KServe owns model workloads; llm-d/EPP is excluded from this course.
+- OpenTelemetry collects all three signal types for the local telemetry stack.
+- The VM's existing bridge/mDNS provides direct access; no host SSH tunnel is added.
+- Cloud directories are empty placeholders. Profiles are removed and reports ignored.

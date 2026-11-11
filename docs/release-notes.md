@@ -2,12 +2,10 @@
 
 ## Unreleased
 
-- Establish living documentation for the AI Inference Basics infrastructure MVP.
-- Replace Google with Dex and two email-based accounts behind oauth2-proxy.
-- Defer llm-d/EPP to the next course; retain the requested KServe resource types.
-- Specify static Bearer API keys, explicit prefix caching and OpenTelemetry.
-- Start local development with a 64-GiB Fedora CoreOS 45 testing disk.
-- Replace ttyd with Zellij 0.46.0's native web client on Fedora Minimal 45,
-  keeping Dex plus the user-approved per-workspace Zellij token.
-
-No published release or completed runtime acceptance is claimed.
+- Local-only, disposable devenv workflow with public up/down/ssh commands.
+- Native provisioning through config.k using the upstream extension mechanisms.
+- k0s configuration owns four ordered installations of one local umbrella archive.
+- Administration image moved to oci/bastion; Zellij web retains its native token login.
+- Cloud code and profiles removed; cloud-init/terraform directories remain empty locally.
+- Reports retained as ignored development data, not tracked release inputs.
+- No VM execution or hosted publication claimed for this revision.

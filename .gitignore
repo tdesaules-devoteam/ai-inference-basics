@@ -1,9 +1,9 @@
 /.task/
 /.local/
+/reports/
 /.terraform.d/
 /.env
 /.env.*
-!/.env.example
 **/.terraform/
 *.tfstate
 *.tfstate.*

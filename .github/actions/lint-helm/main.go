@@ -19,8 +19,5 @@ func command(dir, name string, args ...string) {
 func main() {
 	const chart = "charts/ai-inference-basics"
 	command(chart, "sha256sum", "-c", "dependencies.sha256")
-	for _, p := range []string{"local-cpu", "scaleway-cpu-pilot", "scaleway-h100"} {
-		command("", "helm", "lint", "--strict", chart, "-f", "profiles/"+p+".yaml")
-	}
-	command("", "python3", ".github/scripts/validate-chart.py")
+	command("", "python3", "tests/validate.py")
 }

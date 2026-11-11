@@ -1,27 +1,25 @@
 # Repository contract
 
 - Source, documentation, comments and commits are English.
-- Use the devenv, helm, container and github-actions skills for their respective work.
-- Native k0s controller+worker only; no nested Kubernetes in Docker/Podman.
-- Local VM uses `.devenv`, Fedora CoreOS, 12 CPUs, 32 GiB RAM and 64 GiB disk.
-- Keep local `.devenv/config.k`, identity and credentials untracked and preserve them.
-- Dex with two email-based accounts and oauth2-proxy protects browser tools.
-- Administration workspaces use Fedora Minimal and Zellij's native web client,
-  with a separate native login token per workspace; ttyd is superseded.
-- Model APIs require a separate static Bearer key enforced at Envoy Gateway.
-- No Google, Keycloak, llm-d, EPP, game app or RAG application in this MVP.
-- Chat uses LLMInferenceService; embeddings/reranker use InferenceService.
-  Prove no-EPP compatibility before declaring inference ready; do not silently
-  replace the requested resource types.
-- One Helm umbrella contract, staged for CRD/webhook readiness. Lock every image
-  by digest and every dependency archive by checksum/OCI digest.
-- User-approved exception: official upstream application images may use bases
-  outside the container skill allowlist, with provenance and digest recorded.
-  Project-owned builds must still use allowed bases in every stage.
-- Publish the umbrella to this repository's GHCR namespace; record its real digest.
-- Terraform operations run through Task; show the saved plan before apply.
-- CPU cloud acceptance and teardown gate H100; one H100 gates the training fleet.
-- Record exact commands, versions, sanitized results and outstanding issues in
-  reports and docs/implementation-tracker.md. Never check off unexecuted acceptance.
-- Commit logical units locally with Conventional Commits and a why-body.
-  Do not push source changes without explicit authorization.
+- Use devenv, helm, container and github-actions skills for their respective work.
+- This version is a disposable local CPU lab. Public commands: task up/down/ssh.
+- Include the upstream devenv Taskfile directly. Within `.devenv`, edit only the
+  ignored, user-owned config.k, starting from exemple.config.k. Keep identity and
+  other local runtime state intact. No runtime patches or lifecycle wrappers.
+- Use custom_pkgs/custom_mise_tools/custom_files/custom_copies and append units.
+  Do not replace normal provisioning units with no-ops.
+- Keep infra/k0s/k0s.yaml. infra/cloud-init and infra/terraform are empty placeholders.
+- No profiles directory. Reports are development-local and must remain untracked.
+- Build the administration image in oci/bastion, using Fedora Minimal and Zellij web.
+- Native k0s controller+worker; never nested Kubernetes in Docker/Podman.
+- The k0s Helm deployer owns installation. The same locked umbrella may be installed
+  in fixed disjoint ordered releases for CRD/controller readiness. No competing Helm
+  CLI orchestration. Package the unpublished chart locally and verify its bytes.
+- Dex authenticates browser access. Zellij additionally requires its native token.
+  Model APIs use a separate static Bearer key enforced at Envoy Gateway.
+- Chat uses LLMInferenceService; embeddings/reranker use InferenceService. No llm-d/EPP.
+- Pin workload images by digest and chart archives by checksum. Official upstream
+  images have a user-approved base-image exception; own builds use allowed bases.
+- Reuse the VM's native bridge/mDNS access. No host systemd SSH tunnel.
+- Do not operate the VM without explicit permission. Offline checks are not boot evidence.
+- Keep changes and Conventional Commits local; do not push without authorization.

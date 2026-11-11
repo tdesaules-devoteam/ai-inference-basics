@@ -1,63 +1,46 @@
-# Architecture and scope
+# Local lab architecture
 
-## Platform
+`task up` prepares the bastion OCI archive and umbrella package on the workstation,
+then invokes the original `.devenv/taskfile.qemu.yaml`. Its KCL/Butane/Ignition flow
+uses the local `config.k` to provision the guest and append a bootstrap systemd unit.
+Normal devenv package/tool installation remains intact.
 
-One Linux host runs native k0s as a single controller+worker. All application and
-administration services run in Kubernetes. Task orchestrates infrastructure and
-staged Helm deployment: foundation CRDs/controllers, browser access, AI controllers,
-GPU prerequisites where applicable, models, observability and verification.
+The appended unit waits for normal provisioning and the shared workspace, verifies
+artifact checksums, installs pinned native k0s, creates guest-local lab credentials,
+injects `infra/k0s/k0s.yaml` and starts the single controller+worker.
 
-The project-owned umbrella chart is the configuration authority. Upstream charts
-are used where supported. Namespace or CRD ownership constraints may require a
-small set of staged releases under the same dependency lock; document exceptions.
-Helm CRDs require explicit upgrade/deletion handling outside ordinary rollback.
+## One umbrella, ordered k0s-owned releases
 
-```mermaid
-flowchart TB
-  Browser -->|HTTPS| Envoy[Envoy Gateway / Envoy Proxy]
-  Envoy --> OAuth[oauth2-proxy]
-  OAuth --> Dex[Dex: two email accounts]
-  OAuth --> Tools[Zellij web / Headlamp / Grafana / Caddy previews]
-  Client -->|Bearer API key| Envoy
-  Router[Agent Router: Envoy AI Gateway] -. configures .-> Envoy
-  Envoy --> Chat[vLLM chat]
-  Envoy --> Emb[vLLM embeddings]
-  Envoy --> Rerank[vLLM reranker]
-  KServe -. reconciles .-> Chat
-  KServe -. reconciles .-> Emb
-  KServe -. reconciles .-> Rerank
-  Collector[OpenTelemetry Collector] --> Backends[Prometheus / Loki / Tempo]
-  Backends --> Grafana
-  DCGM[DCGM Exporter: GPU only] --> Collector
-```
+All four entries reference `/var/lib/k0s/charts/ai-inference-basics.tgz`:
 
-KServe and Agent Router are controllers, not mandatory token-stream proxy hops.
-Chat must use `LLMInferenceService` without llm-d/EPP. Embedding and reranking use
-`InferenceService` with compatible vLLM pooling/classification runners. Compatibility
-is an implementation gate, not assumed from CRD availability.
+1. `ai-inference-basics-foundation`: Envoy Gateway and cert-manager.
+2. `ai-inference-basics-crds`: KServe and Agent Router CRDs.
+3. `ai-inference-basics-controllers`: KServe and Agent Router controllers.
+4. `ai-inference-basics`: access, models, bastions and observability.
 
-## Profiles
+`concurrencyLevel: 1`, explicit order, timeouts and `forceUpgrade: false` express
+the intended bootstrap order. Each release enables a disjoint subset of the same umbrella;
+offline tests reject cross-release resource ownership conflicts. These stages are
+necessary for CRDs/webhooks, not four independently maintained platform charts.
 
-| Setting | local-cpu | scaleway-cpu-pilot | scaleway-h100 |
-| --- | --- | --- | --- |
-| OS | Fedora CoreOS via devenv | Ubuntu 24.04 | Noble GPU OS 13 |
-| Compute | 12 vCPU / 32 GiB | >=8 vCPU / 32 GiB | H100-1-80G, fr-par-2 candidate |
-| Disk | 64 GiB | 80–128 GB | 128 GB Block Storage 5K |
-| Chat | Qwen/Qwen3-0.6B x1 | Same | Qwen/Qwen3-8B-FP8 x2 |
-| Embedding | Qwen/Qwen3-Embedding-0.6B | Same | Qwen/Qwen3-Embedding-4B BF16 |
-| Reranker | Qwen/Qwen3-Reranker-0.6B | Same | Qwen/Qwen3-Reranker-4B BF16 |
-| Browser identity | Dex + oauth2-proxy | Same | Same, two accounts per lab |
-| HAMi/DCGM | Disabled | Disabled | Enabled |
+k0s owns reconciliation. Guest bootstrap waits for its Chart resources to become
+deployed; it does not execute `helm install` or `helm upgrade`.
 
-Aliases remain `ai-inference-basics-chat`, `ai-inference-basics-embeddings`, `ai-inference-basics-rerank`. Pin HF commit revisions.
-CPU starts at context 2048, output 128 tokens, one active pipeline, bounded threads
-and KV memory; BF16 requires verified guest CPU support, otherwise test FP32.
-H100 starts at context 4096 with bounded concurrency; provisional HAMi allocations
-20+20+13+13 GiB need measurement and leave driver headroom. No extra quantization.
+The selected k0s implementation hardcodes concurrent Chart reconciliation and does
+not copy the configured order into the generated Chart spec. Do not treat those
+configuration fields as a proven dependency barrier. Native retries must converge
+as CRDs/controllers appear; this must be qualified on a fresh VM. Bootstrap checks
+the actual release/revision/error status fields and model readiness before success.
 
-## Explicit exclusions
+## Access
 
-No Google, Keycloak, llm-d/EPP, disaggregated serving, GPU Operator, competing NVIDIA
-device plugin, KAI, Volcano, KEDA, Knative, Istio, Dynamo or multicluster. No
-code-server, Warpgate, Timoni or nested k0s. Game UI, incident content, vector DB and
-RAG orchestration belong to a later project. A tiny demo suffices for previews.
+Browser → VM's native mDNS hostname, HTTPS 30443 → Envoy → oauth2-proxy/Dex →
+Zellij bastions, Headlamp, Grafana and previews. No workstation tunnel is needed.
+
+API clients → Envoy static Bearer-key policy → Agent Router → KServe-managed vLLM.
+Chat is an LLMInferenceService without a scheduler; pooling models are
+InferenceServices. The aliases are ai-inference-basics-chat,
+ai-inference-basics-embeddings and ai-inference-basics-rerank.
+
+The local VM defaults to 12 vCPUs, 32 GiB RAM and 64 GiB disk. Cloud provisioning
+has been removed from this version. The empty cloud directories are reserved only.

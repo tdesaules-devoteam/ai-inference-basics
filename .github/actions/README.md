@@ -8,7 +8,7 @@ publication. They are not a general command dispatcher.
 | Action | Input | Output / failure contract |
 | --- | --- | --- |
 | check | Event/ref, Git history | Selected build/test flags and literal JSON file lists; rejects wrong manual ref/missing history |
-| lint-helm | Source chart and profiles | Dependency integrity, schema/lint, image pins and resource names |
+| lint-helm | Source chart and k0s YAML | Dependency integrity, ordered release schemas, image pins and ownership |
 | build-helm | Source chart | Exact `dist/*.tgz` plus SHA256SUMS |
 | test-helm | Candidate archive/checksum | Render-qualified receipt; corrupt or missing candidates fail |
 | fetch-helm | Tracked immutable publication receipt and tag | Original published bytes; never rebuilds |

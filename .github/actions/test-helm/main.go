@@ -45,12 +45,10 @@ func run() error {
 	if len(files) != 1 {
 		return fmt.Errorf("expected one candidate archive")
 	}
-	for _, profile := range []string{"local-cpu", "scaleway-cpu-pilot", "scaleway-h100"} {
-		c = exec.Command("helm", "template", "ai-inference-basics", files[0], "--namespace", "ai-inference-basics", "-f", "profiles/"+profile+".yaml", "--set", "gateway.enabled=true", "--set", "access.enabled=true", "--set", "models.enabled=true", "--set", "api.enabled=true", "--set", "observability.enabled=true")
-		c.Stderr = os.Stderr
-		if _, e = c.Output(); e != nil {
-			return e
-		}
+	c = exec.Command("python3", "tests/validate.py", "--chart", files[0])
+	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	if e = c.Run(); e != nil {
+		return e
 	}
 	return os.WriteFile("dist/qualification.json", []byte(fmt.Sprintf("{\"tested\":true,\"scope\":\"archive integrity and rendering, not runtime acceptance\",\"source_sha\":%q}\n", os.Getenv("GITHUB_SHA"))), 0644)
 }

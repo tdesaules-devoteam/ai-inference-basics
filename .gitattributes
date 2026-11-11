@@ -1,2 +1,4 @@
-# Unified diffs intentionally contain space-prefixed empty context lines.
-infra/devenv/patches/*.patch -whitespace
+# Text files use LF line endings.
+* text=auto eol=lf
+*.png binary
+*.tgz binary

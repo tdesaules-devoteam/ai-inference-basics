@@ -1,5 +1,5 @@
 name: Lint platform Helm chart
-description: Verify dependency checksums and lint all supported profiles
+description: Verify dependency checksums and the four ordered k0s Helm releases
 runs:
   using: docker
   image: Dockerfile

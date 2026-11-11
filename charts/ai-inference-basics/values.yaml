@@ -152,9 +152,6 @@ workspaces:
 faults:
   rateLimit: false
 
-lifecycle:
-  kubectlImage: registry.k8s.io/kubectl@sha256:fe049faa65ae483ac200009a949a68fa4c9985daea12c9cb1195c9c7965301fc
-
 observability:
   enabled: false
   image: docker.io/grafana/otel-lgtm@sha256:72e05804790e6e0d8c0b70a6d5ff1f721ef7b203463374631e99aa3429bd0cf6

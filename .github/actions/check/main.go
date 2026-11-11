@@ -25,18 +25,6 @@ func run() error {
 	if tag && !regexp.MustCompile(`^refs/tags/[0-9]+\.[0-9]+\.[0-9]+$`).MatchString(ref) {
 		return fmt.Errorf("invalid stable release tag")
 	}
-	if tag {
-		body, err := os.ReadFile("reports/training/G6/acceptance.json")
-		if err != nil {
-			return fmt.Errorf("stable releases require completed training acceptance: %w", err)
-		}
-		var gate struct {
-			Passed bool `json:"passed"`
-		}
-		if err = json.Unmarshal(body, &gate); err != nil || !gate.Passed {
-			return fmt.Errorf("training acceptance has not passed")
-		}
-	}
 	files, err := exec.Command("git", "-c", "safe.directory=*", "ls-files", "-z").Output()
 	if err != nil {
 		return err

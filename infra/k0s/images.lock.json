@@ -1,9 +1,0 @@
-{
-  "quay.io/k0sproject/coredns:1.14.7-k0s.1": "sha256:4e96879ebe60146d9082c2746ae3640ab2336a42d6c6dae40ace8f84a4aa403b",
-  "quay.io/k0sproject/apiserver-network-proxy-agent:v0.37.0-k0s.1": "sha256:f0bac8fdedf836cdaaee4048b078df8ed67338fa14041adc20cfe0bde8f2cac9",
-  "quay.io/k0sproject/kube-proxy:v1.37.2": "sha256:b24d9f8b5e0265ac14fb532856e84af957eae2fb8fd38f8240c42b76e76e09a7",
-  "quay.io/k0sproject/kube-router:v2.11.1-iptables1.8.13-k0s.2": "sha256:d54312816a3f5d6ffbbd1130b6ddea47596e1a0aedae27527c67f7e54ca2ce07",
-  "quay.io/k0sproject/cni-node:v1.9.1-k0s.2": "sha256:5d8ba4095bf5ebe92ffefda79c7686f574c03de45ccaa7308b2b0249017aad79",
-  "quay.io/k0sproject/metrics-server:v0.9.0-k0s.2": "sha256:f88174cb39de0710fd127a198bc39441faa5b95d302209347f5f4c755943efde",
-  "quay.io/k0sproject/pause:3.10.2-0": "sha256:1dca17073186db812f380970077f5c82842c810f1bd75800cd926ab50cd34243"
-}

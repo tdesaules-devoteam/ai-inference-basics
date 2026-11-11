@@ -1,0 +1,11 @@
+version: '3'
+vars:
+  log: source .devenv/scripts/utils.sh && _log
+tasks:
+  wait:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        {{.log}} title 'Wait for native k0s and its Helm deployer'
+        bash cluster/wait.sh

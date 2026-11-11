@@ -22,7 +22,7 @@ def action(directory, name, success=True, env=None):
 
 with tempfile.TemporaryDirectory(prefix='ci-fixture-', dir=root / '.local') as tmp:
     directory = pathlib.Path(tmp)
-    for path in ('charts', 'profiles', '.github/scripts'):
+    for path in ('charts', 'infra/k0s', 'tests'):
         shutil.copytree(root / path, directory / path)
     subprocess.run(['git', 'init', '-q', str(directory)], check=True)
     (directory / 'output').touch()

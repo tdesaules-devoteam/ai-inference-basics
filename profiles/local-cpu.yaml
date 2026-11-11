@@ -1,3 +1,0 @@
-gateway:
-  hostname: lab.ai-inference-basics.test
-  nodePort: 30443

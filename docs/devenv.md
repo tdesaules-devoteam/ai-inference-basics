@@ -1,102 +1,114 @@
-# Local Fedora CoreOS VM
+# Local VM setup
 
-Runtime: `.devenv` Git submodule from <https://github.com/tdesaules/qemu-dev-env>.
-The project uses its QEMU/KCL/Butane/Ignition workflow, not an alternate VM manager.
+The root Taskfile directly includes `.devenv/taskfile.qemu.yaml`, using the same
+integration as thales-genai-lab. Only the ignored `.devenv/config.k` is customized;
+the runtime source, UUID and existing VM are not modified by this refactor.
 
-Initial sizing: 12 vCPUs, 32 GiB RAM, 64 GiB virtual disk, host CPU flags, no GPU.
-Fedora CoreOS 45.20261030.2.1 is in testing, not stable; pin both architecture hashes.
+## Host prerequisites
 
-Prerequisites: Linux x86_64 KVM, QEMU/qemu-img, Task, KCL, Butane, jq, curl, gpgv,
-SHA-256 utility, xz, SSH key, sudo, NetworkManager br-qemu and bridge-helper access.
-Host bridge/firewall configuration belongs to the existing host configuration.
+Linux x86_64, KVM, QEMU/qemu-img, Task, Butane, SSH, curl, jq, gpgv, xz, SHA-256,
+Python 3.11+, rootless Podman/Skopeo, and the existing br-qemu/helper/mDNS setup.
+Normal devenv sudo requirements apply. The host bridge remains host-owned.
 
-Initialize with `git submodule update --init --recursive`. Create local config from
-`.devenv/exemple.config.k` only if absent, then adapt it; never overwrite an existing
-config or copy the reference project's identity. `.devenv/config.k` stays ignored.
-
-The runtime stores VM data in `~/.qemu/<uuid>/`; `.devenv/.uuid` is stable across
-stop/start. Guest `~/workspace` must mount the repository root, not `.devenv`.
-Guest writes in that share modify host source. Guest-only data lives on the VM disk.
-
-Use `stop` for routine shutdown and `down` only for disposal. Ignition is first-boot
-configuration; editing config does not reprovision a running guest. Keep submodule
-updates explicit and record the new gitlink after reviewing upstream changes.
-
-Runtime adaptation must preserve image signature/checksum verification, align both
-KCL render argument sets, and avoid automatic host credential imports. No Cockpit,
-Beszel or host application service is required by this lab.
-
-## Reproduce this checkout
+`task up` prepares pinned Helm 4.3.1 and KCL 0.12.3 locally. KCL 0.13.3 was tested
+and rejects the unchanged runtime's host-file probes; 0.12.3 renders it successfully.
+Neither the global KCL installation nor the runtime schema is patched.
 
 ```sh
 git submodule update --init --recursive
-python3 -m venv .local/venv
-.local/venv/bin/pip install -r requirements-dev.txt
-.local/venv/bin/playwright install chromium
 cp -n .devenv/exemple.config.k .devenv/config.k
 ```
 
-For a **new** config, replace the demo content with the following. Preserve and
-merge any existing user configuration instead of overwriting it.
+For a new checkout, adapt that local file using the configuration below. Preserve
+existing user choices. It keeps the runtime's default packages, mise tools, copies
+and units, and adds project provisioning through custom fields and `units +=`.
+
+The selected image is Fedora CoreOS 45.20261030.2.1 **testing**, with both published
+architecture checksums pinned. Only Linux/x86_64 rendering is checked here.
 
 ```kcl
+import file
 import .schema as schema
-import .templates as templates
 
+_root = file.read_env("AI_INFERENCE_BASICS_ROOT")
 _user = option("qemu_butane_user_name")
+_hardware = schema.Hardware {
+    cpu = 12
+    memory = schema.Memory {size = 32, unit = "G"}
+    disk = schema.Disk {size = 64, unit = "G"}
+}
+_base = schema.Qemu {hardware = _hardware}
+
 config = schema.Qemu {
     os.version = "45.20261030.2.1"
     os.streams = "testing"
     checksum.x86_64 = "420f428010ba880200e5b83c116cdc4a804652efc4bbcd4846c8d3e860928f88"
     checksum.aarch64 = "d0e1786961d08f801e1af24eb87616cd7aabbda372d30b5d9e8dc6e19537011b"
-    hardware.cpu = 12
-    hardware.memory = {size = 32, unit = "G"}
-    hardware.disk = {size = 64, unit = "G"}
+    hardware = _hardware
+    # Native Task include runs in .devenv; share the target repository instead.
+    command.options = [
+        (arg.replace("path=${file.read_env('PWD')},security_model=passthrough", "path=${_root},security_model=passthrough") if arg.startswith("-fsdev local,id=fsdev1,") else arg)
+        for arg in _base.command.options
+    ]
     butane = schema.Butane {
-        default_pkgs = []
-        default_mise_tools = {}
-        default_copies = []
-        units = [
-            {name = "install-system-pkgs.service", contents = "[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/true\n[Install]\nWantedBy=multi-user.target\n"}
-            {name = "run-topgrade.service", contents = "[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/true\n[Install]\nWantedBy=multi-user.target\n"}
-            {name = "var-home-${_user}-workspace.mount", enabled = False, contents = templates.var_home_user_workspace_mount(_user)}
-            {name = "var-home-${_user}-workspace.automount", contents = templates.var_home_user_workspace_automount(_user)}
-            {name = "var-home-${_user}-.qemu.mount", enabled = False, contents = templates.var_home_user_qemu_mount(_user)}
-            {name = "var-home-${_user}-.qemu.automount", contents = templates.var_home_user_qemu_automount(_user)}
+        custom_pkgs = ["jq", "openssl", "python3-pyyaml", "python3-bcrypt"]
+        custom_mise_tools = {
+            "kubectl" = "1.37.2"
+            "helm" = "4.3.1"
+            "github:derailed/k9s" = "0.51.0"
+            "github:go-task/task" = "3.54.0"
+        }
+        custom_copies = [
+            {source = "${_root}/infra/k0s/k0s.yaml", path = "/etc/ai-inference-basics/k0s.yaml", user.name = "root", group.name = "root"}
+            {source = "${_root}/.local/build/artifacts.json", path = "/etc/ai-inference-basics/artifacts.json", user.name = "root", group.name = "root"}
+            {source = "${_root}/cluster/bootstrap.sh", path = "/usr/local/sbin/ai-inference-basics-bootstrap", mode = 493, user.name = "root", group.name = "root"}
+            {source = "${_root}/cluster/provision.py", path = "/usr/local/lib/ai-inference-basics/provision.py", mode = 493, user.name = "root", group.name = "root"}
+        ]
+        units += [
+            {
+                name = "ai-inference-basics-bootstrap.service"
+                enabled = True
+                contents = """\
+[Unit]
+Description=Provision the AI Inference Basics lab
+ConditionVirtualization=vm
+Wants=network-online.target
+Requires=run-topgrade.service
+After=network-online.target run-topgrade.service
+RequiresMountsFor=/var/home/${_user}/workspace
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=1800
+ExecStart=/usr/local/sbin/ai-inference-basics-bootstrap /var/home/${_user}/workspace
+
+[Install]
+WantedBy=multi-user.target
+"""
+            }
         ]
     }
 }
 ```
 
-The two compatibility oneshot units are deliberately no-ops: no RPM layering or
-floating topgrade updates are needed for native k0s. Project bootstrap installs
-checksum-pinned k0s separately, and administration tools live in Kubernetes Pods.
-The runtime's other disposable-system defaults (including permissive SELinux and
-passwordless instructor sudo) remain local-development settings, not production
-hardening. Host OpenCode credentials, demo users and Beszel are not provisioned.
+Preparation creates `.local/build/artifacts.json`, the chart archive and bastion
+OCI archive before devenv renders Ignition. Required text files are copied into
+the guest; binary archives are read from the shared repository and checksum-verified.
+The bootstrap waits for ordinary provisioning, handles the staged reboot by
+deferring to devenv, installs k0s and waits for its Helm deployer.
 
 ```sh
-task doctor
-task up PROFILE=local-cpu
-task devenv:status
-task devenv:ssh
-task down                  # retain disk/config/identity
-task infra:destroy         # discard guest disk; preserves local identity/config
+task up
+task ssh
+task down
 ```
 
-The root includes a small `devenv:` adapter. It serializes runtime calls, applies
-the reviewed `infra/devenv/patches/runtime.patch`, runs the original
-`taskfile.qemu.yaml`, and reverses the patch afterwards. The gitlink remains the
-available upstream revision and clean between calls. This distributes the renderer
-fixes reproducibly without an unpublished submodule commit or a duplicate VM engine.
-Use the root Task commands, not the unadapted runtime directly.
+`down` destroys the guest disk. config.k and the checkout identity remain managed
+by the original runtime. Guest credentials, sessions and telemetry are disposable;
+there is no host credential backup/rename step or manual known_hosts cleanup.
 
-The patch aligns renderer arguments and explicit project-root sharing, avoids KCL
-external-file probes and host-auth imports, removes the upstream demo login, tracks
-template changes and checks the selected FCOS stream. Identity is created before
-rendering. Generated Butane/Ignition inherit a restrictive umask.
-
-Update the submodule explicitly only after review; rebase/revalidate the patch
-against the selected revision, record the gitlink and validate another VM boot.
-FCOS updates similarly require fresh stream checksums and an intentional rebuild.
-No arbitrary-path, ARM64 or macOS boot qualification is claimed.
+The local config is user-owned and ignored by Git. Its tracked supporting inputs
+are `infra/k0s/k0s.yaml`, `cluster/` and the prepared artifacts under `.local/build`.
+Git does not preserve truly empty directories: cloud-init/terraform placeholders
+exist locally but contain no tracked files.

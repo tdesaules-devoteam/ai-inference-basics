@@ -49,8 +49,6 @@ jobs:
         uses: tdesaules/github-actions/lint/hadolint@8c328a3be0545ba9ded0f1289f495bffa6103091
         with:
           files: ${{ needs.check.outputs.container_files }}
-      - name: Validate Terraform
-        uses: ./.github/actions/lint-terraform
   build:
     needs: [check, lint]
     if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' }}

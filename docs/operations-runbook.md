@@ -1,46 +1,34 @@
-# Operations runbook
+# Operations
 
-See the tracker for which commands are implemented and validated. The intended
-operator interface is Task, including Terraform plan/apply/destroy.
-
-| Command | Responsibility |
-| --- | --- |
-| `task doctor` | Host and profile preflight |
-| `task infra:up` | Local devenv lifecycle or explicit cloud plan/apply |
-| `task k0s:install` | Pinned native controller+worker bootstrap |
-| `task bootstrap:access` | Gateway, Dex, oauth2-proxy and browser tools |
-| `task helm:deps` | Retrieve and verify locked chart artifacts |
-| `task platform:up` | Ordered CRD/controller/resource/model phases |
-| `task models:verify` | Three model APIs, auth and cache |
-| `task auth:verify` | Dex and browser sessions |
-| `task preview:verify` | In-Pod port-forward and Caddy |
-| `task observability:verify` | Actual metrics/logs/traces |
-| `task gpu:verify` | H100 runtime, HAMi and DCGM |
-| `task verify` | Applicable end-to-end acceptance |
-| `task up` | Full supported sequence |
-| `task down` | Controlled shutdown |
-| `task infra:destroy` | Explicit destructive disposal |
-| `task versions:check` | Dependency integrity |
-| `task report` | Sanitized status/evidence |
-
-Pass `PROFILE=local-cpu`, `scaleway-cpu-pilot` or `scaleway-h100` as appropriate.
-Local routine shutdown preserves disk and identity; disposal destroys guest data.
-
-## Browser preview
-
-Inside a participant terminal, run:
+Run from the repository root:
 
 ```sh
-kubectl -n demo port-forward --address 127.0.0.1 svc/whoami 18080:80
+task up
+task ssh
+task down
 ```
 
-Caddy in the same Pod proxies `:8080` to `127.0.0.1:18080`. Browser localhost is
-not involved. Preview returns 502 when no forward runs. Use a dedicated hostname
-and the same OAuth protection as the terminal. Only fixed HTTP/WebSocket ports.
+`up` creates/provisions the lab and waits for readiness. `down` destroys the guest
+disk; there is no separate stop/destroy operator interface in this version.
+The original devenv runtime manages VM identity, SSH and disk lifecycle.
 
-## Recovery
+Inside the VM, mise supplies kubectl, k9s, Helm and Task. Bootstrap writes the
+instructor's private kubeconfig to `~/.kube/config`.
 
-Keep instructor SSH/provider console available. Diagnose native k0s with systemd
-and its embedded kubectl/containerd. Inspect CRDs/webhooks before retrying Helm.
-Do not delete Helm release Secrets or replace immutable selectors blindly. A broken
-browser gateway must be recoverable from the host; never add a host web IDE.
+```sh
+kubectl get nodes
+kubectl get pods -A
+kubectl get charts.helm.k0sproject.io -n kube-system
+kubectl -n ai-inference-basics get llmisvc,isvc,gateway,httproute
+helm list -A
+k9s
+sudo journalctl -u ai-inference-basics-bootstrap.service
+```
+
+The guest bootstrap's ready marker is `/var/lib/ai-inference-basics/ready`.
+Its presence means native k0s, the four k0s-managed chart releases and the model
+resource readiness checks passed. It does not prove every browser/API test passed.
+
+Use the k0s configuration as the deployment authority. Do not run a competing
+manual upgrade against one of its releases. To rebuild the disposable lab, use
+`task down`, then `task up`.
