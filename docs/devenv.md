@@ -37,15 +37,12 @@ is adapted in the native QEMU options. Only Linux/x86_64 rendering is checked he
 import file
 import .schema as schema
 
-_root = file.read_env("AI_INFERENCE_BASICS_ROOT")
-_user = option("qemu_butane_user_name")
-
 config = schema.Qemu {
     hardware = schema.Hardware {
-        cpu = 12
+        cpu = 24
         memory = schema.Memory {
-            size = 32
-            unit = "G"
+            size = 49152
+            unit = "M"
         }
         disk = schema.Disk {
             size = 64
@@ -53,12 +50,11 @@ config = schema.Qemu {
         }
     }
 
-    # Native Task include runs in .devenv; share the target repository instead.
-    # Reuse the hardware above; change only the workspace path in native options.
+    # Share the repository, not just the runtime directory containing this file.
     command.options = [
         arg.replace(
             "-fsdev local,id=fsdev1,path=${file.read_env('PWD')},",
-            "-fsdev local,id=fsdev1,path=${_root},"
+            "-fsdev local,id=fsdev1,path=${file.read_env('AI_INFERENCE_BASICS_ROOT')},"
         )
         for arg in schema.Qemu {
             hardware = hardware
@@ -69,8 +65,6 @@ config = schema.Qemu {
         custom_pkgs = [
             "jq"
             "openssl"
-            "python3-pyyaml"
-            "python3-bcrypt"
         ]
         custom_mise_tools = {
             "kubectl" = "1.37.2"
@@ -78,30 +72,21 @@ config = schema.Qemu {
             "github:derailed/k9s" = "0.51.0"
             "github:go-task/task" = "3.54.0"
         }
+        beszel = {
+            url = "http://10.10.10.1:8090"
+        }
         custom_copies = [
             {
-                source = "${_root}/infra/k0s/k0s.yaml"
-                path = "/etc/ai-inference-basics/k0s.yaml"
+                source = "${file.read_env('AI_INFERENCE_BASICS_ROOT')}/.local/build/runtime/k0s.yaml"
+                path = "/etc/k0s/k0s.yaml"
+                mode = 384
                 user.name = "root"
                 group.name = "root"
             }
             {
-                source = "${_root}/.local/build/artifacts.json"
-                path = "/etc/ai-inference-basics/artifacts.json"
-                user.name = "root"
-                group.name = "root"
-            }
-            {
-                source = "${_root}/cluster/bootstrap.sh"
-                path = "/usr/local/sbin/ai-inference-basics-bootstrap"
-                mode = 493
-                user.name = "root"
-                group.name = "root"
-            }
-            {
-                source = "${_root}/cluster/provision.py"
-                path = "/usr/local/lib/ai-inference-basics/provision.py"
-                mode = 493
+                source = "${file.read_env('AI_INFERENCE_BASICS_ROOT')}/.local/build/runtime/credentials.yaml"
+                path = "/var/lib/k0s/manifests/ai-inference-basics/credentials.yaml"
+                mode = 384
                 user.name = "root"
                 group.name = "root"
             }
@@ -112,18 +97,36 @@ config = schema.Qemu {
                 enabled = True
                 contents = """\
 [Unit]
-Description=Provision the AI Inference Basics lab
+Description=Install native k0s for AI Inference Basics
 ConditionVirtualization=vm
+ConditionPathExists=!/var/lib/ai-inference-basics/initialized
 Wants=network-online.target
 Requires=run-topgrade.service
 After=network-online.target run-topgrade.service
-RequiresMountsFor=/var/home/${_user}/workspace
+RequiresMountsFor=/var/home/${option('qemu_butane_user_name')}/workspace
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-TimeoutStartSec=1800
-ExecStart=/usr/local/sbin/ai-inference-basics-bootstrap /var/home/${_user}/workspace
+TimeoutStartSec=600
+WorkingDirectory=/var/home/${option('qemu_butane_user_name')}/workspace/.local/build
+ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecStart=/usr/bin/install -d -m 0755 /usr/local/bin /var/lib/k0s/charts
+ExecStart=/usr/bin/install -d -m 0700 /var/lib/ai-inference-basics
+ExecStart=/usr/bin/curl --fail --location --retry 3 --output /var/lib/ai-inference-basics/k0s.download https://github.com/k0sproject/k0s/releases/download/v1.37.2+k0s.1/k0s-v1.37.2+k0s.1-amd64
+ExecStart=/usr/bin/bash -ec 'echo "4770cf89ff45e43292819f6e3a02a25a453bc750c777f6f7ad2de335f3f41df5  /var/lib/ai-inference-basics/k0s.download" | sha256sum --check -'
+ExecStart=/usr/bin/bash -ec 'cmp -s /var/lib/ai-inference-basics/k0s.download /usr/local/bin/k0s || install -m 0755 /var/lib/ai-inference-basics/k0s.download /usr/local/bin/k0s'
+ExecStart=/usr/bin/sha256sum --check SHA256SUMS
+ExecStart=/usr/bin/install -m 0644 ai-inference-basics.tgz /var/lib/k0s/charts/ai-inference-basics.tgz
+ExecStart=/usr/bin/bash -ec 'systemctl cat k0scontroller.service >/dev/null 2>&1 || /usr/local/bin/k0s install controller --single --enable-worker --no-taints --config /etc/k0s/k0s.yaml'
+ExecStart=/usr/bin/systemctl enable --now k0scontroller
+ExecStart=/usr/bin/bash -ec 'until /usr/local/bin/k0s ctr version >/dev/null 2>&1; do sleep 2; done'
+ExecStart=/usr/local/bin/k0s ctr images import --digests bastion.oci.tar
+ExecStart=/usr/bin/bash -ec '/usr/local/bin/k0s ctr images tag --force localhost/ai-inference-basics-bastion:dev "$$(cat bastion.ref)"'
+ExecStart=/usr/bin/bash -ec 'until /usr/local/bin/k0s kubectl get --raw=/readyz --request-timeout=5s >/dev/null 2>&1; do sleep 2; done'
+ExecStart=/usr/bin/install -d -m 0700 -o ${option('qemu_butane_user_name')} -g ${option('qemu_butane_user_name')} /var/home/${option('qemu_butane_user_name')}/.kube
+ExecStart=/usr/bin/bash -ec 'umask 077; /usr/local/bin/k0s kubeconfig admin > /var/home/${option('qemu_butane_user_name')}/.kube/config; chown ${option('qemu_butane_user_name')}:${option('qemu_butane_user_name')} /var/home/${option('qemu_butane_user_name')}/.kube/config'
+ExecStart=/usr/bin/touch /var/lib/ai-inference-basics/initialized
 
 [Install]
 WantedBy=multi-user.target
@@ -134,11 +137,16 @@ WantedBy=multi-user.target
 }
 ```
 
-Preparation creates `.local/build/artifacts.json`, the chart archive and bastion
-OCI archive before devenv renders Ignition. Required text files are copied into
-the guest; binary archives are read from the shared repository and checksum-verified.
-The bootstrap waits for ordinary provisioning, handles the staged reboot by
-deferring to devenv, installs k0s and waits for its Helm deployer.
+Preparation creates a fixed-name chart archive, a bastion OCI archive, its digest
+reference and SHA256SUMS. The final k0s.yaml and private credential manifests are
+rendered on the host before Ignition. Their destinations are `/etc/k0s/k0s.yaml`
+and `/var/lib/k0s/manifests/ai-inference-basics/credentials.yaml`.
+
+The unit itself downloads the pinned k0s binary from GitHub, verifies its checksum,
+installs it under `/usr/local/bin`, starts the controller+worker using that exact
+configuration, imports the verified bastion archive and writes the instructor's
+kubeconfig. The archives are read from the shared repository. No guest Python
+provisioner or intermediate k0s configuration file is needed.
 
 ```sh
 task up
@@ -147,10 +155,12 @@ task down
 ```
 
 `down` destroys the guest disk. config.k and the checkout identity remain managed
-by the original runtime. Guest credentials, sessions and telemetry are disposable;
-there is no host credential backup/rename step or manual known_hosts cleanup.
+by the original runtime. Guest credentials, sessions and telemetry are disposable.
+After destruction, down also removes the marked, generated `.local/build/runtime`
+directory so the next VM receives fresh credentials. No manual backup/rename or
+known_hosts cleanup is required.
 
 The local config is user-owned and ignored by Git. Its tracked supporting inputs
-are `infra/k0s/k0s.yaml`, `cluster/` and the prepared artifacts under `.local/build`.
+are `infra/k0s/k0s.yaml` and `cluster/`; prepared artifacts under `.local/build` are ignored.
 Git does not preserve truly empty directories: cloud-init/terraform placeholders
 exist locally but contain no tracked files.

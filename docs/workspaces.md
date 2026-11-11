@@ -17,10 +17,24 @@ The original devenv bridge/mDNS configuration provides access. No workstation
 systemd tunnel, custom hosts-file entry or loopback URL is part of this flow.
 Accept/trust the lab's self-signed TLS certificate explicitly.
 
-Use `task ssh` and inspect `/var/lib/ai-inference-basics/credentials.json` with sudo
+The instructor can inspect `.local/build/runtime/credentials.json` on the host
 for the two initial Dex accounts (`alice@example.test` and `bob@example.test`).
-The native Zellij login tokens are `zellij-a.token` and `zellij-b.token` in the same
-guest directory. Share each token only with the assigned participant.
+The same information is available through the administrator kubeconfig inside the VM:
+
+```sh
+kubectl -n ai-inference-basics get secret ai-inference-basics-access \
+  -o 'jsonpath={.data.credentials\.json}' | base64 -d
+```
+
+Retrieve the native Zellij token for a participant with:
+
+```sh
+kubectl -n ai-inference-basics exec deployment/workspace-a -c terminal -- \
+  cat /workspace/.local/share/ai-inference-basics/web-login.txt
+```
+
+Use workspace-b for the other participant. These commands display secrets only
+when the instructor explicitly requests them; share each token with its participant.
 
 Zellij listens on Pod-local loopback. Caddy serves its web client through the
 terminal Service and scopes its session cookie per terminal path. The additional

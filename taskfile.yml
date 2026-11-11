@@ -21,7 +21,9 @@ tasks:
   up:
     desc: Create and provision the local lab
     cmds:
+      - task: devenv:generate-uuid
       - task: oci:prepare
+      - task: cluster:prepare
       - task: devenv:up
         vars:
           attach: 'false'
@@ -30,6 +32,7 @@ tasks:
     desc: Destroy the local VM
     cmds:
       - task: devenv:down
+      - task: cluster:clean
   ssh:
     desc: Connect to the local VM
     interactive: true

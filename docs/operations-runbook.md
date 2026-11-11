@@ -26,9 +26,10 @@ k9s
 sudo journalctl -u ai-inference-basics-bootstrap.service
 ```
 
-The guest bootstrap's ready marker is `/var/lib/ai-inference-basics/ready`.
-Its presence means native k0s, the four k0s-managed chart releases and the model
-resource readiness checks passed. It does not prove every browser/API test passed.
+The inline unit's marker is `/var/lib/ai-inference-basics/initialized`: it means
+the binary/configuration and bastion image have been installed, not that every
+application is ready. The host-side wait checks the four k0s-managed chart releases
+and model readiness before task up succeeds. Browser/API acceptance remains separate.
 
 Use the k0s configuration as the deployment authority. Do not run a competing
 manual upgrade against one of its releases. To rebuild the disposable lab, use

@@ -1,7 +1,8 @@
 # Model API
 
 Use `https://<vm-hostname>:30443` and an independent static Bearer API key from the
-guest's `/var/lib/ai-inference-basics/credentials.json`. Browser cookies do not
+host's `.local/build/runtime/credentials.json` or the guest's administrator-only
+`ai-inference-basics-access` Secret. Browser cookies do not
 authenticate inference calls. Never put the key in source, URLs or shell tracing.
 
 | Endpoint | Model alias |

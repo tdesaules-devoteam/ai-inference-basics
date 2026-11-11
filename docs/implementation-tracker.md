@@ -11,7 +11,9 @@
 - [x] Restore task ssh without KCL evaluation; a connection to the existing VM succeeded.
 - [x] OCI sources moved to oci/bastion; obsolete cloud/profile/wrapper code removed.
 - [x] infra/k0s/k0s.yaml defines the ordered local Helm-deployer configuration.
-- [x] Guest bootstrap prepares credentials/artifacts and waits for k0s reconciliation.
+- [x] Prepare final k0s.yaml and credentials on the host; copy them directly through Ignition.
+- [x] Install checksum-verified k0s inline in the systemd unit; remove guest bootstrap scripts.
+- [x] Preserve the requested 24 vCPU / 48 GiB / 64 GiB sizing and Beszel configuration.
 - [x] Reports retained locally and removed from Git tracking.
 - [ ] Boot and qualify this revised provisioning flow with operator authorization.
 - [ ] Verify native Helm-deployer convergence across controller/CRD dependencies;

@@ -5,9 +5,12 @@ import tempfile
 import unittest
 import yaml
 
-spec = importlib.util.spec_from_file_location('provision', 'cluster/provision.py')
-provision = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(provision)
+spec = importlib.util.spec_from_file_location('prepare', 'cluster/prepare.py')
+prepare = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prepare)
+wait_spec = importlib.util.spec_from_file_location('wait', 'cluster/wait.py')
+waiter = importlib.util.module_from_spec(wait_spec)
+wait_spec.loader.exec_module(waiter)
 
 
 class ProvisionContract(unittest.TestCase):
@@ -17,7 +20,7 @@ class ProvisionContract(unittest.TestCase):
                           'image': 'localhost/ai-inference-basics-bastion@sha256:' + 'a' * 64}
 
     def test_guest_config_uses_native_hostname_and_local_artifact(self):
-        result = provision.prepare_config(self.template, 'fixture-vm.local', self.artifacts)
+        result = prepare.prepare_config(self.template, 'fixture-vm.local', **self.artifacts)
         self.assertNotIn('__LAB_HOSTNAME__', result)
         self.assertNotIn('__BASTION_IMAGE__', result)
         config = yaml.safe_load(result)
@@ -30,16 +33,16 @@ class ProvisionContract(unittest.TestCase):
     def test_wrong_version_and_mutable_image_are_rejected(self):
         for change in ({'version': '0.0.0'}, {'image': 'localhost/bastion:latest'}):
             with self.assertRaises(AssertionError):
-                provision.prepare_config(self.template, 'fixture-vm.local', self.artifacts | change)
+                prepare.prepare_config(self.template, 'fixture-vm.local', **(self.artifacts | change))
 
     def test_credentials_persist_only_within_one_guest_state(self):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
             a, b = Path(first), Path(second)
-            provision.credentials(a, 'fixture-vm.local')
+            prepare.credentials(a, 'fixture-vm.local')
             initial = (a / 'credentials.json').read_bytes()
-            provision.credentials(a, 'fixture-vm.local')
+            prepare.credentials(a, 'fixture-vm.local')
             self.assertEqual(initial, (a / 'credentials.json').read_bytes())
-            provision.credentials(b, 'another-vm.local')
+            prepare.credentials(b, 'another-vm.local')
             one, two = json.loads(initial), json.loads((b / 'credentials.json').read_text())
             self.assertEqual(len(one['accounts']), 2)
             self.assertNotEqual(one['api_key'], two['api_key'])
@@ -49,10 +52,10 @@ class ProvisionContract(unittest.TestCase):
         charts = [{'spec': {'chartName': path, 'releaseName': f'release-{i}', 'version': '0.3.0-alpha.1'},
                    'status': {'releaseName': f'release-{i}', 'version': '0.3.0-alpha.1', 'revision': 1}}
                   for i in range(4)]
-        self.assertTrue(provision.charts_ready(charts, path))
-        self.assertFalse(provision.charts_ready(charts[:3], path))
+        self.assertTrue(waiter.charts_ready(charts))
+        self.assertFalse(waiter.charts_ready(charts[:3]))
         charts[0]['status']['error'] = 'installation failed'
-        self.assertFalse(provision.charts_ready(charts, path))
+        self.assertFalse(waiter.charts_ready(charts))
 
 
 if __name__ == '__main__':

@@ -18,14 +18,17 @@ _log title 'Package the locked local umbrella chart'
 (cd charts/ai-inference-basics && sha256sum -c dependencies.sha256)
 bash oci/helm.sh package charts/ai-inference-basics --destination .local/build
 python3 - <<'PY'
-import hashlib,json,pathlib,re
+import hashlib,pathlib,re,shutil
 root=pathlib.Path.cwd(); build=root/'.local/build'
 version=re.search(r'^version:\s*(\S+)',(root/'charts/ai-inference-basics/Chart.yaml').read_text(),re.M).group(1)
 chart=build/f'ai-inference-basics-{version}.tgz'
 digest='sha256:'+hashlib.sha256((build/'bastion.manifest.json').read_bytes()).hexdigest()
-data={'version':version,'chart_file':chart.name,'chart_sha256':hashlib.sha256(chart.read_bytes()).hexdigest(),
-      'image':'localhost/ai-inference-basics-bastion@'+digest,
-      'image_archive':'bastion.oci.tar','image_archive_sha256':hashlib.file_digest((build/'bastion.oci.tar').open('rb'),'sha256').hexdigest()}
-(build/'artifacts.json').write_text(json.dumps(data,indent=2)+'\n')
+shutil.copyfile(chart, build/'ai-inference-basics.tgz')
+(build/'bastion.ref').write_text('localhost/ai-inference-basics-bastion@'+digest+'\n')
+checksums=[]
+for name in ('ai-inference-basics.tgz','bastion.oci.tar','bastion.ref'):
+    with (build/name).open('rb') as source:
+        checksums.append(hashlib.file_digest(source,'sha256').hexdigest()+'  '+name)
+(build/'SHA256SUMS').write_text('\n'.join(checksums)+'\n')
 PY
 _log success 'Local artifacts ready; VM provisioning remains owned by devenv'

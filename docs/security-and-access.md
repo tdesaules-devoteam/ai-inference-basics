@@ -1,10 +1,12 @@
 # Security and access
 
-Each fresh VM generates its own Dex passwords, bcrypt hashes, OAuth client/cookie
-secrets, inference API key and local TLS certificate. They live in the guest under
-`/var/lib/ai-inference-basics/`, not in Terraform, Git or host-side saved profiles.
-The bootstrap writes Kubernetes Secrets through the k0s manifest deployer and does
-not print credential values. VM destruction removes that guest state.
+Host preparation generates Dex passwords, bcrypt hashes, OAuth client/cookie
+secrets, the inference API key and a local TLS certificate in the private, ignored
+`.local/build/runtime/` directory. Ignition copies the resulting credential
+manifests into the guest with mode 0600; the k0s manifest deployer creates Secrets.
+Automation does not print credential values. task down destroys the guest state
+and removes the marked host preparation directory, allowing fresh credentials for
+the next VM. Retries before destruction preserve the same credentials.
 
 Browser access uses Dex + oauth2-proxy. Zellij also requires a native per-bastion
 token. Model APIs instead use an opaque static Bearer key validated by Envoy.

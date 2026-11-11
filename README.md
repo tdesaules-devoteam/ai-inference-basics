@@ -20,7 +20,7 @@ Task commands; preparation and readiness functions are delegated to internal tas
 - `infra/k0s/k0s.yaml`: native k0s configuration and ordered Helm deployment.
 - `infra/cloud-init/`, `infra/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
-- `cluster/`: guest bootstrap and its internal Taskfile.
+- `cluster/`: host configuration preparation, readiness checks and internal tasks.
 - `charts/ai-inference-basics/`: digest-pinned platform umbrella.
 - `tests/`: offline checks; `reports/` is optional, local-only and ignored by Git.
 

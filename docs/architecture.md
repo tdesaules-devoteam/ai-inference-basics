@@ -1,13 +1,19 @@
 # Local lab architecture
 
-`task up` prepares the bastion OCI archive and umbrella package on the workstation,
-then invokes the original `.devenv/taskfile.qemu.yaml`. Its KCL/Butane/Ignition flow
-uses the local `config.k` to provision the guest and append a bootstrap systemd unit.
-Normal devenv package/tool installation remains intact.
+`task up` obtains the checkout identity through the native devenv task, prepares
+the bastion OCI archive and umbrella package, and renders the final configuration
+and credentials on the workstation. The original devenv lifecycle then creates
+the VM through KCL/Butane/Ignition. Normal package/tool installation remains intact.
 
-The appended unit waits for normal provisioning and the shared workspace, verifies
-artifact checksums, installs pinned native k0s, creates guest-local lab credentials,
-injects `infra/k0s/k0s.yaml` and starts the single controller+worker.
+`infra/k0s/k0s.yaml` is the source of truth. Host preparation resolves its hostname
+and bastion digest into `.local/build/runtime/k0s.yaml`, copied directly to
+`/etc/k0s/k0s.yaml`. It is not transformed again inside the VM. A second private
+copy supplies credential manifests to the k0s manifest deployer.
+
+The systemd unit in config.k contains the k0s download, SHA-256 verification,
+installation in `/usr/local/bin/k0s`, controller startup and OCI import inline.
+No bootstrap.sh, provision.py or artifacts.json is copied to the guest.
+The host-side readiness check only observes k0s/Helm/model readiness.
 
 ## One umbrella, ordered k0s-owned releases
 
@@ -42,5 +48,5 @@ Chat is an LLMInferenceService without a scheduler; pooling models are
 InferenceServices. The aliases are ai-inference-basics-chat,
 ai-inference-basics-embeddings and ai-inference-basics-rerank.
 
-The local VM defaults to 12 vCPUs, 32 GiB RAM and 64 GiB disk. Cloud provisioning
+The local VM is configured for 24 vCPUs, 48 GiB RAM and 64 GiB disk. Cloud provisioning
 has been removed from this version. The empty cloud directories are reserved only.
