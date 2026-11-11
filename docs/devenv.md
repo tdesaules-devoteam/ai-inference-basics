@@ -14,8 +14,8 @@ Normal devenv sudo requirements apply. The host bridge remains host-owned.
 the operator's existing environment: the local KCL download and Taskfile PATH
 override have been reverted. No global tool installation or configuration is changed.
 
-The currently installed KCL 0.13.3 rejects the upstream runtime's external file
-probes. This compatibility issue still affects the native up/down lifecycle.
+The selected upstream runtime includes the host-file access correction for KCL
+0.13.3. Configuration and Butane rendering pass with that installed version.
 `task ssh` reads the persisted .devenv/.uuid and connects directly with the runtime's
 SSH options; connecting to an existing VM does not evaluate KCL.
 
@@ -28,8 +28,10 @@ For a new checkout, adapt that local file using the configuration below. Preserv
 existing user choices. It keeps the runtime's default packages, mise tools, copies
 and units, and adds project provisioning through custom fields and `units +=`.
 
-The selected image is Fedora CoreOS 45.20261030.2.1 **testing**, with both published
-architecture checksums pinned. Only Linux/x86_64 rendering is checked here.
+Image version, stream and checksums are inherited from the pinned devenv revision:
+currently Fedora CoreOS 44.20261023.3.1 **stable**. config.k does not override them.
+Hardware is declared once directly in config. Only the repository workspace path
+is adapted in the native QEMU options. Only Linux/x86_64 rendering is checked here.
 
 ```kcl
 import file
@@ -37,26 +39,39 @@ import .schema as schema
 
 _root = file.read_env("AI_INFERENCE_BASICS_ROOT")
 _user = option("qemu_butane_user_name")
-_hardware = schema.Hardware {
-    cpu = 12
-    memory = schema.Memory {size = 32, unit = "G"}
-    disk = schema.Disk {size = 64, unit = "G"}
-}
-_base = schema.Qemu {hardware = _hardware}
 
 config = schema.Qemu {
-    os.version = "45.20261030.2.1"
-    os.streams = "testing"
-    checksum.x86_64 = "420f428010ba880200e5b83c116cdc4a804652efc4bbcd4846c8d3e860928f88"
-    checksum.aarch64 = "d0e1786961d08f801e1af24eb87616cd7aabbda372d30b5d9e8dc6e19537011b"
-    hardware = _hardware
+    hardware = schema.Hardware {
+        cpu = 12
+        memory = schema.Memory {
+            size = 32
+            unit = "G"
+        }
+        disk = schema.Disk {
+            size = 64
+            unit = "G"
+        }
+    }
+
     # Native Task include runs in .devenv; share the target repository instead.
+    # Reuse the hardware above; change only the workspace path in native options.
     command.options = [
-        (arg.replace("path=${file.read_env('PWD')},security_model=passthrough", "path=${_root},security_model=passthrough") if arg.startswith("-fsdev local,id=fsdev1,") else arg)
-        for arg in _base.command.options
+        arg.replace(
+            "-fsdev local,id=fsdev1,path=${file.read_env('PWD')},",
+            "-fsdev local,id=fsdev1,path=${_root},"
+        )
+        for arg in schema.Qemu {
+            hardware = hardware
+        }.command.options
     ]
+
     butane = schema.Butane {
-        custom_pkgs = ["jq", "openssl", "python3-pyyaml", "python3-bcrypt"]
+        custom_pkgs = [
+            "jq"
+            "openssl"
+            "python3-pyyaml"
+            "python3-bcrypt"
+        ]
         custom_mise_tools = {
             "kubectl" = "1.37.2"
             "helm" = "4.3.1"
@@ -64,10 +79,32 @@ config = schema.Qemu {
             "github:go-task/task" = "3.54.0"
         }
         custom_copies = [
-            {source = "${_root}/infra/k0s/k0s.yaml", path = "/etc/ai-inference-basics/k0s.yaml", user.name = "root", group.name = "root"}
-            {source = "${_root}/.local/build/artifacts.json", path = "/etc/ai-inference-basics/artifacts.json", user.name = "root", group.name = "root"}
-            {source = "${_root}/cluster/bootstrap.sh", path = "/usr/local/sbin/ai-inference-basics-bootstrap", mode = 493, user.name = "root", group.name = "root"}
-            {source = "${_root}/cluster/provision.py", path = "/usr/local/lib/ai-inference-basics/provision.py", mode = 493, user.name = "root", group.name = "root"}
+            {
+                source = "${_root}/infra/k0s/k0s.yaml"
+                path = "/etc/ai-inference-basics/k0s.yaml"
+                user.name = "root"
+                group.name = "root"
+            }
+            {
+                source = "${_root}/.local/build/artifacts.json"
+                path = "/etc/ai-inference-basics/artifacts.json"
+                user.name = "root"
+                group.name = "root"
+            }
+            {
+                source = "${_root}/cluster/bootstrap.sh"
+                path = "/usr/local/sbin/ai-inference-basics-bootstrap"
+                mode = 493
+                user.name = "root"
+                group.name = "root"
+            }
+            {
+                source = "${_root}/cluster/provision.py"
+                path = "/usr/local/lib/ai-inference-basics/provision.py"
+                mode = 493
+                user.name = "root"
+                group.name = "root"
+            }
         ]
         units += [
             {
