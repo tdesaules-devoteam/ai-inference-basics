@@ -3,7 +3,7 @@
 | Component | Selection |
 | --- | --- |
 | devenv runtime | c60632ccee08750adc5c6531efccfbaee9a06eae, unmodified |
-| KCL | 0.12.3, checksum-pinned local CLI |
+| KCL | Operator-managed; local override reverted; 0.13.3 incompatibility unresolved |
 | Fedora CoreOS | 45.20261030.2.1 testing |
 | Native k0s | v1.37.2+k0s.1, binary checksum and addon image digests pinned |
 | Host/guest Helm | 4.3.1 |

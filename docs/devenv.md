@@ -6,13 +6,17 @@ the runtime source, UUID and existing VM are not modified by this refactor.
 
 ## Host prerequisites
 
-Linux x86_64, KVM, QEMU/qemu-img, Task, Butane, SSH, curl, jq, gpgv, xz, SHA-256,
+Linux x86_64, KVM, QEMU/qemu-img, Task, compatible KCL, Butane, SSH, curl, jq, gpgv, xz, SHA-256,
 Python 3.11+, rootless Podman/Skopeo, and the existing br-qemu/helper/mDNS setup.
 Normal devenv sudo requirements apply. The host bridge remains host-owned.
 
-`task up` prepares pinned Helm 4.3.1 and KCL 0.12.3 locally. KCL 0.13.3 was tested
-and rejects the unchanged runtime's host-file probes; 0.12.3 renders it successfully.
-Neither the global KCL installation nor the runtime schema is patched.
+`task up` prepares pinned Helm 4.3.1 for packaging. Task and KCL are resolved from
+the operator's existing environment: the local KCL download and Taskfile PATH
+override have been reverted. No global tool installation or configuration is changed.
+
+The currently installed KCL 0.13.3 rejects the upstream runtime's external file
+probes. This remains an unresolved compatibility issue; removing the local overrides
+does not establish that `task up`, `task down` or `task ssh` now work with that version.
 
 ```sh
 git submodule update --init --recursive

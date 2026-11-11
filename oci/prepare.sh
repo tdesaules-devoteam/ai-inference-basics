@@ -7,13 +7,7 @@ cd "$ROOT"
 source .devenv/scripts/utils.sh
 [[ $(uname -sm) == 'Linux x86_64' ]] || { _error_handler 'This lab is currently prepared for Linux x86_64'; exit 1; }
 for binary in podman skopeo curl tar sha256sum python3; do command -v "$binary" >/dev/null; done
-mkdir -p .local/tools .local/build
-# 0.13.3 restricts file access and cannot evaluate the unmodified devenv schema.
-if [[ ! -x .local/tools/kcl ]] || ! .local/tools/kcl --version | grep -q '0.12.3'; then
-  curl -fL --retry 3 https://github.com/kcl-lang/cli/releases/download/v0.12.3/kcl-v0.12.3-linux-amd64.tar.gz -o .local/tools/kcl.tar.gz
-  echo 'c7bb8693e2953cc8e44620ebac6bba4c40663cef1642ee2c826f78171ba1cd6c  .local/tools/kcl.tar.gz' | sha256sum -c -
-  tar -xzf .local/tools/kcl.tar.gz -C .local/tools kcl
-fi
+mkdir -p .local/build
 _log title 'Build the administration bastion'
 podman build --format docker -f oci/bastion/Containerfile -t localhost/ai-inference-basics-bastion:dev .
 podman run --rm --entrypoint bash localhost/ai-inference-basics-bastion:dev -c \

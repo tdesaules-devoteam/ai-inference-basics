@@ -5,7 +5,8 @@
 - [x] Public Task interface reduced to up/down/ssh; functions delegated internally.
 - [x] Direct inclusion of the upstream devenv Taskfile; temporary patch removed.
 - [x] Only local config.k adapted within .devenv, preserving normal units/defaults.
-- [x] Compatible KCL 0.12.3 selected after reproducing the 0.13.3 sandbox failure.
+- [x] Reverted the local KCL download and Taskfile PATH override at the user's request.
+- [ ] Resolve native devenv compatibility with the operator's KCL environment.
 - [x] OCI sources moved to oci/bastion; obsolete cloud/profile/wrapper code removed.
 - [x] infra/k0s/k0s.yaml defines the ordered local Helm-deployer configuration.
 - [x] Guest bootstrap prepares credentials/artifacts and waits for k0s reconciliation.

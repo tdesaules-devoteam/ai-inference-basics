@@ -2,7 +2,6 @@ version: '3'
 
 env:
   AI_INFERENCE_BASICS_ROOT: '{{.ROOT_DIR}}'
-  PATH: '{{.ROOT_DIR}}/.local/tools:{{.ROOT_DIR}}/.local/bin:{{env "PATH"}}'
 
 includes:
   devenv:
