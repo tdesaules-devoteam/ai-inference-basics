@@ -1,0 +1,3 @@
+[submodule ".devenv"]
+	path = .devenv
+	url = https://github.com/tdesaules/qemu-dev-env.git

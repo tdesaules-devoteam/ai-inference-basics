@@ -1,0 +1,15 @@
+/.task/
+/.local/
+/.env
+/.env.*
+!/.env.example
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+*.auto.tfvars.json
+*.qcow2
+*.qcow2.xz
+/dist/
+__pycache__/
