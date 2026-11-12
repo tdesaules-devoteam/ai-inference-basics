@@ -31,6 +31,8 @@
 - Local Path Provisioner runs in local-path-provisioner; RustFS runs in rustfs on a PVC.
 - Initialize the six application buckets through RustFS extraManifests; no dedicated
   storage-bootstrap chart or benchmark-results/platform-checks buckets in new installs.
+- Generate/preserve RustFS credentials in a pre-install/pre-upgrade Job with
+  namespaced RBAC; initialize buckets in a post-install/post-upgrade Job.
 - Observability uses separate Grafana, Loki, Tempo and Mimir deployments, with
   OpenTelemetry Collector for node, application and cluster signals.
 - Pin workload images by digest. Official upstream

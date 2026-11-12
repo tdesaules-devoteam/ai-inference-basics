@@ -64,11 +64,26 @@ assert any(address.hostname == f"{o['metadata']['name']}.{o['metadata']['namespa
            for o in objects if o['kind'] == 'Service'), 'S3 endpoint does not match a rendered Service'
 assert job['metadata']['annotations']['helm.sh/hook'] == 'post-install,post-upgrade'
 assert job['spec']['activeDeadlineSeconds'] == 300
+assert job['spec']['ttlSecondsAfterFinished'] == 3600
 script = job['spec']['template']['spec']['containers'][0]['args'][0]
 subprocess.run(['bash', '-n', '-c', script], check=True)
 assert 'for bucket in loki tempo mimir-blocks mimir-ruler mimir-alertmanager models;' in script
 assert 'benchmark-results' not in rendered and 'platform-checks' not in rendered
 assert not any(o['metadata']['name'] == 'storage-bootstrap' for o in objects)
+credential_objects = {o['kind']: o for o in objects if o['metadata']['name'] == 'rustfs-credentials'}
+assert set(credential_objects) == {'ServiceAccount', 'Role', 'RoleBinding', 'Job'}
+for kind, weight in [('ServiceAccount', '-30'), ('Role', '-20'), ('RoleBinding', '-10'), ('Job', '0')]:
+    obj = credential_objects[kind]
+    assert obj['metadata']['namespace'] == 'rustfs'
+    assert obj['metadata']['annotations']['helm.sh/hook'] == 'pre-install,pre-upgrade'
+    assert obj['metadata']['annotations']['helm.sh/hook-weight'] == weight
+rules = credential_objects['Role']['rules']
+assert rules == [{'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['rustfs-root'], 'verbs': ['get']},
+                 {'apiGroups': [''], 'resources': ['secrets'], 'verbs': ['create']}]
+credential_job = credential_objects['Job']
+assert credential_job['spec']['ttlSecondsAfterFinished'] == 3600
+assert credential_job['spec']['template']['spec']['serviceAccountName'] == 'rustfs-credentials'
+compile(credential_job['spec']['template']['spec']['containers'][0]['args'][0], '<credential-hook>', 'exec')
 
 deployments = {(o['metadata']['namespace'], o['metadata']['name']) for o in objects if o['kind'] == 'Deployment'}
 assert {('cert-manager', 'cert-manager'), ('cert-manager', 'cert-manager-webhook'),

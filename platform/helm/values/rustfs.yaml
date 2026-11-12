@@ -38,6 +38,163 @@ resources:
 
 # The upstream chart renders extraManifests through tpl. No separate bootstrap chart.
 extraManifests:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-30"
+        helm.sh/hook-delete-policy: before-hook-creation
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-20"
+        helm.sh/hook-delete-policy: before-hook-creation
+    rules:
+      - apiGroups: [""]
+        resources: [secrets]
+        resourceNames: [rustfs-root]
+        verbs: [get]
+      # Kubernetes RBAC cannot restrict create by resourceNames. The script creates
+      # only rustfs-root, and this Role is confined to the release namespace.
+      - apiGroups: [""]
+        resources: [secrets]
+        verbs: [create]
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-10"
+        helm.sh/hook-delete-policy: before-hook-creation
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: rustfs-credentials
+    subjects:
+      - kind: ServiceAccount
+        name: rustfs-credentials
+        namespace: '{{ .Release.Namespace }}'
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "0"
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: rustfs-credentials
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: initialize-credentials
+              image: docker.io/library/python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
+              command: [python3, -c]
+              args:
+                - |
+                  import base64
+                  import json
+                  import os
+                  from pathlib import Path
+                  import secrets
+                  import ssl
+                  from urllib.error import HTTPError, URLError
+                  from urllib.request import Request, urlopen
+
+                  def validate(secret):
+                      if not isinstance(secret, dict) or not isinstance(secret.get("data"), dict):
+                          raise ValueError("Missing credential data")
+                      for key in ("RUSTFS_ACCESS_KEY", "RUSTFS_SECRET_KEY"):
+                          value = secret.get("data", {}).get(key)
+                          if not isinstance(value, str) or not base64.b64decode(value, validate=True):
+                              raise ValueError("Missing or invalid credential key")
+
+                  def ensure_secret(api, namespace):
+                      collection = "/api/v1/namespaces/" + namespace + "/secrets"
+                      endpoint = collection + "/rustfs-root"
+                      created = False
+                      try:
+                          secret = api("GET", endpoint)
+                      except HTTPError as error:
+                          error.close()
+                          if error.code != 404:
+                              raise
+                          payload = {
+                              "apiVersion": "v1", "kind": "Secret", "type": "Opaque",
+                              "metadata": {"name": "rustfs-root", "namespace": namespace,
+                                           "labels": {"app.kubernetes.io/managed-by": "rustfs-credentials-job"}},
+                              "data": {key: base64.b64encode(secrets.token_hex(size).encode()).decode()
+                                       for key, size in (("RUSTFS_ACCESS_KEY", 12), ("RUSTFS_SECRET_KEY", 32))},
+                          }
+                          try:
+                              secret = api("POST", collection, payload)
+                              created = True
+                          except HTTPError as conflict:
+                              conflict.close()
+                              if conflict.code != 409:
+                                  raise
+                              secret = api("GET", endpoint)
+                      validate(secret)
+                      return created
+
+                  if __name__ == "__main__":
+                      try:
+                          account = Path("/var/run/secrets/kubernetes.io/serviceaccount")
+                          context = ssl.create_default_context(cafile=str(account / "ca.crt"))
+                          token = (account / "token").read_text().strip()
+                          def api(method, path, payload=None):
+                              request = Request("https://kubernetes.default.svc" + path,
+                                                data=json.dumps(payload).encode() if payload is not None else None,
+                                                headers={"Authorization": "Bearer " + token,
+                                                         "Content-Type": "application/json"}, method=method)
+                              with urlopen(request, context=context, timeout=10) as response:
+                                  return json.load(response)
+                          created = ensure_secret(api, os.environ["POD_NAMESPACE"])
+                          print("RustFS credentials created." if created else "Existing RustFS credentials preserved.")
+                      except HTTPError as error:
+                          error.close()
+                          raise SystemExit("Kubernetes API request failed: HTTP " + str(error.code)) from None
+                      except (URLError, OSError, ValueError) as error:
+                          raise SystemExit("Credential initialization failed: " + type(error).__name__) from None
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi
   - apiVersion: batch/v1
     kind: Job
     metadata:
@@ -49,6 +206,7 @@ extraManifests:
     spec:
       backoffLimit: 2
       activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 3600
       template:
         spec:
           restartPolicy: Never
@@ -71,7 +229,7 @@ extraManifests:
                   echo 'Six application buckets are available.'
               env:
                 - name: S3_ENDPOINT
-                  value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+                  value: 'http://rustfs-svc.{{ .Release.Namespace }}.svc.cluster.local:9000'
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:

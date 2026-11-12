@@ -36,5 +36,8 @@ and anonymous rejection passed, and test resources were removed. Reexecuting the
 bootstrap preserved the PVC and credential Secrets. The full foundation milestone
 has not yet had a clean-boot test. The former storage-bootstrap chart is removed;
 no existing buckets were deleted.
+RustFS credential generation and bucket initialization now run as pre/post Helm
+hooks in extraManifests. Fresh-namespace creation, upgrade preservation and scoped
+RBAC were qualified; the host credential service has been removed.
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)

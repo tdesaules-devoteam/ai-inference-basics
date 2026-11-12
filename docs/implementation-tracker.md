@@ -17,6 +17,7 @@
 - [x] Add a native-controller alias and split bootstrap responsibilities into focused inline units (offline checks).
 - [x] Retrieve official OCI charts by digest and RustFS from its HTTP repository at an exact version.
 - [x] Fold six-bucket initialization into RustFS extraManifests; remove the separate storage-bootstrap chart.
+- [x] Replace the host credential service with ordered pre-install/pre-upgrade hooks; qualify creation, RBAC and upgrade preservation in an isolated namespace.
 - [x] Deploy cert-manager, Envoy Gateway and Agent Router in dedicated namespaces.
 - [x] Qualify the gateway-to-Agent-Router mock OpenAI request path, S3 access and temporary-resource cleanup.
 - [x] Reexecute the six-release bootstrap and verify PVC/credential preservation.

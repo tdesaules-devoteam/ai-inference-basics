@@ -43,11 +43,12 @@ Units are loaded with KCL `file.read` from `../platform/units/`:
 - `platform-curl-install.service` ensures the distribution curl package is available;
 - `platform-kubeconfig@<user>.service` creates the administrator kubeconfig for the selected account;
 - `platform-k0s-ready.service` waits for the API and Ready node;
-- `platform-rustfs-credentials.service` creates or reuses the RustFS Secret;
 - `platform-k0s-bootstrap.service` coordinates those dependencies and runs Helmfile.
 
-The readiness and credentials units are dependency-activated, not enabled
-independently. Helmfile downloads the upstream charts directly.
+The readiness unit is dependency-activated, not enabled independently. Helmfile
+downloads the upstream charts directly. RustFS credentials and buckets are prepared
+by pre-install/pre-upgrade and post-install/post-upgrade Kubernetes Jobs respectively,
+defined through the upstream chart's extraManifests values.
 
 All provisioning commands are inline in these units. Helm, kubectl and k9s are no
 longer declared in `custom_mise_tools`. Helm, Helmfile, kubectl and k9s live in
@@ -132,6 +133,6 @@ disk. The four inline units completed successfully after the normal CoreOS reboo
 the three Helmfile releases and S3 qualification Job passed without guest fixes.
 Existing guests created from older recipes still require reprovisioning to receive
 the renamed units and copied paths.
-The gateway foundation update uses the focused readiness/credentials units and
+The gateway foundation update uses the readiness unit and
 direct upstream chart retrieval. The alias itself is created during k0s installation;
 it is not added to already-initialized guests by merely copying the updated unit.

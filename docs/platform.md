@@ -59,16 +59,36 @@ The default StorageClass `local-path-provisioner` creates local volumes under
 of 20 GiB and a Recreate strategy. Requested capacity is not a filesystem quota;
 monitor free space on the 64 GiB VM disk.
 
-`platform/helm/values/rustfs.yaml` uses the upstream `extraManifests` field to
-create the `rustfs-buckets` Job as a post-install/post-upgrade Helm hook. It creates
-and checks exactly these buckets, using the existing `rustfs-root` Secret:
+`platform/helm/values/rustfs.yaml` uses the upstream `extraManifests` field for two
+stages, without a dedicated chart or host credential service:
+
+1. Pre-install/pre-upgrade hooks create the `rustfs-credentials` ServiceAccount,
+   Role and RoleBinding (weights -30, -20, -10), then the credential Job (weight 0).
+   Helm creates the namespace before these hooks. The Job authenticates to the
+   Kubernetes API with its projected token and verifies TLS with the cluster CA.
+   It reads `rustfs-root`; only HTTP 404 triggers random credential generation.
+   Other API errors fail the hook. A concurrent creation (409) is followed by a
+   fresh read and validation. An existing invalid Secret fails without replacement.
+2. After RustFS is ready, the `rustfs-buckets` post-install/post-upgrade Job creates
+   and checks the application buckets using that Secret.
+
+The credential Job uses a digest-pinned official Python image and only the standard
+library; it does not install tools or packages at runtime. It never prints credential
+values. RBAC grants GET only for rustfs-root and CREATE Secrets only in the release
+namespace; Kubernetes cannot restrict CREATE by resource name. No list/update/delete
+permissions or ClusterRoleBinding are granted. The buckets Job has no API token.
+
+The six buckets are:
 
 - `loki`, `tempo`;
 - `mimir-blocks`, `mimir-ruler`, `mimir-alertmanager`;
 - `models`.
 
-There is no separate storage-bootstrap chart/release. The Job is retained for
-diagnostics and replaced on the next upgrade. It does not import model weights,
+There is no separate storage-bootstrap chart/release. Both Jobs have a one-hour
+TTL after completion/failure and are replaced before their next hook execution.
+The hook RBAC and generated Secret remain until explicitly removed or their
+namespace is deleted; Helm uninstall does not own the generated Secret. Upgrades
+preserve the existing credentials. The hooks do not import model weights,
 delete buckets or run benchmarks. Buckets omitted from the list are not deleted:
 `benchmark-results` and `platform-checks` from older installations may still exist.
 
@@ -82,8 +102,8 @@ per-application bucket-scoped credentials will accompany the application consume
 
 Ignition copies Helmfile and values to `/etc/ai-inference-basics/platform/helm/`.
 Tool installers and the per-user kubeconfig unit live in `platform/units/`.
-The bootstrap requires verified Helm/Helmfile/kubectl and the RustFS credentials
-unit, which in turn requires the k0s readiness unit. The temporary bootstrap
+The bootstrap requires verified Helm/Helmfile/kubectl and the k0s readiness unit.
+Helm controls credential preparation inside Kubernetes. The temporary bootstrap
 kubeconfig is removed on success or stop/failure. Chart fetching is owned by Helmfile.
 
 The source also provides `platform-k0s-controller.service` as an alias of the
@@ -105,6 +125,7 @@ sudo journalctl -u platform-k0s-bootstrap.service --no-pager
 helm list -A
 kubectl get pods -A
 kubectl -n rustfs get pvc,jobs
+kubectl -n rustfs logs job/rustfs-credentials
 kubectl -n rustfs logs job/rustfs-buckets
 kubectl -n agent-router get certificates,issuers
 ```
@@ -132,12 +153,23 @@ helmfile -f platform/helm/helmfile.yaml.gotmpl show-dag
 helmfile -f platform/helm/helmfile.yaml.gotmpl lint
 python3 tests/validate_storage.py
 python3 tests/test_platform_units.py
+python3 tests/test_rustfs_credentials.py
 ```
 
 Rendering checks namespaces, resource ownership, OCI pins, HTTP archive checksum,
 image pins, the six-bucket hook and cross-namespace gateway configuration. Upstream
 charts with a leading `v` in Chart.yaml produce SemVer warnings under Helm lint;
 strict mode rejects that upstream metadata. Their sources are not rewritten locally.
+
+`tests/test_rustfs_credentials.py` executes the actual inline hook code with API
+fixtures for creation, reuse, malformed data, access/server errors and concurrent
+creation. `bash tests/qualify_rustfs_hooks.sh` installs and upgrades the official
+RustFS chart in an isolated namespace, checks effective RBAC and stable credentials,
+then removes that test release and namespace. It does not delete the main Secret.
+This fresh-namespace install/upgrade test passed, including effective RBAC checks.
+The main release was then migrated without changing its Secret UID/data or PVC,
+and signed/anonymous S3 tests passed. The old credential service was removed from
+the guest; no VM or RustFS workload restart was needed for the migration.
 
 Run `bash tests/qualify_foundations.sh` explicitly in the intended kubectl context
 to exercise a temporary Gateway, Agent Router route and upstream mock OpenAI server,

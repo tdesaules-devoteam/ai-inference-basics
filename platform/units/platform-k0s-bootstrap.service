@@ -2,8 +2,8 @@
 Description=Bootstrap the Kubernetes platform with Helmfile
 ConditionVirtualization=vm
 Wants=network-online.target
-Requires=platform-helm-install.service platform-helmfile-install.service platform-kubectl-install.service platform-rustfs-credentials.service
-After=network-online.target platform-helm-install.service platform-helmfile-install.service platform-kubectl-install.service platform-rustfs-credentials.service
+Requires=platform-helm-install.service platform-helmfile-install.service platform-kubectl-install.service platform-k0s-ready.service
+After=network-online.target platform-helm-install.service platform-helmfile-install.service platform-kubectl-install.service platform-k0s-ready.service
 
 [Service]
 Type=oneshot
