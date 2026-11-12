@@ -15,11 +15,15 @@
 - [x] Destroy and recreate the VM: all four inline units and three releases succeeded without guest fixes.
 - [x] Add native kubectl/k9s/curl units and per-user kubeconfig generation; validate direct kubectl access in the running VM.
 - [x] Add a native-controller alias and split bootstrap responsibilities into focused inline units (offline checks).
+- [x] Retrieve official OCI charts by digest and RustFS from its HTTP repository at an exact version.
+- [x] Fold six-bucket initialization into RustFS extraManifests; remove the separate storage-bootstrap chart.
+- [x] Deploy cert-manager, Envoy Gateway and Agent Router in dedicated namespaces.
+- [x] Qualify the gateway-to-Agent-Router mock OpenAI request path, S3 access and temporary-resource cleanup.
+- [x] Reexecute the six-release bootstrap and verify PVC/credential preservation.
 - [ ] Qualify a fresh boot of the expanded administration-tool units and future cloud-init integration.
 
 ## Subsequent milestones
 
-- [ ] Deploy cert-manager, Envoy Gateway and Agent Router in dedicated namespaces.
 - [ ] Replace LLMInferenceService with three InferenceServices in inference-service.
 - [ ] Import pinned model artifacts into RustFS and configure read-only S3 access.
 - [ ] Provide Dex/oauth2-proxy, ttyd with Zellij CLI, code-server and administration tools.

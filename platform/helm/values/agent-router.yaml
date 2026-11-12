@@ -1,0 +1,20 @@
+controller:
+  fullnameOverride: agent-router
+  image:
+    tag: v1.2.1@sha256:bf8feef1ed87c9aafd7318c835261d45308be0eaa475519ac930f0809532a4e7
+  mutatingWebhook:
+    certManager:
+      enable: true
+  # No QuotaPolicy is installed in this milestone; avoid the upstream -system namespace.
+  quotaRateLimitServiceAddr: envoy-ai-gateway-ratelimit.envoy-gateway
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+extProc:
+  image:
+    tag: v1.2.1@sha256:0b89182007856fa5402d7ec346ba093ce74239d1da45618af631b4a65febb424
+envoyGateway:
+  namespace: envoy-gateway

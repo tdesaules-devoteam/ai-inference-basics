@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upstream
+  namespace: __CHECK__
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upstream
+  template:
+    metadata:
+      labels:
+        app: upstream
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: upstream
+          image: docker.io/envoyproxy/ai-gateway-testupstream:v1.2.1@sha256:55e5d5840a9f558277824087682685535f1f6ca7e7439f9efc1b72362fd84405
+          env:
+            - name: TESTUPSTREAM_ID
+              value: platform-smoke
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upstream
+  namespace: __CHECK__
+spec:
+  selector:
+    app: upstream
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: upstream
+  namespace: __CHECK__
+spec:
+  endpoints:
+    - fqdn:
+        hostname: upstream.__CHECK__.svc.cluster.local
+        port: 80
+---
+apiVersion: aigateway.envoyproxy.io/v1beta1
+kind: AIServiceBackend
+metadata:
+  name: upstream
+  namespace: __CHECK__
+spec:
+  schema:
+    name: OpenAI
+  backendRef:
+    name: upstream
+    kind: Backend
+    group: gateway.envoyproxy.io
+---
+apiVersion: aigateway.envoyproxy.io/v1beta1
+kind: AIGatewayRoute
+metadata:
+  name: smoke
+  namespace: __CHECK__
+spec:
+  parentRefs:
+    - name: smoke
+      kind: Gateway
+      group: gateway.networking.k8s.io
+  rules:
+    - matches:
+        - headers:
+            - type: Exact
+              name: x-ai-eg-model
+              value: platform-smoke
+      backendRefs:
+        - name: upstream
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: smoke
+  namespace: __CHECK__
+spec:
+  shutdown:
+    drainTimeout: 5s
+    minDrainDuration: 1s
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: ClusterIP
+      envoyDeployment:
+        container:
+          image: docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: __CHECK__
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: smoke
+  namespace: __CHECK__
+spec:
+  gatewayClassName: __CHECK__
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: smoke

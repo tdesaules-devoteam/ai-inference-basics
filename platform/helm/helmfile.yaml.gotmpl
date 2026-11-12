@@ -1,4 +1,8 @@
-# Helmfile is the only owner of these releases. Sources are checksum-verified first.
+# Helmfile fetches upstream charts directly. OCI references are manifest-digest pinned.
+repositories:
+  - name: rustfs
+    url: https://charts.rustfs.com
+
 helmDefaults:
   wait: true
   waitForJobs: true
@@ -9,20 +13,73 @@ helmDefaults:
 releases:
   - name: local-path-provisioner
     namespace: local-path-provisioner
-    chart: {{ requiredEnv "PLATFORM_ARTIFACTS" }}/local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner
+    # Upstream chart 0.0.37.
+    chart: oci://ghcr.io/rancher/local-path-provisioner/charts/local-path-provisioner@sha256:81033683ce790e593524b2105945ee0d81bf6608f0c85eb5e0c1082cc74ff03d
     values:
       - values/local-path-provisioner.yaml
 
   - name: rustfs
     namespace: rustfs
-    chart: {{ requiredEnv "PLATFORM_ARTIFACTS" }}/rustfs-1.0.5.tgz
+    chart: rustfs/rustfs
+    version: "1.0.5"
     needs:
       - local-path-provisioner/local-path-provisioner
     values:
       - values/rustfs.yaml
 
-  - name: storage-bootstrap
-    namespace: rustfs
-    chart: charts/storage-bootstrap
+  - name: cert-manager
+    namespace: cert-manager
+    # Upstream chart v1.21.3.
+    chart: oci://quay.io/jetstack/charts/cert-manager@sha256:e482675aec32862d323a9218293ff7de81192337998615e4378c56498473f240
+    values:
+      - values/cert-manager.yaml
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: kubectl
+        args: [wait, --for=condition=Established, crd/certificates.cert-manager.io, crd/issuers.cert-manager.io, --timeout=180s]
+
+  - name: envoy-gateway
+    namespace: envoy-gateway
+    # Upstream chart v1.10.0.
+    chart: oci://docker.io/envoyproxy/gateway-helm@sha256:dcb82a14c04b426615a71d97222c7edf9f5ff58b800d241e71ac5784ae6dc7b7
+    values:
+      - values/envoy-gateway.yaml
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: kubectl
+        args: [wait, --for=condition=Established, crd/gatewayclasses.gateway.networking.k8s.io, crd/gateways.gateway.networking.k8s.io, crd/httproutes.gateway.networking.k8s.io, crd/backends.gateway.envoyproxy.io, --timeout=180s]
+
+  - name: agent-router-crds
+    namespace: agent-router
+    # Upstream chart v1.2.1; product renamed, upstream artifact names unchanged.
+    chart: oci://docker.io/envoyproxy/ai-gateway-crds-helm@sha256:b1eafd2c27cd02e827210bcf6b3f05ebe9d2344f54152a7e0280420ed4edcf5e
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: kubectl
+        args: [wait, --for=condition=Established, crd/aigatewayroutes.aigateway.envoyproxy.io, crd/aiservicebackends.aigateway.envoyproxy.io, --timeout=180s]
+
+  - name: agent-router
+    namespace: agent-router
+    chart: oci://docker.io/envoyproxy/ai-gateway-helm@sha256:21bf51ed7ff44d1bcebefea8ab211f2e69af0ec7833b492d65a9abc5150c85af
     needs:
-      - rustfs/rustfs
+      - cert-manager/cert-manager
+      - envoy-gateway/envoy-gateway
+      - agent-router/agent-router-crds
+    values:
+      - values/agent-router.yaml
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: kubectl
+        args: [-n, agent-router, wait, --for=condition=Ready, certificate/self-signed-cert-for-mutating-webhook, --timeout=180s]
+      - events: [postsync]
+        showlogs: true
+        command: timeout
+        args:
+          - "180"
+          - bash
+          - -ec
+          - 'until test -n "$(kubectl get mutatingwebhookconfiguration envoy-ai-gateway-gateway-pod-mutator.agent-router -o jsonpath="{.webhooks[0].clientConfig.caBundle}")"; do sleep 2; done'

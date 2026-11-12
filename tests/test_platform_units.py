@@ -48,28 +48,6 @@ class InlineUnits(unittest.TestCase):
             subprocess.run(['systemd-analyze', '--root=' + str(root), 'verify', '--man=no', *names],
                            check=True, capture_output=True)
 
-    def test_chart_preparation_rejects_corrupt_download(self):
-        command = next(c for c in commands(UNITS / 'platform-helm-charts-prepare.service')
-                       if 'fetch() {' in c[-1])
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            artifacts = root / 'artifacts'
-            artifacts.mkdir()
-            curl = root / 'curl'
-            curl.write_text('''#!/bin/bash
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = --output ]; then echo corrupt > "$2"; exit 0; fi
-  shift
-done
-exit 2
-''')
-            curl.chmod(0o755)
-            env = os.environ | {'PLATFORM_ARTIFACTS': str(artifacts),
-                                'PATH': str(root) + os.pathsep + os.environ['PATH']}
-            result = subprocess.run(command, env=env, capture_output=True, timeout=5)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(list(artifacts.iterdir()), [])
-
     def test_all_inline_shell_parses(self):
         for path in UNITS.glob('*.service'):
             for args in commands(path):

@@ -35,3 +35,56 @@ resources:
     memory: 256Mi
   limits:
     memory: 2Gi
+
+# The upstream chart renders extraManifests through tpl. No separate bootstrap chart.
+extraManifests:
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-buckets
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+            - name: initialize-buckets
+              image: public.ecr.aws/aws-cli/aws-cli:2.31.35@sha256:b3fc08b324bbba025c6bf34cded7f5c3e869392b8fb33e863b272258b9a4b52c
+              command: [/bin/bash, -ec]
+              args:
+                - |
+                  export AWS_PAGER="" AWS_EC2_METADATA_DISABLED=true
+                  aws configure set default.s3.addressing_style path
+                  s3() { aws --endpoint-url "$S3_ENDPOINT" --region us-east-1 s3api "$@"; }
+                  for bucket in loki tempo mimir-blocks mimir-ruler mimir-alertmanager models; do
+                    if ! s3 head-bucket --bucket "$bucket" 2>/dev/null; then
+                      s3 create-bucket --bucket "$bucket"
+                    fi
+                    s3 head-bucket --bucket "$bucket"
+                  done
+                  echo 'Six application buckets are available.'
+              env:
+                - name: S3_ENDPOINT
+                  value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: rustfs-root
+                      key: RUSTFS_ACCESS_KEY
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rustfs-root
+                      key: RUSTFS_SECRET_KEY
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi

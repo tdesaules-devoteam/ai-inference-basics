@@ -1,192 +1,155 @@
-# Kubernetes platform: storage milestone
+# Kubernetes platform: storage and gateway foundations
 
-Helmfile is the sole owner of platform Helm releases. k0s installs the native
-cluster only; `platform/k0s/k0s.yaml` has no Helm extensions. The previous umbrella
-is retained as migration input, not installed by this milestone.
+Helmfile is the sole owner of the platform releases. k0s configures the native
+cluster only; `platform/k0s/k0s.yaml` has no Helm extensions. Project-authored
+charts belong in `charts/`; this milestone uses upstream charts exclusively.
 
-## Installed releases
+## Releases and upstream sources
 
-| Order | Release / namespace | Upstream source |
-| --- | --- | --- |
-| 1 | local-path-provisioner / local-path-provisioner | Rancher v0.0.37 chart from its verified source archive |
-| 2 | rustfs / rustfs | RustFS chart 1.0.5, standalone |
-| 3 | storage-bootstrap / rustfs | Local chart with a Kubernetes bucket initialization and S3 qualification Job |
+| Release | Namespace | Chart version | Upstream source |
+| --- | --- | --- | --- |
+| local-path-provisioner | local-path-provisioner | 0.0.37 | OCI ghcr.io/rancher/local-path-provisioner/charts/local-path-provisioner |
+| rustfs | rustfs | 1.0.5 | <https://charts.rustfs.com> |
+| cert-manager | cert-manager | v1.21.3 | OCI quay.io/jetstack/charts/cert-manager |
+| envoy-gateway | envoy-gateway | v1.10.0 | OCI docker.io/envoyproxy/gateway-helm |
+| agent-router-crds | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-crds-helm |
+| agent-router | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-helm |
 
-`platform/helm/helmfile.yaml.gotmpl` expresses these dependencies with `needs`.
-Helmfile 1.8.3 and Helm 4.3.1 run `sync` with `wait`, `waitForJobs` and bounded
-timeouts. No helm-diff plugin or separate Helm installation commands are needed.
-The bootstrap Job is a post-install/post-upgrade hook retained for inspection;
-the next run replaces only that Job, not buckets or data.
+The complete OCI manifest digests are recorded directly in
+`platform/helm/helmfile.yaml.gotmpl`. Helmfile 1.8.3 / Helm 4.3.1 fetch these official
+references directly; there is no custom downloader, artifact lock or required
+PLATFORM_ARTIFACTS directory. The qualified RustFS HTTP archive SHA-256 is checked
+by `tests/validate_storage.py`. Its version pin is not OCI content addressing:
+runtime installation trusts the upstream HTTP repository for version 1.0.5.
 
-`platform/units/platform-helm-charts-prepare.service` contains the URLs and SHA-256
-pins for the Rancher source archive and RustFS chart archive inline. It verifies
-bytes before extraction/use; no separate artifacts.lock file is needed.
-Tool archive and executable checksums live in their respective installation units;
-the installed executable is verified before deciding whether to skip its download.
-Values pin every workload/init/helper image by digest. Official upstream
-images use the repository's approved exception; no new image build is needed.
+The OCI Local Path Provisioner chart has the same templates and values as the
+previous GitHub source chart; its Chart.yaml differs only in serialization.
+All application/init/helper images, including controller-generated Envoy/extProc
+images, are pinned by digest. The upstream image exception remains applicable.
 
-## Execution and state
+## Dependency and readiness contract
 
-Ignition copies Helm inputs to `/etc/ai-inference-basics/platform/helm/` and loads
-units from `platform/units/`. Separate units install k0s, Helm, Helmfile, kubectl,
-k9s and curl; a template unit creates the user's administrator kubeconfig.
-The bootstrap is split into focused units:
+```text
+local-path-provisioner → rustfs (including bucket Job)
 
-| Unit | Responsibility |
-| --- | --- |
-| platform-helm-charts-prepare | Download/verify chart sources and extract the upstream Rancher chart |
-| platform-k0s-ready | Wait for the native API and Ready node |
-| platform-rustfs-credentials | Create/reuse the RustFS namespace and root Secret, after readiness |
-| platform-k0s-bootstrap | Coordinate dependencies, run Helmfile and check the S3 Job |
-
-The first three are dependency-activated by the bootstrap, rather than enabled
-independently at boot. `Requires` and `After` enforce prerequisite success/order;
-`PartOf` restarts the preparation units when the bootstrap is explicitly restarted.
-The standalone tool installers and native controller are not restarted by this.
-Commands remain inline; no prepare.sh or install.sh is copied or executed.
-The provisioner, RustFS and bucket operations run in Kubernetes pods.
-
-The native controller keeps its upstream name `k0scontroller.service`. Its alias
-`platform-k0s-controller.service` is created by the installer, allowing platform-style
-commands without breaking the native k0s service management commands.
-
-Verified tools live in `/usr/local/bin`, outside mise. curl uses the signed OS
-package at `/usr/bin/curl`, already present in the CoreOS base image. Its unit
-installs via rpm-ostree, dnf or apt-get only when the binary is absent; curl follows
-the OS package version rather than a separate GitHub binary pin. Chart downloads and Helm
-state remain in `/var/lib/ai-inference-basics/platform`; the existing PVC paths and
-Kubernetes Secrets are unchanged. The repository workspace and `.local/` are not
-runtime dependencies. The temporary admin kubeconfig uses a private runtime
-directory and is removed on success or unit stop/failure. Generated credentials
-use a private temporary file removed on exit.
-
-`rustfs-root` is created once as a Kubernetes Secret in `rustfs`; retries reuse it.
-The root credentials are not written into Git, Helm values, rendered charts or
-logs. This milestone uses them only for RustFS initialization and qualification.
-Per-application bucket-scoped identities will be added with those consumers;
-do not reuse the root credentials for model-serving pods.
-
-The unit reconciles on boot and can be explicitly restarted to apply its current
-copied configuration. Updating files on the workstation does not update Ignition
-copies in an existing VM. For cloud-init integration later, install the same source
-tree and adapt the service's k0s dependency to that bootstrap environment.
-
-## Native administration tools
-
-kubectl 1.37.2 and k9s 0.51.0 are downloaded from their upstream distributions,
-verified by SHA-256 and installed by dedicated systemd units. The installer skips
-an executable only when its checksum matches. Helm/k0s download units depend on
-the curl unit. Ordering after `run-topgrade.service` still applies when that unit
-is present; rpm-ostree checks are conditional so non-CoreOS VMs can reuse the
-strategy. Cloud-init integration and the apt/dnf install branches are not yet
-runtime-qualified; the VM must supply bash, tar, coreutils, jq and openssl.
-
-`platform-kubeconfig@.service` selects an existing account through its instance
-name. It generates a private user-owned administrator config only if none exists,
-without printing it. The user config is persistent and separate from the temporary
-bootstrap kubeconfig. To enable it for an account on a future VM:
-
-```sh
-sudo systemctl enable --now platform-kubeconfig@USERNAME.service
+cert-manager ────────────┐
+envoy-gateway ───────────┼→ agent-router
+agent-router-crds ───────┘
 ```
 
-Replace USERNAME with the actual account name. devenv config.k enables the instance
-for `qemu_butane_user_name` automatically. Native `kubectl get nodes` and the
-installer/config preservation checks passed on the running CoreOS VM without
-rebooting or recreating the cluster. The expanded set of units has not yet been
-tested on a fresh VM.
+Independent prerequisites install in parallel. `wait`, `waitForJobs` and explicit
+timeouts gate Helmfile dependency groups. Additional postsync hooks wait for the
+required CRDs to be Established, Agent Router's Certificate to be Ready and its
+webhook CA bundle to be injected. cert-manager's upstream startup API check and
+Envoy Gateway's certificate-generation hooks remain enabled.
 
-## Storage and S3
+Agent Router is the renamed Envoy AI Gateway project: upstream chart/API/image
+names still use ai-gateway. Its controller and Service are named `agent-router`.
+Envoy Gateway's extension manager connects to
+`agent-router.agent-router.svc.cluster.local:1063`; Agent Router's Envoy RBAC points
+to `envoy-gateway`. Envoy data-plane pods are created in each Gateway's namespace.
+No model API, public Gateway or browser route is installed in this milestone.
+QuotaPolicy and the optional rate-limit server are not enabled yet.
+
+## RustFS buckets and persistent data
 
 The default StorageClass `local-path-provisioner` creates local volumes under
-`/var/lib/local-path-provisioner` using `WaitForFirstConsumer` and reclaim policy
-`Delete`. RustFS uses one 20 GiB PVC, `rustfs-data`, with a Recreate deployment
-strategy. Local Path Provisioner does not enforce the requested PVC size as a
-filesystem quota: monitor free disk space on the 64 GiB VM disk.
+`/var/lib/local-path-provisioner`, with `WaitForFirstConsumer` and reclaim policy
+`Delete`. RustFS is a standalone Deployment using the existing `rustfs-data` PVC
+of 20 GiB and a Recreate strategy. Requested capacity is not a filesystem quota;
+monitor free space on the 64 GiB VM disk.
 
-Buckets created idempotently:
+`platform/helm/values/rustfs.yaml` uses the upstream `extraManifests` field to
+create the `rustfs-buckets` Job as a post-install/post-upgrade Helm hook. It creates
+and checks exactly these buckets, using the existing `rustfs-root` Secret:
 
-- `loki`, `tempo`, `mimir-blocks`, `mimir-ruler`, `mimir-alertmanager`;
-- `models`, `benchmark-results`;
-- `platform-checks` for the qualification sentinel.
+- `loki`, `tempo`;
+- `mimir-blocks`, `mimir-ruler`, `mimir-alertmanager`;
+- `models`.
 
-The endpoint is `http://rustfs-svc.rustfs.svc.cluster.local:9000`. Only ClusterIP
-services are created; the console and ingress are disabled until browser access
-is integrated. This internal lab endpoint uses HTTP. Applications must configure
-the S3 endpoint, region `us-east-1` and path-style addressing.
+There is no separate storage-bootstrap chart/release. The Job is retained for
+diagnostics and replaced on the next upgrade. It does not import model weights,
+delete buckets or run benchmarks. Buckets omitted from the list are not deleted:
+`benchmark-results` and `platform-checks` from older installations may still exist.
 
-The Job checks bucket creation and authenticated PUT/GET/DELETE, rejects anonymous
-object reads, and verifies a previous sentinel when reexecuted. Buckets do not
-contain model weights yet. This is single-node storage, not HA: PVCs survive pod
-recreation, but destroying the VM destroys the disk and its objects.
+The internal endpoint is `http://rustfs-svc.rustfs.svc.cluster.local:9000`, using
+region `us-east-1` and path-style S3 addressing. Only ClusterIP services are exposed;
+the RustFS console is disabled. Data survives pod replacement but is lost when the
+VM disk is destroyed. Root credentials are reserved for administration/bootstrap;
+per-application bucket-scoped credentials will accompany the application consumers.
+
+## Provisioning units
+
+Ignition copies Helmfile and values to `/etc/ai-inference-basics/platform/helm/`.
+Tool installers and the per-user kubeconfig unit live in `platform/units/`.
+The bootstrap requires verified Helm/Helmfile/kubectl and the RustFS credentials
+unit, which in turn requires the k0s readiness unit. The temporary bootstrap
+kubeconfig is removed on success or stop/failure. Chart fetching is owned by Helmfile.
+
+The source also provides `platform-k0s-controller.service` as an alias of the
+native `k0scontroller.service`. Existing guests need an explicit migration or a
+fresh provision to acquire this installer-created alias; native k0s remains intact.
+
+The independent `platform-kubeconfig@USERNAME.service` generates a user-owned
+administrator kubeconfig (directory 0700, file 0600) and preserves existing files.
+The instance name supplies `%i`; the home path comes from the account database.
+kubectl, Helm, Helmfile and k9s are in `/usr/local/bin`; curl uses the signed OS
+package in `/usr/bin`. No mise activation is needed for Kubernetes administration.
+The non-CoreOS package-manager branches and cloud-init integration are not qualified.
 
 ## Commands inside the VM
 
 ```sh
 sudo systemctl status platform-k0s-bootstrap.service --no-pager
 sudo journalctl -u platform-k0s-bootstrap.service --no-pager
-sudo k0s kubectl get storageclass local-path-provisioner
-sudo k0s kubectl -n local-path-provisioner get pods
-sudo k0s kubectl -n rustfs get pods,pvc,jobs
-sudo k0s kubectl -n rustfs logs job/storage-bootstrap
+helm list -A
+kubectl get pods -A
+kubectl -n rustfs get pvc,jobs
+kubectl -n rustfs logs job/rustfs-buckets
+kubectl -n agent-router get certificates,issuers
 ```
 
-To reconcile again using the current guest files:
+To reconcile the current guest copies, use
+`sudo systemctl restart platform-k0s-bootstrap.service`. Updating source files
+on the workstation does not automatically update Ignition copies. Native
+`task devenv:up` does not wait for this platform unit to finish.
+
+## Migration from the former storage release
+
+The authorized migration removed the old hook-only `storage-bootstrap` release
+through a temporary Helmfile declaration with `installed: false`, then removed its
+retained Job. This did not uninstall RustFS or Local Path Provisioner. The RustFS
+PVC UID and credential data were compared before and after and preserved.
+No existing bucket or object was deleted. For other existing guests, perform this
+explicit migration; merely omitting a release from Helmfile does not uninstall it.
+
+## Validation
+
+With Helm 4.3.1, Helmfile 1.8.3 and a Python environment containing PyYAML:
 
 ```sh
-sudo systemctl restart platform-k0s-bootstrap.service
-```
-
-The upstream `task devenv:up` waits for native provisioning, not for this platform
-unit. `active (exited)` for this unit means all three releases and the S3 Job passed.
-
-## Offline validation on the workstation
-
-Use an existing Python environment with PyYAML, Helm 4.3.1 and Helmfile 1.8.3
-on PATH. Populate an isolated artifact directory using the pins in the preparation unit:
-
-```sh
-export PLATFORM_ARTIFACTS=/tmp/opencode/platform-check/artifacts
-python3 - <<'PY'
-import hashlib, os, re, urllib.request
-from pathlib import Path
-destination = Path(os.environ['PLATFORM_ARTIFACTS'])
-destination.mkdir(parents=True, exist_ok=True)
-unit = Path('platform/units/platform-helm-charts-prepare.service').read_text()
-pins = re.findall(r'^\s+fetch ([a-f0-9]{64}) (\S+) (\S+);', unit, re.M)
-assert len(pins) == 2
-for checksum, filename, url in pins:
-    target = destination / filename
-    urllib.request.urlretrieve(url, target)
-    assert hashlib.sha256(target.read_bytes()).hexdigest() == checksum, filename
-PY
-tar -xzf "$PLATFORM_ARTIFACTS/local-path-provisioner-v0.0.37.tar.gz" \
-  -C "$PLATFORM_ARTIFACTS" local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner
 helmfile -f platform/helm/helmfile.yaml.gotmpl show-dag
+helmfile -f platform/helm/helmfile.yaml.gotmpl lint
 python3 tests/validate_storage.py
 python3 tests/test_platform_units.py
 ```
 
-The offline check validates the resolved dependency graph, resource ownership,
-namespace boundaries, digest pins (including helper pods), PVC configuration and
-absence of credentials or public ingress. It is not boot evidence.
+Rendering checks namespaces, resource ownership, OCI pins, HTTP archive checksum,
+image pins, the six-bucket hook and cross-namespace gateway configuration. Upstream
+charts with a leading `v` in Chart.yaml produce SemVer warnings under Helm lint;
+strict mode rejects that upstream metadata. Their sources are not rewritten locally.
 
-Runtime qualification succeeded after correcting the temporary kubeconfig ordering
-and RustFS Service DNS name. All three releases deployed, the S3 Job passed, and a
-RustFS pod replacement followed by Helmfile reexecution preserved the PVC identity,
-credentials and existing sentinel object. After the reorganization, an authorized
-destruction and recreation validated all four inline units on a clean disk without
-guest fixes. The three releases reached deployed revision 1, the PVC was Bound,
-and signed S3 PUT/GET/DELETE plus anonymous rejection passed. The bootstrap removed
-its temporary kubeconfig and no systemd units were failed.
-The subsequent alias and decomposition into preparation/readiness/credentials
-units have been checked offline only; the running VM has not been updated for them.
+Run `bash tests/qualify_foundations.sh` explicitly in the intended kubectl context
+to exercise a temporary Gateway, Agent Router route and upstream mock OpenAI server,
+then authenticated/anonymous S3 requests. It cleans up its namespace, GatewayClass,
+test Job and uniquely named temporary S3 object. It creates no extra bucket.
 
-## Subsequent milestones
+This qualification passed in the authorized VM, including certificate-backed
+webhook injection, Gateway programming, a JSON OpenAI response, S3 access and
+cleanup. Reexecuting all six releases preserved the RustFS PVC, root credentials
+and Agent Router MCP encryption seed. No systemd unit was failed. The complete
+foundation milestone has not yet been qualified on a newly recreated VM.
 
-The agreed next steps are cert-manager, Envoy Gateway and Agent Router, KServe
-with three InferenceServices, Dex/oauth2-proxy, ttyd with Zellij CLI and code-server,
-and separate Grafana/Loki/Tempo/Mimir releases with node/cluster OTel Collectors.
-HAMi and DCGM will target eligible GPU nodes. These components are not installed
-by the storage milestone.
+Later milestones cover KServe and three InferenceServices, model imports, browser
+authentication and bastion tools, then separate Grafana/Loki/Tempo/Mimir and OTel
+Collectors. These components are not installed by this foundation milestone.

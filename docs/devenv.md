@@ -1,7 +1,7 @@
 # Local VM setup
 
 The root Taskfile includes `.devenv/taskfile.qemu.yaml` directly under `devenv:`.
-The current milestone adds Local Path Provisioner and RustFS through Helmfile to
+The current milestone adds storage and gateway foundations through Helmfile to
 the native single-node k0s VM. See [platform setup](platform.md).
 There is no preparation or runtime dependency on the repository's `.local/` directory.
 
@@ -31,7 +31,7 @@ custom_copies = [
 ]
 ```
 
-Additional custom copies place the Helmfile, values and local bootstrap chart
+Additional custom copies place the Helmfile and per-component values
 from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
 Units are loaded with KCL `file.read` from `../platform/units/`:
 
@@ -42,12 +42,12 @@ Units are loaded with KCL `file.read` from `../platform/units/`:
 - `platform-k9s-install.service` installs k9s from GitHub;
 - `platform-curl-install.service` ensures the distribution curl package is available;
 - `platform-kubeconfig@<user>.service` creates the administrator kubeconfig for the selected account;
-- `platform-helm-charts-prepare.service` downloads and verifies chart sources;
 - `platform-k0s-ready.service` waits for the API and Ready node;
 - `platform-rustfs-credentials.service` creates or reuses the RustFS Secret;
 - `platform-k0s-bootstrap.service` coordinates those dependencies and runs Helmfile.
 
-The three preparation units are dependency-activated, not enabled independently.
+The readiness and credentials units are dependency-activated, not enabled
+independently. Helmfile downloads the upstream charts directly.
 
 All provisioning commands are inline in these units. Helm, kubectl and k9s are no
 longer declared in `custom_mise_tools`. Helm, Helmfile, kubectl and k9s live in
@@ -132,5 +132,6 @@ disk. The four inline units completed successfully after the normal CoreOS reboo
 the three Helmfile releases and S3 qualification Job passed without guest fixes.
 Existing guests created from older recipes still require reprovisioning to receive
 the renamed units and copied paths.
-The later controller alias and focused bootstrap units are offline-validated only;
-they have not been applied to the current guest.
+The gateway foundation update uses the focused readiness/credentials units and
+direct upstream chart retrieval. The alias itself is created during k0s installation;
+it is not added to already-initialized guests by merely copying the updated unit.

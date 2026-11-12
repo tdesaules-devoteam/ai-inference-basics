@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __CHECK__
+  namespace: rustfs
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: s3-access
+          image: public.ecr.aws/aws-cli/aws-cli:2.31.35@sha256:b3fc08b324bbba025c6bf34cded7f5c3e869392b8fb33e863b272258b9a4b52c
+          command: [/bin/bash, -ec]
+          args:
+            - |
+              export AWS_PAGER="" AWS_EC2_METADATA_DISABLED=true
+              aws configure set default.s3.addressing_style path
+              s3() { aws --endpoint-url "$S3_ENDPOINT" --region us-east-1 s3api "$@"; }
+              for bucket in loki tempo mimir-blocks mimir-ruler mimir-alertmanager models; do
+                s3 head-bucket --bucket "$bucket"
+              done
+              key="_qualification/$POD_UID/object"
+              cleanup() { s3 delete-object --bucket models --key "$key" >/dev/null; }
+              trap cleanup EXIT
+              echo platform-smoke > /tmp/expected
+              s3 put-object --bucket models --key "$key" --body /tmp/expected >/dev/null
+              s3 get-object --bucket models --key "$key" /tmp/actual >/dev/null
+              [[ $(< /tmp/expected) == $(< /tmp/actual) ]]
+              if aws --no-sign-request --endpoint-url "$S3_ENDPOINT" --region us-east-1 \
+                  s3api get-object --bucket models --key "$key" /tmp/anonymous >/dev/null 2>&1; then
+                echo 'Anonymous reads must be rejected.' >&2; exit 1
+              fi
+              cleanup
+              if s3 head-object --bucket models --key "$key" >/dev/null 2>&1; then
+                echo 'Temporary object was not deleted.' >&2; exit 1
+              fi
+              trap - EXIT
+              echo 'Six buckets, signed PUT/GET/DELETE and unsigned rejection verified; temporary object removed.'
+          env:
+            - name: S3_ENDPOINT
+              value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-root
+                  key: RUSTFS_ACCESS_KEY
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-root
+                  key: RUSTFS_SECRET_KEY
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
