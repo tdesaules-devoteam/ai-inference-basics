@@ -1,0 +1,23 @@
+fullnameOverride: local-path-provisioner
+image:
+  repository: docker.io/rancher/local-path-provisioner
+  tag: v0.0.37@sha256:e757967a5ec338f6a9b371c5a9688bedaa8c3578ea3dd4db329ea0084be0a86f
+helperImage:
+  repository: docker.io/library/busybox
+  tag: 1.37.0@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+storageClass:
+  name: local-path-provisioner
+  defaultClass: true
+  defaultVolumeType: local
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer
+nodePathMap:
+  - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+    paths:
+      - /var/lib/local-path-provisioner
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

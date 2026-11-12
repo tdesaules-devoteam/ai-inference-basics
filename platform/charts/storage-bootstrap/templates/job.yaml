@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: initialize-s3
+          image: {{ .Values.image | quote }}
+          command: [/bin/bash, -ec]
+          args:
+            - |
+              export AWS_PAGER="" AWS_EC2_METADATA_DISABLED=true
+              aws configure set default.s3.addressing_style path
+              s3() { aws --endpoint-url "$S3_ENDPOINT" --region us-east-1 s3api "$@"; }
+              for bucket in {{ join " " .Values.buckets }}; do
+                if ! s3 head-bucket --bucket "$bucket" 2>/dev/null; then
+                  s3 create-bucket --bucket "$bucket"
+                fi
+              done
+              # A stable sentinel also checks object persistence on subsequent runs.
+              printf 'ai-inference-basics-storage-v1\n' > /tmp/expected
+              s3 list-objects-v2 --bucket platform-checks --prefix qualification/sentinel --output json > /tmp/objects.json
+              if grep -q '"Key": "qualification/sentinel"' /tmp/objects.json; then
+                s3 get-object --bucket platform-checks --key qualification/sentinel /tmp/previous >/dev/null
+                [[ $(< /tmp/expected) == $(< /tmp/previous) ]]
+                echo 'Existing S3 sentinel verified.'
+              fi
+              s3 put-object --bucket platform-checks --key qualification/sentinel --body /tmp/expected >/dev/null
+              s3 get-object --bucket platform-checks --key qualification/sentinel /tmp/actual >/dev/null
+              [[ $(< /tmp/expected) == $(< /tmp/actual) ]]
+              if aws --no-sign-request --endpoint-url "$S3_ENDPOINT" --region us-east-1 \
+                  s3api get-object --bucket platform-checks --key qualification/sentinel /tmp/anonymous >/dev/null 2>&1; then
+                echo 'Anonymous object access must be rejected.' >&2
+                exit 1
+              fi
+              s3 put-object --bucket platform-checks --key qualification/delete-check --body /tmp/expected >/dev/null
+              s3 delete-object --bucket platform-checks --key qualification/delete-check >/dev/null
+              echo 'S3 buckets, authenticated PUT/GET/DELETE and anonymous rejection verified.'
+          env:
+            - name: S3_ENDPOINT
+              value: {{ .Values.endpoint | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: RUSTFS_ACCESS_KEY
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: RUSTFS_SECRET_KEY
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              memory: 512Mi

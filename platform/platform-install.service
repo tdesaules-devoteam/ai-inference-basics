@@ -1,0 +1,18 @@
+[Unit]
+Description=Deploy the Kubernetes storage platform with Helmfile
+ConditionVirtualization=vm
+Wants=network-online.target
+Requires=k0sinstall.service
+After=network-online.target k0sinstall.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateTmp=yes
+TimeoutStartSec=1800
+# Defer until the native provisioning reboot and k0s installation have completed.
+ExecCondition=/usr/bin/test -f /var/lib/k0s-install/initialized
+ExecStart=/usr/bin/bash /etc/ai-inference-basics/platform/install.sh
+
+[Install]
+WantedBy=multi-user.target

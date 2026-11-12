@@ -1,7 +1,8 @@
 # Local VM setup
 
 The root Taskfile includes `.devenv/taskfile.qemu.yaml` directly under `devenv:`.
-The current goal is a QEMU VM with native single-node k0s, not the inference stack.
+The current milestone adds Local Path Provisioner and RustFS through Helmfile to
+the native single-node k0s VM. See [platform setup](platform.md).
 There is no preparation or runtime dependency on the repository's `.local/` directory.
 
 ## Configuration
@@ -15,7 +16,7 @@ It supplies Fedora CoreOS 44.20261023.3.1 stable and normal provisioning units.
 49152 MiB RAM and 64 GiB disk. Beszel uses `http://10.10.10.1:8090`.
 The native workspace share is unchanged; installation does not use it.
 
-The only custom copy reads the tracked configuration directly, relative to the
+The k0s custom copy reads the tracked configuration directly, relative to the
 runtime directory used by Task:
 
 ```kcl
@@ -29,6 +30,11 @@ custom_copies = [
     }
 ]
 ```
+
+Additional custom copies place the Helmfile, values, local bootstrap chart,
+artifact lock and scripts from `platform/` under `/etc/ai-inference-basics/platform`.
+The appended platform unit reads `../platform/platform-install.service` through
+KCL `file.read`; it runs Helmfile after k0s is available.
 
 The minimal YAML selects kube-router and disables telemetry. Remaining settings
 and system images use the pinned k0s binary's defaults. It contains no Helm
@@ -82,4 +88,6 @@ The installation marker indicates service startup, not Kubernetes readiness.
 
 Ignition copies files at first boot. Editing the host YAML does not update an
 existing guest. Recreating the disposable VM requires the operator's permission.
-The current changes are checked offline only; a fresh boot is not yet qualified.
+The native k0s boot and storage platform have been exercised in the VM. The storage
+qualification required two source/guest corrections (temporary kubeconfig ordering
+and the upstream RustFS Service name). See the current scope in [platform setup](platform.md).

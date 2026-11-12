@@ -3,7 +3,8 @@
 <img src="docs/logo.png" alt="Devoteam AI Inference Basics" width="280">
 
 A disposable QEMU VM with native single-node k0s. The current provisioning scope
-is the base Kubernetes cluster only, using the existing devenv runtime.
+includes a native base cluster and the first Helmfile milestone: Local Path
+Provisioner, RustFS and an S3 initialization/qualification Job.
 
 ```sh
 task devenv:up     # create/provision the VM
@@ -18,16 +19,19 @@ the upstream devenv tasks directly. No host artifact preparation is required.
 
 - `.devenv/config.k`: local VM provisioning, based on `exemple.config.k`.
 - `infra/k0s/k0s.yaml`: minimal native k0s configuration, copied directly by Ignition.
+- `platform/`: ordered Helmfile releases, verified downloads and deployment unit.
 - `infra/cloud-init/`, `infra/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
 - `charts/ai-inference-basics/`: digest-pinned platform umbrella.
 - `tests/`: offline checks; `reports/` is optional, local-only and ignored by Git.
 
-The chart and OCI sources remain development material; they
-are not invoked or deployed by the current VM lifecycle. Older platform documents
-describe that broader lab, not the minimal cluster installed now.
+The previous umbrella chart and OCI sources remain migration material. See
+[the storage platform](docs/platform.md) for the active deployment and test commands.
+Older platform documents describe the broader lab, not the components installed now.
 
-**Current validation:** offline rendering and source checks only for this revised
-provisioning flow. No VM was started, stopped or reconfigured during the refactor.
+**Current validation:** Helmfile rendering and source checks pass. The authorized
+VM run validated the three storage releases, S3 access and persistence across a
+RustFS pod replacement and Helmfile reexecution. Initial integration errors were
+corrected in both source and guest; the final recipe has not had a second clean boot.
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)

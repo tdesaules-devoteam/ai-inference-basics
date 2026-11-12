@@ -1,0 +1,28 @@
+# Helmfile is the only owner of these releases. Sources are checksum-verified first.
+helmDefaults:
+  wait: true
+  waitForJobs: true
+  timeout: 600
+  createNamespace: true
+  historyMax: 5
+
+releases:
+  - name: local-path-provisioner
+    namespace: local-path-provisioner
+    chart: {{ requiredEnv "PLATFORM_ARTIFACTS" }}/local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner
+    values:
+      - values/local-path-provisioner.yaml
+
+  - name: rustfs
+    namespace: rustfs
+    chart: {{ requiredEnv "PLATFORM_ARTIFACTS" }}/rustfs-1.0.5.tgz
+    needs:
+      - local-path-provisioner/local-path-provisioner
+    values:
+      - values/rustfs.yaml
+
+  - name: storage-bootstrap
+    namespace: rustfs
+    chart: charts/storage-bootstrap
+    needs:
+      - rustfs/rustfs

@@ -2,7 +2,7 @@
 
 - Source, documentation, comments and commits are English.
 - Use devenv, helm, container and github-actions skills for their respective work.
-- This version is a disposable local CPU lab. Public commands: task up/down/ssh.
+- This version is a disposable local CPU lab. Include native tasks as task devenv:*.
 - Include the upstream devenv Taskfile directly. Within `.devenv`, edit only the
   ignored, user-owned config.k, starting from exemple.config.k. Keep identity and
   other local runtime state intact. No runtime patches or lifecycle wrappers.
@@ -10,14 +10,17 @@
   Do not replace normal provisioning units with no-ops.
 - Keep infra/k0s/k0s.yaml. infra/cloud-init and infra/terraform are empty placeholders.
 - No profiles directory. Reports are development-local and must remain untracked.
-- Build the administration image in oci/bastion, using Fedora Minimal and Zellij web.
+- Build the administration image in oci/bastion, using Fedora Minimal, ttyd and Zellij CLI.
 - Native k0s controller+worker; never nested Kubernetes in Docker/Podman.
-- The k0s Helm deployer owns installation. The same locked umbrella may be installed
-  in fixed disjoint ordered releases for CRD/controller readiness. No competing Helm
-  CLI orchestration. Package the unpublished chart locally and verify its bytes.
-- Dex authenticates browser access. Zellij additionally requires its native token.
+- Helmfile owns platform releases, with explicit needs and readiness checks. Do not
+  install the same releases with the k0s Helm deployer or another reconciler.
+  Use upstream charts and a namespace per component; verify downloaded artifact bytes.
+- Dex and oauth2-proxy authenticate browser access, including ttyd with Zellij CLI.
   Model APIs use a separate static Bearer key enforced at Envoy Gateway.
-- Chat uses LLMInferenceService; embeddings/reranker use InferenceService. No llm-d/EPP.
+- Chat, embeddings and reranker use InferenceService. No llm-d/EPP.
+- Local Path Provisioner runs in local-path-provisioner; RustFS runs in rustfs on a PVC.
+- Observability uses separate Grafana, Loki, Tempo and Mimir deployments, with
+  OpenTelemetry Collector for node, application and cluster signals.
 - Pin workload images by digest and chart archives by checksum. Official upstream
   images have a user-approved base-image exception; own builds use allowed bases.
 - Reuse the VM's native bridge/mDNS access. No host systemd SSH tunnel.
