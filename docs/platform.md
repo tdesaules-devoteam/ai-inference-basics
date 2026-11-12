@@ -124,9 +124,11 @@ absence of credentials or public ingress. It is not boot evidence.
 Runtime qualification succeeded after correcting the temporary kubeconfig ordering
 and RustFS Service DNS name. All three releases deployed, the S3 Job passed, and a
 RustFS pod replacement followed by Helmfile reexecution preserved the PVC identity,
-credentials and existing sentinel object. The final corrected recipe has not been
-tested on a second clean VM boot. The subsequent reorganization into four inline
-systemd units is offline-validated only and has not changed the running VM.
+credentials and existing sentinel object. After the reorganization, an authorized
+destruction and recreation validated all four inline units on a clean disk without
+guest fixes. The three releases reached deployed revision 1, the PVC was Bound,
+and signed S3 PUT/GET/DELETE plus anonymous rejection passed. The bootstrap removed
+its temporary kubeconfig and no systemd units were failed.
 
 ## Subsequent milestones
 

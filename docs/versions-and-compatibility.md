@@ -15,10 +15,11 @@ the platform dependency contract. Values pin workload images and HF model revisi
 The k0s YAML retains native addon image pins. The bastion's Containerfile pins base
 images, selected RPMs and downloaded tool checksums.
 
-Offline checks render all four releases from the actual k0s configuration, verify
-digests and reject cross-release ownership conflicts. Revised VM provisioning has
-not been boot-tested without operator authorization. Earlier tests used the former
-orchestration and are retained only in ignored development reports.
+Current offline checks render the three storage releases from Helmfile, verify
+image pins and reject resource ownership conflicts. An authorized clean VM rebuild
+qualified the four inline units, storage releases and S3 access. Earlier full-lab
+tests used the former umbrella orchestration; detailed development reports remain
+ignored. See [platform setup](platform.md) for the current scope.
 
 Official references:
 

@@ -95,6 +95,8 @@ The installation marker indicates service startup, not Kubernetes readiness.
 
 Ignition copies files at first boot. Editing the host YAML does not update an
 existing guest. Recreating the disposable VM requires the operator's permission.
-The previous storage bootstrap was exercised in the VM. The directory reorganization
-and four inline units have been checked offline only; they have not been applied to
-the running VM. Existing guests retain their original unit names and copied paths.
+An authorized destruction and recreation validated this layout on a clean guest
+disk. The four inline units completed successfully after the normal CoreOS reboot;
+the three Helmfile releases and S3 qualification Job passed without guest fixes.
+Existing guests created from older recipes still require reprovisioning to receive
+the renamed units and copied paths.

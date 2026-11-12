@@ -32,7 +32,8 @@ Older platform documents describe the broader lab, not the components installed 
 
 **Current validation:** Helmfile rendering and source checks pass. The authorized
 VM run validated the three storage releases, S3 access and persistence across a
-RustFS pod replacement and Helmfile reexecution. The subsequent directory and unit
-reorganization is offline-validated only; the running VM retains the previous layout.
+RustFS pod replacement and Helmfile reexecution. A subsequent authorized destruction
+and recreation validated the reorganized layout and all four inline units from a
+clean disk, with all three releases deployed and the S3 Job passing without guest fixes.
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)
