@@ -36,16 +36,21 @@ extensions, application credentials or placeholders.
 
 ## Installation
 
-The appended `k0s-install.service` runs after normal devenv provisioning. It defers
+The appended `k0sinstall.service` runs after normal devenv provisioning. It defers
 installation when an rpm-ostree deployment is staged, allowing the runtime's
 normal reboot to complete first. It then:
 
-1. Downloads the AMD64 binary from the GitHub release `v1.37.2+k0s.1`.
+1. Downloads the AMD64 binary from the GitHub release `v1.37.2+k0s.1` into
+   `/tmp/k0s.download`, isolated with systemd `PrivateTmp=yes`.
 2. Verifies SHA-256 `4770cf89ff45e43292819f6e3a02a25a453bc750c777f6f7ad2de335f3f41df5`.
 3. Installs it at `/usr/local/bin/k0s` with mode 0755 and validates `/etc/k0s/k0s.yaml`.
 4. Creates the native service using `k0s install controller --single --config /etc/k0s/k0s.yaml`.
 5. Enables and starts `k0scontroller.service`, then records successful installation
    in `/var/lib/k0s-install/initialized`.
+
+The downloaded file is removed after installation. Only the persistent installation
+marker remains under `/var/lib/k0s-install`; keeping it outside `/tmp` prevents
+installation from repeating after a reboot.
 
 The installer is a oneshot; `k0scontroller.service` runs the cluster on subsequent
 boots. `--single` includes both controller and worker roles without the additional
@@ -64,8 +69,8 @@ The upstream up task waits for its own provisioning, not Kubernetes readiness.
 Inside the VM, inspect the installer and cluster explicitly:
 
 ```sh
-sudo systemctl status k0s-install.service k0scontroller.service
-sudo journalctl -u k0s-install.service -u k0scontroller.service
+sudo systemctl status k0sinstall.service k0scontroller.service
+sudo journalctl -u k0sinstall.service -u k0scontroller.service
 sudo k0s status
 sudo k0s kubectl get nodes
 sudo k0s kubectl get pods -A
