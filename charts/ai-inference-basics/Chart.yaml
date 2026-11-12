@@ -23,40 +23,33 @@ dependencies:
     repository: oci://quay.io/jetstack/charts
     condition: cert-manager.enabled
   - name: kserve-crd-minimal
-    alias: kserveCRDs
     version: v0.21.0
     repository: oci://ghcr.io/kserve/charts
-    condition: kserveCRDs.enabled
+    condition: kserve-crd-minimal.enabled
   - name: kserve-llmisvc-crd-minimal
-    alias: llmCRDs
     version: v0.21.0
     repository: oci://ghcr.io/kserve/charts
-    condition: llmCRDs.enabled
+    condition: kserve-llmisvc-crd-minimal.enabled
   - name: kserve-resources
-    alias: kserveController
     version: v0.21.0
     repository: oci://ghcr.io/kserve/charts
-    condition: kserveController.enabled
+    condition: kserve-resources.enabled
   - name: kserve-llmisvc-resources
-    alias: llmController
     version: v0.21.0
     repository: oci://ghcr.io/kserve/charts
-    condition: llmController.enabled
+    condition: kserve-llmisvc-resources.enabled
   - name: ai-gateway-crds-helm
-    alias: aiCRDs
     version: v1.2.1
     repository: oci://docker.io/envoyproxy
-    condition: aiCRDs.enabled
+    condition: ai-gateway-crds-helm.enabled
   - name: ai-gateway-helm
-    alias: agent-router
     version: v1.2.1
     repository: oci://docker.io/envoyproxy
-    condition: agent-router.enabled
+    condition: ai-gateway-helm.enabled
   - name: gateway-helm
-    alias: envoyGateway
     version: v1.10.0
     repository: oci://docker.io/envoyproxy
-    condition: envoyGateway.enabled
+    condition: gateway-helm.enabled
   - name: dex
     version: 0.26.0
     repository: https://charts.dexidp.io

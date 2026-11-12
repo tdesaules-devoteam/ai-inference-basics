@@ -24,10 +24,10 @@ cert-manager:
     image:
       digest: sha256:c8c1225bb2fe8ab37a330b77f0d8c2ee6a41210fcb54fc07ca606ab9a022b8b7
 
-kserveCRDs: {enabled: false}
-llmCRDs: {enabled: false}
-aiCRDs: {enabled: false}
-kserveController:
+kserve-crd-minimal: {enabled: false}
+kserve-llmisvc-crd-minimal: {enabled: false}
+ai-gateway-crds-helm: {enabled: false}
+kserve-resources:
   enabled: false
   kserve:
     controller:
@@ -50,7 +50,7 @@ kserveController:
     router:
       image: docker.io/kserve/router
       tag: v0.21.0@sha256:ccd726163e61932f592551132cf347be04aa28ecace2b5ed4681780cb5a867ec
-llmController:
+kserve-llmisvc-resources:
   enabled: false
   kserve:
     createSharedResources: false
@@ -67,7 +67,7 @@ llmController:
     storage:
       image: docker.io/kserve/storage-initializer
       tag: v0.21.0@sha256:3a3a6a8053478c8d8d90f96fc5e54c1892c07784102dda70104374d4f89a3672
-agent-router:
+ai-gateway-helm:
   enabled: false
   controller:
     image:
@@ -81,7 +81,7 @@ agent-router:
       - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://telemetry:4318"}
       - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: http/protobuf}
 
-envoyGateway:
+gateway-helm:
   enabled: false
   fullnameOverride: envoy-gateway
   global:
