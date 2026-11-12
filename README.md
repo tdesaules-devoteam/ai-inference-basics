@@ -18,9 +18,10 @@ the upstream devenv tasks directly. No host artifact preparation is required.
 ## Structure
 
 - `.devenv/config.k`: local VM provisioning, based on `exemple.config.k`.
-- `infra/k0s/k0s.yaml`: minimal native k0s configuration, copied directly by Ignition.
-- `platform/`: ordered Helmfile releases, verified downloads and deployment unit.
-- `infra/cloud-init/`, `infra/terraform/`: empty local placeholders, no cloud code.
+- `platform/k0s/k0s.yaml`: minimal native k0s configuration, copied directly by Ignition.
+- `platform/helm/`: ordered Helmfile releases, values, local charts and chart-source checksums.
+- `platform/units/`: inline installation units for k0s, Helm, Helmfile and platform bootstrap.
+- `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
 - `charts/ai-inference-basics/`: digest-pinned platform umbrella.
 - `tests/`: offline checks; `reports/` is optional, local-only and ignored by Git.
@@ -31,7 +32,7 @@ Older platform documents describe the broader lab, not the components installed 
 
 **Current validation:** Helmfile rendering and source checks pass. The authorized
 VM run validated the three storage releases, S3 access and persistence across a
-RustFS pod replacement and Helmfile reexecution. Initial integration errors were
-corrected in both source and guest; the final recipe has not had a second clean boot.
+RustFS pod replacement and Helmfile reexecution. The subsequent directory and unit
+reorganization is offline-validated only; the running VM retains the previous layout.
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)

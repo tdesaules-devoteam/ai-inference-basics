@@ -2,7 +2,7 @@
 """Render the actual Helmfile and validate storage ownership and image contracts.
 
 Requires PyYAML, the pinned Helm/Helmfile on PATH and PLATFORM_ARTIFACTS populated
-by platform/prepare.sh. Does not contact a Kubernetes cluster.
+from platform/helm/artifacts.lock. Does not contact a Kubernetes cluster.
 """
 import json
 import re
@@ -13,10 +13,10 @@ from pathlib import Path
 import yaml
 
 root = Path(__file__).resolve().parent.parent
-cluster = yaml.safe_load((root / 'infra/k0s/k0s.yaml').read_text())
+cluster = yaml.safe_load((root / 'platform/k0s/k0s.yaml').read_text())
 assert not cluster['spec'].get('extensions', {}).get('helm'), 'Competing k0s Helm deployer configuration'
 rendered = subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helmfile.yaml.gotmpl'), 'template',
+    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), 'template',
 ], text=True)
 objects = list(filter(None, yaml.safe_load_all(rendered)))
 owners = set()
@@ -65,7 +65,7 @@ subprocess.run(['bash', '-n', '-c', job['spec']['template']['spec']['containers'
 # Build the resolved state as well as the manifests: needs is an orchestration
 # property, not visible in Kubernetes YAML.
 state = yaml.safe_load(subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helmfile.yaml.gotmpl'), 'build',
+    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), 'build',
 ], text=True))
 releases = {r['name']: r for r in state['releases']}
 assert releases['rustfs']['needs'] == ['local-path-provisioner/local-path-provisioner']

@@ -15,7 +15,7 @@ wait_spec.loader.exec_module(waiter)
 
 class ProvisionContract(unittest.TestCase):
     def setUp(self):
-        self.template = Path('infra/k0s/k0s.yaml').read_text()
+        self.template = Path('platform/k0s/k0s.yaml').read_text()
         self.artifacts = {'version': '0.3.0-alpha.1',
                           'image': 'localhost/ai-inference-basics-bastion@sha256:' + 'a' * 64}
 

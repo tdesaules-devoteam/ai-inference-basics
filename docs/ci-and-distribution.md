@@ -6,7 +6,8 @@ action and profile-based checks have been removed from this local-only version.
 
 Dedicated Docker actions verify source, lint the chart and k0s deployment values,
 package one candidate archive, and qualify those exact bytes. Tests render the
-four disjoint releases defined in infra/k0s/k0s.yaml. Reports are ignored local
+four disjoint releases from the former k0s Helm-deployer configuration. The current
+storage milestone is checked separately with tests/validate_storage.py. Reports are ignored local
 development data and are not release prerequisites.
 
 Shared catalog linters use commit-pinned references with digest-pinned images.

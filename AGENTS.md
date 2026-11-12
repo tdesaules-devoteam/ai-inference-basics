@@ -8,7 +8,10 @@
   other local runtime state intact. No runtime patches or lifecycle wrappers.
 - Use custom_pkgs/custom_mise_tools/custom_files/custom_copies and append units.
   Do not replace normal provisioning units with no-ops.
-- Keep infra/k0s/k0s.yaml. infra/cloud-init and infra/terraform are empty placeholders.
+- Keep platform/k0s/k0s.yaml. platform/cloud-init and platform/terraform are empty placeholders.
+- Keep Helmfile, values and local charts in platform/helm; systemd units in platform/units.
+- Install k0s, Helm and Helmfile through separate units. Keep bootstrap logic inline
+  in platform-k0s-bootstrap.service; do not add external provisioning shell scripts.
 - No profiles directory. Reports are development-local and must remain untracked.
 - Build the administration image in oci/bastion, using Fedora Minimal, ttyd and Zellij CLI.
 - Native k0s controller+worker; never nested Kubernetes in Docker/Podman.

@@ -22,7 +22,7 @@ runtime directory used by Task:
 ```kcl
 custom_copies = [
     {
-        source = "../infra/k0s/k0s.yaml"
+        source = "../platform/k0s/k0s.yaml"
         path = "/etc/k0s/k0s.yaml"
         mode = 384
         user.name = "root"
@@ -31,10 +31,17 @@ custom_copies = [
 ]
 ```
 
-Additional custom copies place the Helmfile, values, local bootstrap chart,
-artifact lock and scripts from `platform/` under `/etc/ai-inference-basics/platform`.
-The appended platform unit reads `../platform/platform-install.service` through
-KCL `file.read`; it runs Helmfile after k0s is available.
+Additional custom copies place the Helmfile, values, local bootstrap chart and
+chart artifact lock from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
+Four units are loaded with KCL `file.read` from `../platform/units/`:
+
+- `platform-k0s-install.service` installs native k0s;
+- `platform-helm-install.service` installs Helm from get.helm.sh;
+- `platform-helmfile-install.service` installs Helmfile from GitHub;
+- `platform-k0s-bootstrap.service` downloads verified chart sources and runs Helmfile.
+
+All provisioning commands are inline in these units. Helm is no longer declared
+in `custom_mise_tools`; both Helm and Helmfile live in `/usr/local/bin`.
 
 The minimal YAML selects kube-router and disables telemetry. Remaining settings
 and system images use the pinned k0s binary's defaults. It contains no Helm
@@ -42,7 +49,7 @@ extensions, application credentials or placeholders.
 
 ## Installation
 
-The appended `k0sinstall.service` runs after normal devenv provisioning. It defers
+The appended `platform-k0s-install.service` runs after normal devenv provisioning. It defers
 installation when an rpm-ostree deployment is staged, allowing the runtime's
 normal reboot to complete first. It then:
 
@@ -75,8 +82,8 @@ The upstream up task waits for its own provisioning, not Kubernetes readiness.
 Inside the VM, inspect the installer and cluster explicitly:
 
 ```sh
-sudo systemctl status k0sinstall.service k0scontroller.service
-sudo journalctl -u k0sinstall.service -u k0scontroller.service
+sudo systemctl status platform-k0s-install.service k0scontroller.service
+sudo journalctl -u platform-k0s-install.service -u k0scontroller.service
 sudo k0s status
 sudo k0s kubectl get nodes
 sudo k0s kubectl get pods -A
@@ -88,6 +95,6 @@ The installation marker indicates service startup, not Kubernetes readiness.
 
 Ignition copies files at first boot. Editing the host YAML does not update an
 existing guest. Recreating the disposable VM requires the operator's permission.
-The native k0s boot and storage platform have been exercised in the VM. The storage
-qualification required two source/guest corrections (temporary kubeconfig ordering
-and the upstream RustFS Service name). See the current scope in [platform setup](platform.md).
+The previous storage bootstrap was exercised in the VM. The directory reorganization
+and four inline units have been checked offline only; they have not been applied to
+the running VM. Existing guests retain their original unit names and copied paths.

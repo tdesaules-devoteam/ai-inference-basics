@@ -11,7 +11,7 @@ import yaml
 parser = argparse.ArgumentParser()
 parser.add_argument('--chart', default='charts/ai-inference-basics')
 args = parser.parse_args()
-config = yaml.safe_load(Path('infra/k0s/k0s.yaml').read_text())
+config = yaml.safe_load(Path('platform/k0s/k0s.yaml').read_text())
 charts = config['spec']['extensions']['helm']['charts']
 assert config['spec']['extensions']['helm']['concurrencyLevel'] == 1
 assert [c['order'] for c in charts] == [1, 2, 3, 4]

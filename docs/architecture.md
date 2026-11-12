@@ -1,12 +1,15 @@
 # Local lab architecture
 
+This page records the former umbrella architecture. For the current Helmfile
+storage milestone and systemd unit layout, see [platform setup](platform.md).
+
 `task up` obtains the checkout identity through the native devenv task, prepares
 the bastion OCI archive and umbrella package, and renders the final configuration
 and credentials on the workstation. The original devenv lifecycle then creates
 the VM through KCL/Butane/Ignition. Normal package/tool installation remains intact.
 
-`infra/k0s/k0s.yaml` is the source of truth. Host preparation resolves its hostname
-and bastion digest into `.local/build/runtime/k0s.yaml`, copied directly to
+The historical flow rendered the hostname and bastion digest from the k0s source
+(now located at `platform/k0s/k0s.yaml`) into `.local/build/runtime/k0s.yaml`, copied to
 `/etc/k0s/k0s.yaml`. It is not transformed again inside the VM. A second private
 copy supplies credential manifests to the k0s manifest deployer.
 

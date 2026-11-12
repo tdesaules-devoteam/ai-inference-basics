@@ -11,6 +11,7 @@
 - [x] Verify tool/source archive checksums and pin workload/init/helper images by digest.
 - [x] Validate Helmfile rendering, dependency order, namespaces and storage offline.
 - [x] Qualify S3 access, pod persistence and Helmfile reexecution in the authorized VM.
+- [x] Consolidate sources in platform/ and inline provisioning into four dedicated units.
 - [ ] Repeat a clean boot of the final recipe; the first run required source/guest fixes.
 
 ## Subsequent milestones

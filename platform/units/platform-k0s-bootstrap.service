@@ -1,0 +1,66 @@
+[Unit]
+Description=Bootstrap the Kubernetes platform with Helmfile
+ConditionVirtualization=vm
+Wants=network-online.target
+Requires=platform-k0s-install.service platform-helm-install.service platform-helmfile-install.service
+After=network-online.target platform-k0s-install.service platform-helm-install.service platform-helmfile-install.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateTmp=yes
+UMask=0077
+RuntimeDirectory=platform-k0s-bootstrap
+RuntimeDirectoryMode=0700
+TimeoutStartSec=1800
+Environment=PATH=/usr/local/bin:/usr/bin:/usr/sbin
+Environment=PLATFORM_ARTIFACTS=/var/lib/ai-inference-basics/platform/artifacts
+Environment=HELM_CACHE_HOME=/var/lib/ai-inference-basics/platform/helm/cache
+Environment=HELM_CONFIG_HOME=/var/lib/ai-inference-basics/platform/helm/config
+Environment=HELM_DATA_HOME=/var/lib/ai-inference-basics/platform/helm/data
+Environment=KUBECONFIG=/run/platform-k0s-bootstrap/kubeconfig
+WorkingDirectory=/etc/ai-inference-basics/platform/helm
+# Preserve normal devenv provisioning and defer across its staged reboot.
+ExecCondition=/usr/bin/test -f /var/lib/k0s-install/initialized
+ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecStart=/usr/bin/install -d -m 0700 /var/lib/ai-inference-basics/platform/artifacts
+# systemd consumes $$ as a literal $, leaving expansion to bash.
+ExecStart=/usr/bin/bash -euc '\
+    temporary=$$(mktemp -d); \
+    trap "rm -rf -- $${temporary}" EXIT; \
+    while read -r checksum filename url; do \
+        [[ -z "$${checksum}" || "$${checksum}" == "#"* ]] && continue; \
+        target="$${PLATFORM_ARTIFACTS}/$${filename}"; \
+        if ! echo "$${checksum}  $${target}" | sha256sum --check --status 2>/dev/null; then \
+            curl --fail --location --silent --show-error --connect-timeout 20 --max-time 600 --retry 3 --output "$${temporary}/$${filename}" "$${url}"; \
+            echo "$${checksum}  $${temporary}/$${filename}" | sha256sum --check --status; \
+            install -m 0644 "$${temporary}/$${filename}" "$${target}"; \
+        fi; \
+    done < artifacts.lock; \
+    tar -xzf "$${PLATFORM_ARTIFACTS}/local-path-provisioner-v0.0.37.tar.gz" -C "$${temporary}" local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner; \
+    rm -rf -- "$${PLATFORM_ARTIFACTS}/local-path-provisioner-0.0.37"; \
+    mv "$${temporary}/local-path-provisioner-0.0.37" "$${PLATFORM_ARTIFACTS}/"'
+# Embedded kubectl must use its native credentials until the Helm kubeconfig exists.
+ExecStart=/usr/bin/timeout 300 /usr/bin/bash -ec 'until env -u KUBECONFIG k0s kubectl get --raw=/readyz --request-timeout=5s >/dev/null 2>&1 && test -n "$$(env -u KUBECONFIG k0s kubectl get nodes -o name --request-timeout=5s 2>/dev/null)"; do sleep 3; done'
+ExecStart=/usr/bin/bash -ec 'k0s kubeconfig admin > "$${KUBECONFIG}"'
+ExecStart=/usr/local/bin/k0s kubectl wait node --all --for=condition=Ready --timeout=180s
+ExecStart=/usr/bin/bash -euc '\
+    set -o pipefail; \
+    k0s kubectl create namespace rustfs --dry-run=client -o yaml | k0s kubectl apply -f -; \
+    existing=$$(k0s kubectl -n rustfs get secret rustfs-root --ignore-not-found -o name); \
+    if [[ -z "$${existing}" ]]; then \
+        credentials=$$(mktemp); \
+        trap "rm -f -- $${credentials}" EXIT; \
+        echo "RUSTFS_ACCESS_KEY=$$(openssl rand -hex 12)" > "$${credentials}"; \
+        echo "RUSTFS_SECRET_KEY=$$(openssl rand -hex 32)" >> "$${credentials}"; \
+        k0s kubectl -n rustfs create secret generic rustfs-root --from-env-file="$${credentials}"; \
+    fi; \
+    k0s kubectl -n rustfs get secret rustfs-root -o json | jq -e ".data.RUSTFS_ACCESS_KEY != null and .data.RUSTFS_SECRET_KEY != null" >/dev/null'
+ExecStart=/usr/local/bin/helmfile --file /etc/ai-inference-basics/platform/helm/helmfile.yaml.gotmpl sync
+ExecStart=/usr/local/bin/k0s kubectl -n rustfs wait job/storage-bootstrap --for=condition=Complete --timeout=300s
+ExecStart=/usr/local/bin/k0s kubectl -n rustfs get pvc rustfs-data
+ExecStart=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig
+ExecStopPost=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig
+
+[Install]
+WantedBy=multi-user.target
