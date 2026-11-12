@@ -3,15 +3,15 @@ Description=Install native single-node k0s
 ConditionVirtualization=vm
 ConditionPathExists=!/var/lib/k0s-install/initialized
 Wants=network-online.target
-Requires=run-topgrade.service
-After=network-online.target run-topgrade.service
+Requires=platform-curl-install.service
+After=network-online.target run-topgrade.service platform-curl-install.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 PrivateTmp=yes
 TimeoutStartSec=600
-ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
 ExecStart=/usr/bin/install -d -m 0755 /usr/local/bin
 ExecStart=/usr/bin/install -d -m 0700 /var/lib/k0s-install
 ExecStart=/usr/bin/curl --fail --location --retry 3 --output /tmp/k0s.download https://github.com/k0sproject/k0s/releases/download/v1.37.2+k0s.1/k0s-v1.37.2+k0s.1-amd64

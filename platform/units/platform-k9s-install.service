@@ -1,0 +1,23 @@
+[Unit]
+Description=Install verified k9s 0.51.0
+ConditionVirtualization=vm
+Wants=network-online.target
+Requires=platform-curl-install.service
+After=network-online.target run-topgrade.service platform-curl-install.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateTmp=yes
+TimeoutStartSec=600
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
+ExecCondition=/usr/bin/bash -ec '! { test -x /usr/local/bin/k9s && echo "da2a7b4844204e5f31da0e57536e85a848f4d2260cd58737402bbb04ce4c99a2  /usr/local/bin/k9s" | sha256sum --check --status 2>/dev/null; }'
+ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/k9s.tar.gz https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_amd64.tar.gz
+ExecStart=/usr/bin/bash -ec 'echo "c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7  /tmp/k9s.tar.gz" | sha256sum --check -'
+ExecStart=/usr/bin/tar -xzf /tmp/k9s.tar.gz -C /tmp k9s
+ExecStart=/usr/bin/install -D -m 0755 /tmp/k9s /usr/local/bin/k9s
+ExecStart=/usr/bin/bash -ec 'echo "da2a7b4844204e5f31da0e57536e85a848f4d2260cd58737402bbb04ce4c99a2  /usr/local/bin/k9s" | sha256sum --check -'
+ExecStart=/usr/bin/rm -f /tmp/k9s.tar.gz /tmp/k9s
+
+[Install]
+WantedBy=multi-user.target

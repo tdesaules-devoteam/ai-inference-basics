@@ -28,14 +28,18 @@ images use the repository's approved exception; no new image build is needed.
 ## Execution and state
 
 Ignition copies Helm inputs to `/etc/ai-inference-basics/platform/helm/` and loads
-four units from `platform/units/`. Separate units install k0s, Helm and Helmfile.
+units from `platform/units/`. Separate units install k0s, Helm, Helmfile, kubectl,
+k9s and curl; a template unit creates the user's administrator kubeconfig.
 `platform-k0s-bootstrap.service` requires those installations, defers across the
 staged CoreOS provisioning reboot, then waits for the API and Ready node. Its
 commands are inline; no prepare.sh or install.sh is copied or executed. systemd
 serializes starts of the bootstrap unit. The provisioner, RustFS and bucket
 operations all run in Kubernetes pods, not as host storage services.
 
-Verified tools live in `/usr/local/bin`, outside mise. Chart downloads and Helm
+Verified tools live in `/usr/local/bin`, outside mise. curl uses the signed OS
+package at `/usr/bin/curl`, already present in the CoreOS base image. Its unit
+installs via rpm-ostree, dnf or apt-get only when the binary is absent; curl follows
+the OS package version rather than a separate GitHub binary pin. Chart downloads and Helm
 state remain in `/var/lib/ai-inference-basics/platform`; the existing PVC paths and
 Kubernetes Secrets are unchanged. The repository workspace and `.local/` are not
 runtime dependencies. The temporary admin kubeconfig uses a private runtime
@@ -52,6 +56,31 @@ The unit reconciles on boot and can be explicitly restarted to apply its current
 copied configuration. Updating files on the workstation does not update Ignition
 copies in an existing VM. For cloud-init integration later, install the same source
 tree and adapt the service's k0s dependency to that bootstrap environment.
+
+## Native administration tools
+
+kubectl 1.37.2 and k9s 0.51.0 are downloaded from their upstream distributions,
+verified by SHA-256 and installed by dedicated systemd units. The installer skips
+an executable only when its checksum matches. Helm/k0s download units depend on
+the curl unit. Ordering after `run-topgrade.service` still applies when that unit
+is present; rpm-ostree checks are conditional so non-CoreOS VMs can reuse the
+strategy. Cloud-init integration and the apt/dnf install branches are not yet
+runtime-qualified; the VM must supply bash, tar, coreutils, jq and openssl.
+
+`platform-kubeconfig@.service` selects an existing account through its instance
+name. It generates a private user-owned administrator config only if none exists,
+without printing it. The user config is persistent and separate from the temporary
+bootstrap kubeconfig. To enable it for an account on a future VM:
+
+```sh
+sudo systemctl enable --now platform-kubeconfig@USERNAME.service
+```
+
+Replace USERNAME with the actual account name. devenv config.k enables the instance
+for `qemu_butane_user_name` automatically. Native `kubectl get nodes` and the
+installer/config preservation checks passed on the running CoreOS VM without
+rebooting or recreating the cluster. The expanded set of units has not yet been
+tested on a fresh VM.
 
 ## Storage and S3
 

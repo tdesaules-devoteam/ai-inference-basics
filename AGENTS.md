@@ -10,7 +10,9 @@
   Do not replace normal provisioning units with no-ops.
 - Keep platform/k0s/k0s.yaml. platform/cloud-init and platform/terraform are empty placeholders.
 - Keep Helmfile, values and local charts in platform/helm; systemd units in platform/units.
-- Install k0s, Helm and Helmfile through separate units. Keep bootstrap logic inline
+- Install k0s, Helm, Helmfile, kubectl, k9s and curl through separate units. Generate
+  user kubeconfigs through `platform-kubeconfig@.service`, preserving existing files.
+  Keep bootstrap logic inline
   in platform-k0s-bootstrap.service; do not add external provisioning shell scripts.
 - No profiles directory. Reports are development-local and must remain untracked.
 - Build the administration image in oci/bastion, using Fedora Minimal, ttyd and Zellij CLI.

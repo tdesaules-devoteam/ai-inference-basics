@@ -2,15 +2,15 @@
 Description=Install verified Helm 4.3.1
 ConditionVirtualization=vm
 Wants=network-online.target
-Requires=run-topgrade.service
-After=network-online.target run-topgrade.service
+Requires=platform-curl-install.service
+After=network-online.target run-topgrade.service platform-curl-install.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 PrivateTmp=yes
 TimeoutStartSec=600
-ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
 ExecCondition=/usr/bin/bash -ec '! echo "b66cb19f2b31f9d427632ea6c4b4a1ff89b74ecaeaee323cd166da41a7af53bd  /usr/local/bin/helm" | sha256sum --check --status 2>/dev/null'
 ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/helm.tar.gz https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz
 ExecStart=/usr/bin/bash -ec 'echo "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b  /tmp/helm.tar.gz" | sha256sum --check -'

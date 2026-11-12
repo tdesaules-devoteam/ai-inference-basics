@@ -22,7 +22,7 @@ Environment=KUBECONFIG=/run/platform-k0s-bootstrap/kubeconfig
 WorkingDirectory=/etc/ai-inference-basics/platform/helm
 # Preserve normal devenv provisioning and defer across its staged reboot.
 ExecCondition=/usr/bin/test -f /var/lib/k0s-install/initialized
-ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
 ExecStart=/usr/bin/install -d -m 0700 /var/lib/ai-inference-basics/platform/artifacts
 # systemd consumes $$ as a literal $, leaving expansion to bash.
 ExecStart=/usr/bin/bash -euc '\

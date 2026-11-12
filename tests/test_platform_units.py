@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline checks for the inline systemd shell and bootstrap credential boundary."""
 import os
+import getpass
 from pathlib import Path
 import shlex
 import subprocess
@@ -48,6 +49,48 @@ esac
             env = os.environ | {'KUBECONFIG': str(directory / 'absent-kubeconfig'),
                                 'PATH': str(directory) + os.pathsep + os.environ['PATH']}
             subprocess.run(['bash', '-ec', args[-1]], env=env, timeout=5, check=True)
+
+    def kubeconfig_fixture(self, directory, existing=False):
+        directory = Path(directory)
+        home = directory / 'home with spaces'
+        home.mkdir()
+        commands_dir = directory / 'bin'
+        commands_dir.mkdir()
+        (commands_dir / 'getent').write_text('''#!/bin/bash
+echo "fixture:x:$(id -u):$(id -g)::$FIXTURE_HOME:/bin/bash"
+''')
+        (commands_dir / 'k0s').write_text('''#!/bin/bash
+test -z "${KUBECONFIG+x}" || exit 7
+test "$*" = "kubeconfig admin" || exit 8
+echo "fixture admin kubeconfig"
+''')
+        for binary in commands_dir.iterdir():
+            binary.chmod(0o755)
+        config = home / '.kube/config'
+        if existing:
+            config.parent.mkdir()
+            config.write_text('user-managed configuration\n')
+        env = os.environ | {'PLATFORM_USER': getpass.getuser(), 'FIXTURE_HOME': str(home),
+                            'KUBECONFIG': '/nonexistent/inherited-config',
+                            'PATH': str(commands_dir) + os.pathsep + os.environ['PATH']}
+        command = next(c for c in commands(UNITS / 'platform-kubeconfig@.service')
+                       if 'getent passwd' in c[-1])
+        subprocess.run(command, env=env, timeout=5, check=True, capture_output=True)
+        return config
+
+    def test_kubeconfig_has_private_permissions_and_user_ownership(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = self.kubeconfig_fixture(directory)
+            self.assertEqual(config.read_text(), 'fixture admin kubeconfig\n')
+            self.assertEqual(config.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(config.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(config.stat().st_uid, os.getuid())
+            self.assertEqual(list(config.parent.glob('.config.*')), [])
+
+    def test_existing_user_kubeconfig_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = self.kubeconfig_fixture(directory, existing=True)
+            self.assertEqual(config.read_text(), 'user-managed configuration\n')
 
 
 if __name__ == '__main__':

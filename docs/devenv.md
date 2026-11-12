@@ -33,15 +33,20 @@ custom_copies = [
 
 Additional custom copies place the Helmfile, values, local bootstrap chart and
 chart artifact lock from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
-Four units are loaded with KCL `file.read` from `../platform/units/`:
+Units are loaded with KCL `file.read` from `../platform/units/`:
 
 - `platform-k0s-install.service` installs native k0s;
 - `platform-helm-install.service` installs Helm from get.helm.sh;
 - `platform-helmfile-install.service` installs Helmfile from GitHub;
+- `platform-kubectl-install.service` installs kubectl from dl.k8s.io;
+- `platform-k9s-install.service` installs k9s from GitHub;
+- `platform-curl-install.service` ensures the distribution curl package is available;
+- `platform-kubeconfig@<user>.service` creates the administrator kubeconfig for the selected account;
 - `platform-k0s-bootstrap.service` downloads verified chart sources and runs Helmfile.
 
-All provisioning commands are inline in these units. Helm is no longer declared
-in `custom_mise_tools`; both Helm and Helmfile live in `/usr/local/bin`.
+All provisioning commands are inline in these units. Helm, kubectl and k9s are no
+longer declared in `custom_mise_tools`. Helm, Helmfile, kubectl and k9s live in
+`/usr/local/bin`; curl is the distribution binary at `/usr/bin/curl`.
 
 The minimal YAML selects kube-router and disables telemetry. Remaining settings
 and system images use the pinned k0s binary's defaults. It contains no Helm
@@ -89,7 +94,23 @@ sudo k0s kubectl get nodes
 sudo k0s kubectl get pods -A
 ```
 
-k0s embeds kubectl; no generated user kubeconfig is required for these commands.
+k0s embeds kubectl; no user kubeconfig is required for these sudo commands.
+The user kubeconfig unit also enables direct use without sudo or mise activation:
+
+```sh
+kubectl get nodes
+kubectl get pods -A
+k9s
+helm list -A
+```
+
+The instance name selects the user, for example `platform-kubeconfig@tdesaules.service`.
+Its home directory comes from the account database rather than a hardcoded path.
+The unit waits for the API, creates `~/.kube` with mode 0700 and its admin config
+with mode 0600 and the user's ownership. It preserves an existing config on reruns.
+
+kubectl/k9s installation and kubeconfig generation were also applied and tested in
+the existing VM without restarting it. This addition has not had a fresh-boot test.
 The node may take a few minutes to become Ready while system images download.
 The installation marker indicates service startup, not Kubernetes readiness.
 

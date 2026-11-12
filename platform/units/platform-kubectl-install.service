@@ -1,0 +1,21 @@
+[Unit]
+Description=Install verified kubectl 1.37.2
+ConditionVirtualization=vm
+Wants=network-online.target
+Requires=platform-curl-install.service
+After=network-online.target run-topgrade.service platform-curl-install.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateTmp=yes
+TimeoutStartSec=600
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
+ExecCondition=/usr/bin/bash -ec '! { test -x /usr/local/bin/kubectl && echo "c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4  /usr/local/bin/kubectl" | sha256sum --check --status 2>/dev/null; }'
+ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/kubectl https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl
+ExecStart=/usr/bin/bash -ec 'echo "c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4  /tmp/kubectl" | sha256sum --check -'
+ExecStart=/usr/bin/install -D -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+ExecStart=/usr/bin/rm -f /tmp/kubectl
+
+[Install]
+WantedBy=multi-user.target

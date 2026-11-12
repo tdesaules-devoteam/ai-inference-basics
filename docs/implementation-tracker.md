@@ -13,6 +13,8 @@
 - [x] Qualify S3 access, pod persistence and Helmfile reexecution in the authorized VM.
 - [x] Consolidate sources in platform/ and inline provisioning into four dedicated units.
 - [x] Destroy and recreate the VM: all four inline units and three releases succeeded without guest fixes.
+- [x] Add native kubectl/k9s/curl units and per-user kubeconfig generation; validate direct kubectl access in the running VM.
+- [ ] Qualify a fresh boot of the expanded administration-tool units and future cloud-init integration.
 
 ## Subsequent milestones
 

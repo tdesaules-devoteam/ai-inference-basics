@@ -2,15 +2,15 @@
 Description=Install verified Helmfile 1.8.3
 ConditionVirtualization=vm
 Wants=network-online.target
-Requires=run-topgrade.service
-After=network-online.target run-topgrade.service
+Requires=platform-curl-install.service
+After=network-online.target run-topgrade.service platform-curl-install.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 PrivateTmp=yes
 TimeoutStartSec=600
-ExecCondition=/usr/bin/bash -ec 'rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null'
+ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
 ExecCondition=/usr/bin/bash -ec '! echo "9de56506af35dd07e12bf39cefecbe143fcc1dde4f69f46d5e5a33b5f39ec3e8  /usr/local/bin/helmfile" | sha256sum --check --status 2>/dev/null'
 ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v1.8.3/helmfile_1.8.3_linux_amd64.tar.gz
 ExecStart=/usr/bin/bash -ec 'echo "7d79c6d2099a4819213873164eda23bdbd32f1404fec7a7104d934e5d102596f  /tmp/helmfile.tar.gz" | sha256sum --check -'
