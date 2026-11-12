@@ -1,0 +1,16 @@
+[Unit]
+Description=Wait for the k0s API and a Ready node
+ConditionVirtualization=vm
+Requires=platform-k0s-install.service
+After=platform-k0s-install.service
+PartOf=platform-k0s-bootstrap.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=500
+Environment=PATH=/usr/local/bin:/usr/bin:/usr/sbin
+ExecCondition=/usr/bin/test -f /var/lib/k0s-install/initialized
+# Embedded kubectl must not inherit a caller's missing or unrelated kubeconfig.
+ExecStart=/usr/bin/timeout 300 /usr/bin/bash -ec 'until env -u KUBECONFIG k0s kubectl get --raw=/readyz --request-timeout=5s >/dev/null 2>&1 && test -n "$$(env -u KUBECONFIG k0s kubectl get nodes -o name --request-timeout=5s 2>/dev/null)"; do sleep 3; done'
+ExecStart=/usr/bin/env -u KUBECONFIG /usr/local/bin/k0s kubectl wait node --all --for=condition=Ready --timeout=180s

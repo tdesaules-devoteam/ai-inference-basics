@@ -19,7 +19,7 @@ the upstream devenv tasks directly. No host artifact preparation is required.
 
 - `.devenv/config.k`: local VM provisioning, based on `exemple.config.k`.
 - `platform/k0s/k0s.yaml`: minimal native k0s configuration, copied directly by Ignition.
-- `platform/helm/`: ordered Helmfile releases, values, local charts and chart-source checksums.
+- `platform/helm/`: ordered Helmfile releases, values and local charts.
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
@@ -37,5 +37,7 @@ and recreation validated the reorganized layout and all four inline units from a
 clean disk, with all three releases deployed and the S3 Job passing without guest fixes.
 Native kubectl/k9s and per-user kubeconfig units were subsequently tested in the
 running VM; that addition has not yet had a clean-boot test.
+The latest controller alias and bootstrap decomposition are source-only changes,
+validated offline and not applied to the current VM.
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)

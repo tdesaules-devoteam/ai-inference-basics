@@ -4,6 +4,7 @@ import os
 import getpass
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -22,6 +23,53 @@ def commands(path):
 
 
 class InlineUnits(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('systemd-analyze'), 'systemd-analyze is required')
+    def test_systemd_dependency_graph(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            units = root / 'etc/systemd/system'
+            units.mkdir(parents=True)
+            executables = {'/usr/bin/true'}
+            names = []
+            for source in UNITS.glob('*.service'):
+                shutil.copyfile(source, units / source.name)
+                names.append(source.name.replace('@.service', '@fixture.service'))
+                executables.update(command[0] for command in commands(source))
+            for name in ('sysinit', 'basic', 'shutdown', 'network-online', 'multi-user'):
+                (units / (name + '.target')).write_text('[Unit]\nDescription=Offline fixture\n')
+            (units / 'run-topgrade.service').write_text(
+                '[Unit]\nDescription=Offline fixture\n[Service]\nType=oneshot\nExecStart=/usr/bin/true\n')
+            # verify checks executable paths but never runs these fixture binaries.
+            for name in executables:
+                executable = root / name.lstrip('/')
+                executable.parent.mkdir(parents=True, exist_ok=True)
+                executable.write_text('#!/bin/sh\nexit 0\n')
+                executable.chmod(0o755)
+            subprocess.run(['systemd-analyze', '--root=' + str(root), 'verify', '--man=no', *names],
+                           check=True, capture_output=True)
+
+    def test_chart_preparation_rejects_corrupt_download(self):
+        command = next(c for c in commands(UNITS / 'platform-helm-charts-prepare.service')
+                       if 'fetch() {' in c[-1])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifacts = root / 'artifacts'
+            artifacts.mkdir()
+            curl = root / 'curl'
+            curl.write_text('''#!/bin/bash
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --output ]; then echo corrupt > "$2"; exit 0; fi
+  shift
+done
+exit 2
+''')
+            curl.chmod(0o755)
+            env = os.environ | {'PLATFORM_ARTIFACTS': str(artifacts),
+                                'PATH': str(root) + os.pathsep + os.environ['PATH']}
+            result = subprocess.run(command, env=env, capture_output=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(list(artifacts.iterdir()), [])
+
     def test_all_inline_shell_parses(self):
         for path in UNITS.glob('*.service'):
             for args in commands(path):
@@ -30,7 +78,7 @@ class InlineUnits(unittest.TestCase):
                         subprocess.run(['bash', '-n', '-c', args[-1]], check=True)
 
     def test_readiness_ignores_not_yet_created_helm_kubeconfig(self):
-        args = next(c for c in commands(UNITS / 'platform-k0s-bootstrap.service')
+        args = next(c for c in commands(UNITS / 'platform-k0s-ready.service')
                     if c[0] == '/usr/bin/timeout')
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)

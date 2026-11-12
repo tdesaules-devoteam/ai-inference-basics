@@ -12,8 +12,10 @@
 - Keep Helmfile, values and local charts in platform/helm; systemd units in platform/units.
 - Install k0s, Helm, Helmfile, kubectl, k9s and curl through separate units. Generate
   user kubeconfigs through `platform-kubeconfig@.service`, preserving existing files.
-  Keep bootstrap logic inline
-  in platform-k0s-bootstrap.service; do not add external provisioning shell scripts.
+  Keep provisioning logic inline in focused units, coordinated by
+  platform-k0s-bootstrap.service; do not add external provisioning shell scripts.
+- Preserve the native k0scontroller.service; platform-k0s-controller.service is its alias.
+- Pin chart URLs and SHA-256 values inline in platform-helm-charts-prepare.service.
 - No profiles directory. Reports are development-local and must remain untracked.
 - Build the administration image in oci/bastion, using Fedora Minimal, ttyd and Zellij CLI.
 - Native k0s controller+worker; never nested Kubernetes in Docker/Podman.

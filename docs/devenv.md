@@ -31,8 +31,8 @@ custom_copies = [
 ]
 ```
 
-Additional custom copies place the Helmfile, values, local bootstrap chart and
-chart artifact lock from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
+Additional custom copies place the Helmfile, values and local bootstrap chart
+from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
 Units are loaded with KCL `file.read` from `../platform/units/`:
 
 - `platform-k0s-install.service` installs native k0s;
@@ -42,7 +42,12 @@ Units are loaded with KCL `file.read` from `../platform/units/`:
 - `platform-k9s-install.service` installs k9s from GitHub;
 - `platform-curl-install.service` ensures the distribution curl package is available;
 - `platform-kubeconfig@<user>.service` creates the administrator kubeconfig for the selected account;
-- `platform-k0s-bootstrap.service` downloads verified chart sources and runs Helmfile.
+- `platform-helm-charts-prepare.service` downloads and verifies chart sources;
+- `platform-k0s-ready.service` waits for the API and Ready node;
+- `platform-rustfs-credentials.service` creates or reuses the RustFS Secret;
+- `platform-k0s-bootstrap.service` coordinates those dependencies and runs Helmfile.
+
+The three preparation units are dependency-activated, not enabled independently.
 
 All provisioning commands are inline in these units. Helm, kubectl and k9s are no
 longer declared in `custom_mise_tools`. Helm, Helmfile, kubectl and k9s live in
@@ -66,6 +71,10 @@ normal reboot to complete first. It then:
 5. Enables and starts `k0scontroller.service`, then records successful installation
    in `/var/lib/k0s-install/initialized`.
 
+Installation also creates the systemd alias `platform-k0s-controller.service`.
+Both names refer to the same native service, preserving k0s start/stop behavior.
+The alias is a symlink created by the installer, not a second controller process.
+
 The downloaded file is removed after installation. Only the persistent installation
 marker remains under `/var/lib/k0s-install`; keeping it outside `/tmp` prevents
 installation from repeating after a reboot.
@@ -88,6 +97,7 @@ Inside the VM, inspect the installer and cluster explicitly:
 
 ```sh
 sudo systemctl status platform-k0s-install.service k0scontroller.service
+sudo systemctl status platform-k0s-controller.service
 sudo journalctl -u platform-k0s-install.service -u k0scontroller.service
 sudo k0s status
 sudo k0s kubectl get nodes
@@ -106,6 +116,7 @@ helm list -A
 
 The instance name selects the user, for example `platform-kubeconfig@tdesaules.service`.
 Its home directory comes from the account database rather than a hardcoded path.
+The `@` marks a systemd template; `%i` expands to the account name in the instance.
 The unit waits for the API, creates `~/.kube` with mode 0700 and its admin config
 with mode 0600 and the user's ownership. It preserves an existing config on reruns.
 
@@ -121,3 +132,5 @@ disk. The four inline units completed successfully after the normal CoreOS reboo
 the three Helmfile releases and S3 qualification Job passed without guest fixes.
 Existing guests created from older recipes still require reprovisioning to receive
 the renamed units and copied paths.
+The later controller alias and focused bootstrap units are offline-validated only;
+they have not been applied to the current guest.

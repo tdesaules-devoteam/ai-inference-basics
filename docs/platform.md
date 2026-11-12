@@ -18,8 +18,9 @@ timeouts. No helm-diff plugin or separate Helm installation commands are needed.
 The bootstrap Job is a post-install/post-upgrade hook retained for inspection;
 the next run replaces only that Job, not buckets or data.
 
-`platform/helm/artifacts.lock` pins only the Rancher source archive and RustFS chart
-archive by SHA-256. The bootstrap unit verifies bytes before extraction/use.
+`platform/units/platform-helm-charts-prepare.service` contains the URLs and SHA-256
+pins for the Rancher source archive and RustFS chart archive inline. It verifies
+bytes before extraction/use; no separate artifacts.lock file is needed.
 Tool archive and executable checksums live in their respective installation units;
 the installed executable is verified before deciding whether to skip its download.
 Values pin every workload/init/helper image by digest. Official upstream
@@ -30,11 +31,25 @@ images use the repository's approved exception; no new image build is needed.
 Ignition copies Helm inputs to `/etc/ai-inference-basics/platform/helm/` and loads
 units from `platform/units/`. Separate units install k0s, Helm, Helmfile, kubectl,
 k9s and curl; a template unit creates the user's administrator kubeconfig.
-`platform-k0s-bootstrap.service` requires those installations, defers across the
-staged CoreOS provisioning reboot, then waits for the API and Ready node. Its
-commands are inline; no prepare.sh or install.sh is copied or executed. systemd
-serializes starts of the bootstrap unit. The provisioner, RustFS and bucket
-operations all run in Kubernetes pods, not as host storage services.
+The bootstrap is split into focused units:
+
+| Unit | Responsibility |
+| --- | --- |
+| platform-helm-charts-prepare | Download/verify chart sources and extract the upstream Rancher chart |
+| platform-k0s-ready | Wait for the native API and Ready node |
+| platform-rustfs-credentials | Create/reuse the RustFS namespace and root Secret, after readiness |
+| platform-k0s-bootstrap | Coordinate dependencies, run Helmfile and check the S3 Job |
+
+The first three are dependency-activated by the bootstrap, rather than enabled
+independently at boot. `Requires` and `After` enforce prerequisite success/order;
+`PartOf` restarts the preparation units when the bootstrap is explicitly restarted.
+The standalone tool installers and native controller are not restarted by this.
+Commands remain inline; no prepare.sh or install.sh is copied or executed.
+The provisioner, RustFS and bucket operations run in Kubernetes pods.
+
+The native controller keeps its upstream name `k0scontroller.service`. Its alias
+`platform-k0s-controller.service` is created by the installer, allowing platform-style
+commands without breaking the native k0s service management commands.
 
 Verified tools live in `/usr/local/bin`, outside mise. curl uses the signed OS
 package at `/usr/bin/curl`, already present in the CoreOS base image. Its unit
@@ -129,16 +144,23 @@ unit. `active (exited)` for this unit means all three releases and the S3 Job pa
 ## Offline validation on the workstation
 
 Use an existing Python environment with PyYAML, Helm 4.3.1 and Helmfile 1.8.3
-on PATH. Populate an isolated artifact directory using the chart-only lock:
+on PATH. Populate an isolated artifact directory using the pins in the preparation unit:
 
 ```sh
 export PLATFORM_ARTIFACTS=/tmp/opencode/platform-check/artifacts
-mkdir -p "$PLATFORM_ARTIFACTS"
-while read -r checksum filename url; do
-  case "$checksum" in ''|\#*) continue ;; esac
-  curl -fLsS "$url" -o "$PLATFORM_ARTIFACTS/$filename"
-  echo "$checksum  $PLATFORM_ARTIFACTS/$filename" | sha256sum --check || exit 1
-done < platform/helm/artifacts.lock
+python3 - <<'PY'
+import hashlib, os, re, urllib.request
+from pathlib import Path
+destination = Path(os.environ['PLATFORM_ARTIFACTS'])
+destination.mkdir(parents=True, exist_ok=True)
+unit = Path('platform/units/platform-helm-charts-prepare.service').read_text()
+pins = re.findall(r'^\s+fetch ([a-f0-9]{64}) (\S+) (\S+);', unit, re.M)
+assert len(pins) == 2
+for checksum, filename, url in pins:
+    target = destination / filename
+    urllib.request.urlretrieve(url, target)
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == checksum, filename
+PY
 tar -xzf "$PLATFORM_ARTIFACTS/local-path-provisioner-v0.0.37.tar.gz" \
   -C "$PLATFORM_ARTIFACTS" local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner
 helmfile -f platform/helm/helmfile.yaml.gotmpl show-dag
@@ -158,6 +180,8 @@ destruction and recreation validated all four inline units on a clean disk witho
 guest fixes. The three releases reached deployed revision 1, the PVC was Bound,
 and signed S3 PUT/GET/DELETE plus anonymous rejection passed. The bootstrap removed
 its temporary kubeconfig and no systemd units were failed.
+The subsequent alias and decomposition into preparation/readiness/credentials
+units have been checked offline only; the running VM has not been updated for them.
 
 ## Subsequent milestones
 

@@ -2,7 +2,8 @@
 """Render the actual Helmfile and validate storage ownership and image contracts.
 
 Requires PyYAML, the pinned Helm/Helmfile on PATH and PLATFORM_ARTIFACTS populated
-from platform/helm/artifacts.lock. Does not contact a Kubernetes cluster.
+using the pins in platform/units/platform-helm-charts-prepare.service.
+Does not contact a Kubernetes cluster.
 """
 import json
 import re

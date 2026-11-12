@@ -14,6 +14,7 @@
 - [x] Consolidate sources in platform/ and inline provisioning into four dedicated units.
 - [x] Destroy and recreate the VM: all four inline units and three releases succeeded without guest fixes.
 - [x] Add native kubectl/k9s/curl units and per-user kubeconfig generation; validate direct kubectl access in the running VM.
+- [x] Add a native-controller alias and split bootstrap responsibilities into focused inline units (offline checks).
 - [ ] Qualify a fresh boot of the expanded administration-tool units and future cloud-init integration.
 
 ## Subsequent milestones
