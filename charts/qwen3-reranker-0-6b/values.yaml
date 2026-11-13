@@ -12,5 +12,5 @@ requestMemory: 3Gi
 import:
   enabled: true
 serving:
-  # KServe's stop annotation explicitly scales Standard deployments to zero.
-  replicas: 0
+  # Start automatically; set 0 to stop through KServe's stop annotation.
+  replicas: 1

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate domain ownership, admin access, stopped models and pinned artifacts."""
+"""Validate domain ownership, admin access, active models and pinned artifacts."""
 import hashlib
 import json
 import os
@@ -47,7 +47,7 @@ assert len([o for o in objects if o['kind'] == 'InferenceService']) == 3
 assert not any(o['kind'].startswith('LLMInference') for o in objects)
 for name in names:
     model = find('InferenceService', name, name)
-    assert model['metadata']['annotations']['serving.kserve.io/stop'] == 'true'
+    assert model['metadata']['annotations']['serving.kserve.io/stop'] == 'false'
     assert model['spec']['predictor']['serviceAccountName'] == 'model-reader'
     assert model['spec']['predictor']['model']['runtime'] == name
     lock = json.loads((root / 'charts' / name / 'files/model.lock.json').read_text())
@@ -92,5 +92,5 @@ with tempfile.TemporaryDirectory() as directory:
     for chart, repo, version, digest in http_charts:
         subprocess.run(['helm', 'pull', chart, '--repo', repo, '--version', version, '--destination', directory], check=True)
         assert hashlib.sha256((Path(directory) / f'{chart}-{version}.tgz').read_bytes()).hexdigest() == digest
-print(json.dumps({'releases': len(releases), 'models_stopped': 3, 'shared_admin_workspace': True,
+print(json.dumps({'releases': len(releases), 'models_active_by_default': 3, 'shared_admin_workspace': True,
                   'pinned_workload_images': len(images), 'runtime_tested': False}))

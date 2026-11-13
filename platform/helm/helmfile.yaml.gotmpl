@@ -177,8 +177,10 @@ releases:
       - gateway/gateway
     values:
       - values/lab.yaml.gotmpl
+{{- if env "LAB_MODEL_REPLICAS" }}
       - serving:
-          replicas: {{ env "LAB_MODEL_REPLICAS" | default "0" }}
+          replicas: {{ env "LAB_MODEL_REPLICAS" }}
+{{- end }}
     hooks:
       - events: [postsync]
         showlogs: true

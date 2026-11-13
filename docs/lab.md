@@ -92,13 +92,13 @@ s3://models/qwen3-reranker-0-6b/<revision>/...
 Existing objects are reused when size and SHA metadata agree; their contents are
 not downloaded again for hashing. A mismatch fails the immutable import.
 
-Models default to `serving.replicas: 0`. This maps to KServe's supported
-`serving.kserve.io/stop: "true"` annotation. `minReplicas: 1` describes the active
-state; the explicit stop annotation prevents inference Pods from running. The
-post-sync check expects `Stopped=True` and zero model Pods, not `Ready=True`.
-Imports still run by default and temporarily consume CPU, memory and disk.
+Models default to `serving.replicas: 1` in each chart and start automatically.
+Helmfile inherits that value unless `LAB_MODEL_REPLICAS` is explicitly set.
+Setting zero uses KServe's supported `serving.kserve.io/stop: "true"` annotation;
+the readiness check then expects `Stopped=True` and zero inference Pods.
+Imports still run by default even when serving is stopped.
 
-Inside the VM, activate only the chat model:
+Inside the VM, explicitly start or restart the chat model:
 
 ```sh
 export LAB_HOSTNAME="$(hostname)"
@@ -110,7 +110,7 @@ LAB_MODEL_REPLICAS=1 helmfile \
 
 Set `LAB_MODEL_REPLICAS=0` to stop it. Select all three names to activate all APIs.
 The lab accepts 0 or 1 replica per model. There is no automatic wake-up on an API
-request. A normal full bootstrap without the environment override stops models.
+request. A normal full bootstrap without the environment override starts all three models.
 For active models, the readiness hook checks the desired Deployment and KServe
 Ready/UpToDate via JSONPath, accommodating stale observedGeneration in v0.21.0.
 
@@ -168,7 +168,7 @@ Runtime checks require the deployed lab and explicit authorization:
 - `tests/browser/qualify.mjs`: one Dex login, real terminal command, editor,
   Headlamp, anonymous-header spoof rejection and API-cookie rejection.
 - `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
-  embeddings and reranking; models must be activated first.
+  embeddings and reranking; models must be Ready.
 - `tests/qualify_model_storage.py`: run inside the bastion with a JSON map of model
   locks on stdin; verify own-prefix reads and rejection of writes/other prefixes.
 - `tests/qualify_benchmark.py`: run inside the bastion with the chat lock on stdin;
@@ -179,11 +179,15 @@ object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
 Chromium accepts the lab certificate for interaction tests; API TLS verification
 is performed separately with the CA. Reports and credentials stay untracked.
 
-The authorized VM qualification passed the admin browser journey, both
+The domain reorganization qualification passed the admin browser journey, both
 cluster-admin identities, prefix-scoped S3 checks, all three real APIs and the
 bastion benchmark. Reexecuting the complete bootstrap preserved nine credential
 Secrets and the workspace PVC, deployed all 16 releases, and returned all three
-models to Stopped=True with zero inference Pods.
+models to Stopped=True with zero inference Pods. That validated the stopped mode;
+the current default is now one active replica per model.
+The automatic-start default was qualified without `LAB_MODEL_REPLICAS`: all three
+InferenceServices reached Ready=True, and TLS/Bearer, chat/SSE, embeddings and
+reranking checks passed.
 
 ## Existing installations of the previous layout
 

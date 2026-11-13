@@ -34,7 +34,7 @@
   Model APIs use a separate static Bearer key enforced at Envoy Gateway.
 - Chat, embeddings and reranker use InferenceService. No llm-d/EPP.
 - Each model has its own chart, release, namespace and matching S3 prefix:
-  qwen3-0-6b, qwen3-embedding-0-6b, qwen3-reranker-0-6b. Models start stopped.
+  qwen3-0-6b, qwen3-embedding-0-6b, qwen3-reranker-0-6b. Models start with one replica.
 - One shared admin account uses the bastion workspace and Headlamp, both with
   cluster-admin access. No per-participant workspaces or namespaces.
 - Domain credential Jobs own their local Secrets. Upstream chart extensions remain

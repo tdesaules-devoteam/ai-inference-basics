@@ -5,7 +5,7 @@
 A disposable QEMU CPU lab with native single-node k0s and 16 Helmfile releases:
 storage, TLS and gateway foundations, three KServe inference services, Dex browser
 authentication and one shared cluster-admin ttyd/Zellij and code-server workspace.
-Each model has its own chart and namespace and starts stopped by default.
+Each model has its own chart and namespace and starts with one replica by default.
 
 ```sh
 task devenv:up     # create/provision the VM

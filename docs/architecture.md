@@ -37,10 +37,11 @@ One Dex account, `admin`, uses the shared workspace and Headlamp. Both Kubernete
 ServiceAccounts have cluster-admin rights. Authentication at oauth2-proxy remains
 mandatory; browser cookies are not accepted as model API credentials.
 
-Models start stopped through KServe's stop annotation. Imports use huggingface_hub
+Models start with one replica; KServe's stop annotation supports an explicit
+zero-replica override. Imports use huggingface_hub
 with pinned revisions, SHA-256 verification and boto3 uploads. Each model receives
-distinct reader/writer identities restricted to its S3 prefix. Activation is
-explicit; there is no request-triggered scale-from-zero.
+distinct reader/writer identities restricted to its S3 prefix. Stopped models need
+explicit reactivation; there is no request-triggered scale-from-zero.
 
 Credential generation is domain-local. A deterministic Helm 4 post-renderer adds
 Jobs and RBAC to upstream releases where chart extension points are insufficient.

@@ -27,7 +27,7 @@
 ## Subsequent milestones
 
 - [x] Replace LLMInferenceService with three CPU InferenceServices.
-- [x] Split models into matching chart/release/namespace/S3-prefix domains and start them stopped.
+- [x] Split models into matching chart/release/namespace/S3-prefix domains and start one replica automatically.
 - [x] Import pinned model artifacts into RustFS and configure read-only S3 access.
 - [x] Qualify TLS, Bearer rejection, real chat/SSE, embeddings and reranking through the Gateway.
 - [x] Replace participant isolation with one shared admin workstation and cluster-admin rights.
