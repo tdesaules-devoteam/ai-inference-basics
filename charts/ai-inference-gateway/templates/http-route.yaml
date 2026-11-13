@@ -4,26 +4,50 @@ metadata:
   name: browser
   namespace: {{ .Release.Namespace }}
 spec:
-  hostnames: [{{ required "hostname is required" .Values.hostname | quote }}]
-  parentRefs: [{name: ai-inference-basics}]
+  hostnames:
+    - {{ required "hostname is required" .Values.hostname | quote }}
+  parentRefs:
+    - name: ai-inference-basics
   rules:
     - matches:
-        - path: {type: Exact, value: /}
+        - path:
+            type: Exact
+            value: /
       filters:
         - type: RequestRedirect
           requestRedirect:
-            path: {type: ReplaceFullPath, replaceFullPath: /headlamp/}
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /headlamp/
             statusCode: 302
     - matches:
-        - path: {type: PathPrefix, value: /oauth2}
-        - path: {type: PathPrefix, value: /headlamp}
-        - path: {type: PathPrefix, value: /terminal-a}
-        - path: {type: PathPrefix, value: /terminal-b}
-        - path: {type: PathPrefix, value: /code-a}
-        - path: {type: PathPrefix, value: /code-b}
+        - path:
+            type: PathPrefix
+            value: /oauth2
+        - path:
+            type: PathPrefix
+            value: /headlamp
+        - path:
+            type: PathPrefix
+            value: /terminal-a
+        - path:
+            type: PathPrefix
+            value: /terminal-b
+        - path:
+            type: PathPrefix
+            value: /code-a
+        - path:
+            type: PathPrefix
+            value: /code-b
       backendRefs:
-        - {name: oauth2-proxy, namespace: oauth2-proxy, port: 80}
+        - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 80
     - matches:
-        - path: {type: PathPrefix, value: /dex}
+        - path:
+            type: PathPrefix
+            value: /dex
       backendRefs:
-        - {name: dex, namespace: dex, port: 5556}
+        - name: dex
+          namespace: dex
+          port: 5556

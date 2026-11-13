@@ -4,4 +4,5 @@ metadata:
   name: lab-ca
   namespace: {{ .Release.Namespace }}
 spec:
-  ca: {secretName: lab-root-ca}
+  ca:
+    secretName: lab-root-ca

@@ -5,7 +5,12 @@ kind: RoleBinding
 metadata:
   name: bastion-{{ . }}-model-view
   namespace: inference-service
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: model-inspection}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: model-inspection
 subjects:
-  - {kind: ServiceAccount, name: bastion-{{ . }}, namespace: {{ $.Release.Namespace }}}
+  - kind: ServiceAccount
+    name: bastion-{{ . }}
+    namespace: {{ $.Release.Namespace }}
 {{- end }}

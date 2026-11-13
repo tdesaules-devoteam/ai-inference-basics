@@ -14,6 +14,8 @@
 - Keep one resource declaration per chart template, using kebab-case kind filenames
   (for example cluster-role.yaml). Add a purpose suffix for distinct resources of
   the same kind; loops may instantiate that resource for participants or models.
+- Use block-style YAML mappings and sequences in charts rather than inline flow
+  collections, except empty collections and literal JSON application arguments.
 - Install k0s, Helm, Helmfile, kubectl, k9s and curl through separate units. Generate
   user kubeconfigs through `platform-kubeconfig@.service`, preserving existing files.
   Keep provisioning logic inline in focused units, coordinated by

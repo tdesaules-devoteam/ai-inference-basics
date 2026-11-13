@@ -17,11 +17,17 @@ spec:
     minReplicas: 1
     maxReplicas: 1
     model:
-      modelFormat: {name: huggingface, version: "1"}
+      modelFormat:
+        name: huggingface
+        version: "1"
       runtime: vllm-cpu-{{ $name }}
       protocolVersion: v1
       storageUri: {{ printf "s3://%s/%s/%s/" $.Values.bucket $name $snapshot.revision | quote }}
       resources:
-        requests: {cpu: "1", memory: {{ $model.requestMemory }}}
-        limits: {cpu: {{ $model.threads | quote }}, memory: {{ $model.memory }}}
+        requests:
+          cpu: "1"
+          memory: {{ $model.requestMemory }}
+        limits:
+          cpu: {{ $model.threads | quote }}
+          memory: {{ $model.memory }}
 {{- end }}

@@ -1,5 +1,7 @@
 toolsImage: ""
-participants: [a, b]
+participants:
+  - a
+  - b
 storageClass: local-path-provisioner
 storageSize: 2Gi
 apiBaseUrl: https://ai-inference-basics.gateway.svc.cluster.local/v1

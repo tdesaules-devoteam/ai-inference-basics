@@ -7,5 +7,9 @@ spec:
   isCA: true
   commonName: AI Inference Basics Lab CA
   secretName: lab-root-ca
-  privateKey: {algorithm: ECDSA, size: 256}
-  issuerRef: {name: lab-selfsigned, kind: Issuer}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: lab-selfsigned
+    kind: Issuer

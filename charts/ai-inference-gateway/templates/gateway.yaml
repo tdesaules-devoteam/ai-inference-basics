@@ -19,4 +19,5 @@ spec:
         certificateRefs:
           - name: lab-tls
       allowedRoutes:
-        namespaces: {from: Same}
+        namespaces:
+          from: Same

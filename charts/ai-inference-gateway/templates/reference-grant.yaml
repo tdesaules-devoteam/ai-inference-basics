@@ -7,7 +7,11 @@ metadata:
   namespace: {{ $backend.namespace }}
 spec:
   from:
-    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: {{ $.Release.Namespace }}}
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{ $.Release.Namespace }}
   to:
-    - {group: "", kind: Service, name: {{ $backend.name }}}
+    - group: ""
+      kind: Service
+      name: {{ $backend.name }}
 {{- end }}

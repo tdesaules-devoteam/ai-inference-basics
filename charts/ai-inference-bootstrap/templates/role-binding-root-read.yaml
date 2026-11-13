@@ -3,6 +3,11 @@ kind: RoleBinding
 metadata:
   name: lab-bootstrap-root-read
   namespace: rustfs
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lab-bootstrap-root-read}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lab-bootstrap-root-read
 subjects:
-  - {kind: ServiceAccount, name: lab-bootstrap, namespace: {{ .Release.Namespace }}}
+  - kind: ServiceAccount
+    name: lab-bootstrap
+    namespace: {{ .Release.Namespace }}

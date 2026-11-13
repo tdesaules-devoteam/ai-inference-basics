@@ -5,7 +5,12 @@ kind: RoleBinding
 metadata:
   name: lab-bootstrap
   namespace: {{ $ns }}
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lab-bootstrap}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lab-bootstrap
 subjects:
-  - {kind: ServiceAccount, name: lab-bootstrap, namespace: {{ $.Release.Namespace }}}
+  - kind: ServiceAccount
+    name: lab-bootstrap
+    namespace: {{ $.Release.Namespace }}
 {{- end }}

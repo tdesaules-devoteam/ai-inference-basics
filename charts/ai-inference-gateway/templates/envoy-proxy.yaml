@@ -12,8 +12,11 @@ spec:
         container:
           image: {{ .Values.envoyImage | quote }}
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
-            limits: {memory: 512Mi}
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
       envoyService:
         name: ai-inference-basics
         type: NodePort

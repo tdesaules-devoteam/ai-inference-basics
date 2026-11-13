@@ -10,12 +10,14 @@ spec:
     - name: huggingface
       version: "1"
       autoSelect: false
-  protocolVersions: [v1]
+  protocolVersions:
+    - v1
   multiModel: false
   containers:
     - name: kserve-container
       image: {{ $.Values.image | quote }}
-      command: [vllm]
+      command:
+        - vllm
       args:
         - serve
         - /mnt/models
@@ -42,24 +44,38 @@ spec:
         - '{"architectures":["Qwen3ForSequenceClassification"],"classifier_from_token":["no","yes"],"is_original_qwen3_reranker":true}'
         {{- end }}
       env:
-        - {name: VLLM_CPU_KVCACHE_SPACE, value: "1"}
-        - {name: OMP_NUM_THREADS, value: {{ $model.threads | quote }}}
-        - {name: VLLM_CPU_OMP_THREADS_BIND, value: {{ $model.cores | quote }}}
-        - {name: HF_HUB_OFFLINE, value: "1"}
-        - {name: TRANSFORMERS_OFFLINE, value: "1"}
-        - {name: HF_HUB_DISABLE_TELEMETRY, value: "1"}
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "1"
+        - name: OMP_NUM_THREADS
+          value: {{ $model.threads | quote }}
+        - name: VLLM_CPU_OMP_THREADS_BIND
+          value: {{ $model.cores | quote }}
+        - name: HF_HUB_OFFLINE
+          value: "1"
+        - name: TRANSFORMERS_OFFLINE
+          value: "1"
+        - name: HF_HUB_DISABLE_TELEMETRY
+          value: "1"
       ports:
-        - {name: http1, containerPort: 8080}
+        - name: http1
+          containerPort: 8080
       startupProbe:
-        httpGet: {path: /health, port: 8080}
+        httpGet:
+          path: /health
+          port: 8080
         periodSeconds: 10
         failureThreshold: 120
       readinessProbe:
-        httpGet: {path: /health, port: 8080}
+        httpGet:
+          path: /health
+          port: 8080
         periodSeconds: 5
       volumeMounts:
-        - {name: shm, mountPath: /dev/shm}
+        - name: shm
+          mountPath: /dev/shm
   volumes:
     - name: shm
-      emptyDir: {medium: Memory, sizeLimit: 1Gi}
+      emptyDir:
+        medium: Memory
+        sizeLimit: 1Gi
 {{- end }}

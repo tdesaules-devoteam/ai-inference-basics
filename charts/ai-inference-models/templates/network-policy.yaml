@@ -8,12 +8,16 @@ spec:
     matchExpressions:
       - key: serving.kserve.io/inferenceservice
         operator: Exists
-  policyTypes: [Ingress]
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - namespaceSelector:
-            matchLabels: {kubernetes.io/metadata.name: gateway}
+            matchLabels:
+              kubernetes.io/metadata.name: gateway
           podSelector:
-            matchLabels: {gateway.envoyproxy.io/owning-gateway-name: ai-inference-basics}
+            matchLabels:
+              gateway.envoyproxy.io/owning-gateway-name: ai-inference-basics
       ports:
-        - {protocol: TCP, port: 8080}
+        - protocol: TCP
+          port: 8080

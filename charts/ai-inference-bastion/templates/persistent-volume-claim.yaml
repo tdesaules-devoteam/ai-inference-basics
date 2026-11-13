@@ -8,7 +8,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes:
+    - ReadWriteOnce
   storageClassName: {{ $.Values.storageClass }}
   resources:
     requests:

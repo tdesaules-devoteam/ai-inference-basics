@@ -8,4 +8,6 @@ spec:
   dnsNames:
     - {{ required "hostname is required" .Values.hostname | quote }}
     - ai-inference-basics.gateway.svc.cluster.local
-  issuerRef: {name: lab-ca, kind: Issuer}
+  issuerRef:
+    name: lab-ca
+    kind: Issuer

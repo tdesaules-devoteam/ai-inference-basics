@@ -3,9 +3,20 @@ kind: ClusterRole
 metadata:
   name: ai-inference-bastion-inspection
 rules:
-  - apiGroups: [""]
-    resources: [nodes, namespaces]
-    verbs: [get, list, watch]
-  - apiGroups: [metrics.k8s.io]
-    resources: [nodes]
-    verbs: [get, list, watch]
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metrics.k8s.io
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch

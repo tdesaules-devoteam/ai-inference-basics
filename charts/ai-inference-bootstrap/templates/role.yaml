@@ -6,11 +6,19 @@ metadata:
   name: lab-bootstrap
   namespace: {{ $ns }}
 rules:
-  - apiGroups: [""]
-    resources: [secrets]
-    resourceNames: {{ toJson $names }}
-    verbs: [get, update]
-  - apiGroups: [""]
-    resources: [secrets]
-    verbs: [create]
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+{{ toYaml $names | indent 6 }}
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
 {{- end }}

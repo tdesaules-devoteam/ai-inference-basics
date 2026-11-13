@@ -4,12 +4,32 @@ metadata:
   name: model-inspection
   namespace: inference-service
 rules:
-  - apiGroups: [serving.kserve.io]
-    resources: [inferenceservices, servingruntimes]
-    verbs: [get, list, watch]
-  - apiGroups: [""]
-    resources: [pods, pods/log, services, events]
-    verbs: [get, list, watch]
-  - apiGroups: [apps]
-    resources: [deployments, replicasets]
-    verbs: [get, list, watch]
+  - apiGroups:
+      - serving.kserve.io
+    resources:
+      - inferenceservices
+      - servingruntimes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - services
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
