@@ -121,8 +121,9 @@ The `@` marks a systemd template; `%i` expands to the account name in the instan
 The unit waits for the API, creates `~/.kube` with mode 0700 and its admin config
 with mode 0600 and the user's ownership. It preserves an existing config on reruns.
 
-kubectl/k9s installation and kubeconfig generation were also applied and tested in
-the existing VM without restarting it. This addition has not had a fresh-boot test.
+kubectl/k9s installation and kubeconfig generation were first tested in the running
+VM, then qualified during a user-initiated clean down/up. Native kubectl access,
+user ownership and private kubeconfig permissions passed without intervention.
 The node may take a few minutes to become Ready while system images download.
 The installation marker indicates service startup, not Kubernetes readiness.
 

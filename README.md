@@ -33,8 +33,9 @@ Older platform documents describe the broader lab, not the components installed 
 **Current validation:** all six releases deployed in the authorized VM. A temporary
 Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations
 and anonymous rejection passed, and test resources were removed. Reexecuting the
-bootstrap preserved the PVC and credential Secrets. The full foundation milestone
-has not yet had a clean-boot test. The former storage-bootstrap chart is removed;
+bootstrap preserved the PVC and credential Secrets. A subsequent user-initiated
+down/up qualified the full foundation bootstrap from a clean VM without intervention.
+All six releases reached revision 1 and both RustFS hooks completed. The former storage-bootstrap chart is removed;
 no existing buckets were deleted.
 RustFS credential generation and bucket initialization now run as pre/post Helm
 hooks in extraManifests. Fresh-namespace creation, upgrade preservation and scoped

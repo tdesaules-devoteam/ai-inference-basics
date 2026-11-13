@@ -1,6 +1,6 @@
 # Implementation status
 
-## Cluster and storage milestone
+## Cluster and foundation milestones
 
 - [x] Expose the upstream lifecycle directly through `task devenv:*`.
 - [x] Keep tracked devenv runtime files unchanged; customize only ignored config.k.
@@ -21,7 +21,8 @@
 - [x] Deploy cert-manager, Envoy Gateway and Agent Router in dedicated namespaces.
 - [x] Qualify the gateway-to-Agent-Router mock OpenAI request path, S3 access and temporary-resource cleanup.
 - [x] Reexecute the six-release bootstrap and verify PVC/credential preservation.
-- [ ] Qualify a fresh boot of the expanded administration-tool units and future cloud-init integration.
+- [x] Observe user-initiated clean down/up: native tools, kubeconfig, controller alias, six releases and RustFS pre/post hooks succeeded without intervention.
+- [ ] Qualify future cloud-init integration.
 
 ## Subsequent milestones
 

@@ -23,7 +23,8 @@ values pin workload images. There is no deployment-time custom chart downloader.
 
 Current render checks cover six Helmfile releases, image pins, namespace boundaries
 and resource ownership. The foundation update was installed in the authorized
-existing VM; a new clean boot of this complete milestone has not been tested.
+existing VM and then qualified from scratch during a user-initiated down/up, with
+all six releases at revision 1 and both RustFS hooks completing without intervention.
 The earlier authorized clean rebuild qualified the storage-only flow. Earlier full-lab
 tests used the former umbrella orchestration; detailed development reports remain
 ignored. See [platform setup](platform.md) for the current scope.

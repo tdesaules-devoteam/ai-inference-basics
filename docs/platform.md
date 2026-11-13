@@ -180,7 +180,13 @@ This qualification passed in the authorized VM, including certificate-backed
 webhook injection, Gateway programming, a JSON OpenAI response, S3 access and
 cleanup. Reexecuting all six releases preserved the RustFS PVC, root credentials
 and Agent Router MCP encryption seed. No systemd unit was failed. The complete
-foundation milestone has not yet been qualified on a newly recreated VM.
+foundation milestone was subsequently qualified during a user-initiated down/up:
+all six releases deployed at revision 1, the credential hook created the new Secret,
+the bucket hook completed and the 20 GiB PVC became Bound without manual intervention.
+The native-controller alias resolved correctly, user kubectl worked without sudo,
+the Agent Router certificate/issuer were Ready and no systemd units were failed.
+That fresh-boot observation was read-only; the mock request and S3 PUT/GET/DELETE
+tests described above were qualified on the preceding VM.
 
 Later milestones cover KServe and three InferenceServices, model imports, browser
 authentication and bastion tools, then separate Grafana/Loki/Tempo/Mimir and OTel
