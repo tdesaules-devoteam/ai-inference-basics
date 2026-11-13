@@ -60,32 +60,14 @@ extraObjects:
         http://:4181 {
           bind 127.0.0.1
           route {
-            @deniedA {
-              path /terminal-a* /code-a*
-              not header X-Forwarded-Email alice@example.test
-            }
-            respond @deniedA 403
-            @deniedB {
-              path /terminal-b* /code-b*
-              not header X-Forwarded-Email bob@example.test
-            }
-            respond @deniedB 403
-            redir /terminal-a /terminal-a/ 308
-            redir /terminal-b /terminal-b/ 308
-            redir /code-a /code-a/ 308
-            redir /code-b /code-b/ 308
+            redir /terminal /terminal/ 308
+            redir /code /code/ 308
             redir /headlamp /headlamp/ 308
-            handle /terminal-a/* {
-              reverse_proxy bastion-a.bastion.svc.cluster.local:7681
+            handle /terminal/* {
+              reverse_proxy bastion.bastion.svc.cluster.local:7681
             }
-            handle /terminal-b/* {
-              reverse_proxy bastion-b.bastion.svc.cluster.local:7681
-            }
-            handle_path /code-a/* {
-              reverse_proxy bastion-a.bastion.svc.cluster.local:8080
-            }
-            handle_path /code-b/* {
-              reverse_proxy bastion-b.bastion.svc.cluster.local:8080
+            handle_path /code/* {
+              reverse_proxy bastion.bastion.svc.cluster.local:8080
             }
             handle /headlamp/* {
               reverse_proxy headlamp.headlamp.svc.cluster.local:80

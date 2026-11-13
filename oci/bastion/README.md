@@ -1,4 +1,4 @@
-# Participant bastion image
+# Shared administration bastion image
 
 The digest-pinned Fedora Minimal AMD64 image includes kubectl, k9s, vLLM
 (`vllm bench`), curl, bash, Zellij CLI, Starship, jq, Helix, code-server and RustFS rc.
@@ -10,11 +10,12 @@ installed are recorded in `/usr/share/ai-inference-basics/rpms.txt` in the image
 The build uses Docker format for SHELL semantics, then exports an OCI archive.
 
 ttyd runs Zellij CLI as UID 1000. code-server runs in a separate container sharing
-the participant's PVC. Both are behind the same Dex/oauth2-proxy session; neither
-requires a second application login. Each participant has a distinct ServiceAccount,
-workspace PVC and editable namespace. Headlamp provides shared read-only inspection.
+one shared PVC. Both are behind the same Dex/oauth2-proxy session for the single
+admin account. The bastion and Headlamp have Kubernetes cluster-admin access.
+Domain Jobs reuse this image's locked Python libraries, including huggingface_hub,
+and RustFS rc; model downloads use the Python package rather than a separate CLI image.
 
 GHCR publication was rejected by the available token. The current lab uses an
-explicit local k0s import with `toolsImagePullPolicy: Never`. After recreating the
-VM, import the archive again and align `toolsImage` with its manifest digest before
+explicit local k0s import with `IfNotPresent`. After recreating the
+VM, import the archive again and align `LAB_TOOLS_IMAGE` with its manifest digest before
 retrying bootstrap. See [lab access and qualification](../../docs/lab.md).

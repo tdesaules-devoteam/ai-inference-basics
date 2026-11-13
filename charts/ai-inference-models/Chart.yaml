@@ -1,6 +1,0 @@
-apiVersion: v2
-name: ai-inference-models
-description: Verified S3 model import and three KServe CPU InferenceServices
-type: application
-version: 0.1.0
-appVersion: "0.23.0"

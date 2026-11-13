@@ -1,0 +1,13 @@
+{{- range $name := list "qwen3-0-6b" "qwen3-embedding-0-6b" "qwen3-reranker-0-6b" }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  endpoints:
+    - fqdn:
+        hostname: {{ $name }}-predictor.{{ $name }}.svc.cluster.local
+        port: 80
+{{- end }}

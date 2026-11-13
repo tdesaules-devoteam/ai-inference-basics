@@ -1,0 +1,37 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rustfs-domain
+  namespace: rustfs
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-20"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+      - rustfs-root
+      - s3-qwen3-0-6b
+      - s3-qwen3-embedding-0-6b
+      - s3-qwen3-reranker-0-6b
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+      - s3-qwen3-0-6b
+      - s3-qwen3-embedding-0-6b
+      - s3-qwen3-reranker-0-6b
+    verbs:
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create

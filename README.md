@@ -2,9 +2,10 @@
 
 <img src="docs/logo.png" alt="Devoteam AI Inference Basics" width="280">
 
-A disposable QEMU CPU lab with native single-node k0s and 15 Helmfile releases:
+A disposable QEMU CPU lab with native single-node k0s and 16 Helmfile releases:
 storage, TLS and gateway foundations, three KServe inference services, Dex browser
-authentication and two isolated ttyd/Zellij and code-server workspaces.
+authentication and one shared cluster-admin ttyd/Zellij and code-server workspace.
+Each model has its own chart and namespace and starts stopped by default.
 
 ```sh
 task devenv:up     # create/provision the VM
@@ -24,18 +25,18 @@ local image import; see [lab access and qualification](docs/lab.md).
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
-- `charts/`: project-authored identity, model, bastion and gateway integration charts.
+- `charts/`: three model charts, one shared bastion chart and one gateway/TLS chart.
 - `tests/`: render checks and opt-in runtime qualification; `reports/` stays local and ignored.
 
 See [the platform](docs/platform.md) for upstream chart references, namespace
 boundaries, deployment and test commands.
 See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image import.
 
-**Current lab validation:** all 15 releases deployed in the existing authorized VM.
-Real TLS/Bearer chat, SSE, embeddings and reranking passed. Both browser journeys,
-terminal execution, code-server, Headlamp, participant isolation and a short vLLM
-benchmark passed. The VM retains its 24-vCPU/48-GiB/64-GiB sizing. Registry
-publication remains unavailable; a fresh VM requires explicit bastion image import.
+**Current layout:** one Dex account named `admin` for pair training, full Kubernetes
+administration from the bastion and Headlamp, separate Bearer model APIs and
+prefix-scoped RustFS model credentials. The VM retains its 24-vCPU/48-GiB/64-GiB
+sizing. Registry publication remains unavailable; a fresh VM requires explicit
+bastion image import. See [qualification](docs/lab.md#validation).
 
 **Foundation history:** a temporary
 Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations

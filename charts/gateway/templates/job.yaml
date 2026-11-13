@@ -1,0 +1,41 @@
+{{- range $phase := list "key" "ca" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gateway-{{ $phase }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    helm.sh/hook: {{ if eq $phase "key" }}pre-install,pre-upgrade{{ else }}post-install,post-upgrade{{ end }}
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  activeDeadlineSeconds: 360
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: gateway-credentials
+      restartPolicy: Never
+      containers:
+        - name: configure
+          image: {{ required "toolsImage is required" $.Values.toolsImage | quote }}
+          imagePullPolicy: {{ $.Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          command:
+            - python3
+            - /scripts/credentials.py
+            - {{ $phase }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: gateway-credentials
+{{- end }}

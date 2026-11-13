@@ -1,17 +1,18 @@
-# Model API
+# Model APIs
 
-Use `https://<vm-hostname>:30443` and an independent static Bearer API key from the
-host's `.local/build/runtime/credentials.json` or the guest's administrator-only
-`ai-inference-basics-access` Secret. Browser cookies do not
-authenticate inference calls. Never put the key in source, URLs or shell tracing.
+The shared HTTPS Gateway serves the browser and model APIs. Browser sessions and
+model API credentials are independent: APIs require `Authorization: Bearer <key>`.
 
-| Endpoint | Model alias |
+| Endpoint | Model name and namespace |
 | --- | --- |
-| POST /v1/chat/completions | ai-inference-basics-chat |
-| POST /v1/embeddings | ai-inference-basics-embeddings |
-| POST /cohere/v2/rerank | ai-inference-basics-rerank |
+| `POST /v1/chat/completions` | `qwen3-0-6b` |
+| `POST /v1/embeddings` | `qwen3-embedding-0-6b` |
+| `POST /cohere/v2/rerank` | `qwen3-reranker-0-6b` |
 
-The CPU checkpoints are the official Qwen3 0.6B chat, embedding and reranker models,
-pinned by Hugging Face revision. Agent Router's rerank interface is Cohere-compatible.
-Chat is managed by LLMInferenceService without EPP; pooling models use InferenceService.
-Direct model Services are not the public client interface.
+All three use KServe `InferenceService` and vLLM CPU. They start stopped to avoid
+inference CPU/RAM usage. Activate the desired release with `LAB_MODEL_REPLICAS=1`
+as described in [lab operations](lab.md); incoming requests do not wake it up.
+
+The admin bastion has `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust configured.
+Outside the cluster, use the native VM hostname on port 30443 and the public lab
+CA. The API key is stored in `gateway/lab-api-key`; do not put it in Git or logs.

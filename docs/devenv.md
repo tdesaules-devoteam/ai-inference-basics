@@ -1,8 +1,8 @@
 # Local VM setup
 
 The root Taskfile includes `.devenv/taskfile.qemu.yaml` directly under `devenv:`.
-The lab adds storage, gateways, three KServe models and authenticated participant
-workspaces through Helmfile. See [platform setup](platform.md) and [lab setup](lab.md).
+The lab adds storage, gateways, three KServe models and one shared authenticated
+admin workspace through Helmfile. See [platform setup](platform.md) and [lab setup](lab.md).
 There is no preparation or runtime dependency on the repository's `.local/` directory.
 
 ## Configuration
@@ -46,10 +46,13 @@ custom_copies = [
 
 Additional custom copies place the Helmfile and per-component values
 from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
-The four authored charts are copied to `/etc/ai-inference-basics/charts`, including
+The five authored charts are copied to `/etc/ai-inference-basics/charts`, including
 their templates, Python hook programs and model lock. The local bastion image must
 be imported into k0s explicitly after VM recreation while registry publication is
 unavailable; bootstrap can then be retried without recreating the VM.
+Local custom copies also include the Helm 4 domain post-renderer, its plugin
+descriptor and its declarative resources/scripts. The bootstrap unit sets
+`HELM_PLUGINS=/etc/ai-inference-basics/platform/helm/plugins`.
 Units are loaded with KCL `file.read` from `../platform/units/`:
 
 - `platform-k0s-install.service` installs native k0s;

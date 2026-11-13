@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: '@MODEL@-credentials'
+  namespace: rustfs
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+      - 's3-@MODEL@'
+    verbs:
+      - get

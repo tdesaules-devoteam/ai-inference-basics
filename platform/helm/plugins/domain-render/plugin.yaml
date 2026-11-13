@@ -1,0 +1,10 @@
+apiVersion: v1
+name: domain-render
+version: 0.1.0
+type: postrenderer/v1
+runtime: subprocess
+runtimeConfig:
+  platformCommand:
+    - command: /usr/bin/bash
+      args:
+        - "${HELM_PLUGIN_DIR}/../../render-domain.sh"

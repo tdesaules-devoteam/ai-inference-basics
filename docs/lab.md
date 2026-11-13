@@ -1,18 +1,62 @@
-# CPU inference lab (stages 8–13)
+# Domain-oriented CPU lab
 
-The lab extends the six foundation releases with KServe CRDs/controller, identity
-bootstrap, models, Dex, Headlamp, two bastions, oauth2-proxy and the HTTPS Gateway.
-Helmfile owns all 15 releases. Project-authored charts live under `charts/`.
-Each chart template declares one resource, named after its kind in kebab-case;
-purpose suffixes distinguish multiple resources of the same kind. Participant
-and model loops remain inside the corresponding resource template.
+Helmfile owns 16 releases. Each model has a dedicated chart, release, namespace
+and S3 prefix. The shared pair-training workstation uses one Dex account named
+`admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
+
+## Domains and ownership
+
+| Domain | Namespace | Owner |
+| --- | --- | --- |
+| Chat | qwen3-0-6b | charts/qwen3-0-6b |
+| Embeddings | qwen3-embedding-0-6b | charts/qwen3-embedding-0-6b |
+| Reranker | qwen3-reranker-0-6b | charts/qwen3-reranker-0-6b |
+| Shared terminal/editor | bastion | charts/bastion |
+| HTTPS, routes, CA and API key | gateway | charts/gateway |
+| Identity | dex | Official Dex chart + domain post-renderer |
+| Browser session | oauth2-proxy | Official oauth2-proxy chart + domain post-renderer |
+| S3 and prefix-scoped IAM | rustfs | Official RustFS chart + domain post-renderer |
+| Administration dashboard | headlamp | Official Headlamp chart |
+
+Infrastructure controllers retain their own namespaces: `kserve`, `cert-manager`,
+`envoy-gateway`, `agent-router` and `local-path-provisioner`. The Envoy Gateway
+controller configures the proxy in `gateway`; user traffic reaches the proxy,
+not the controller. Controller CRDs can have a separate upstream release.
+
+Each authored template declares one resource in block-style YAML. A model chart
+owns its local Secrets and credential/import hooks. RustFS owns IAM users and
+publishes credentials in model-specific Secrets; its RBAC grants each model's
+credential Job access only to its own Secret. Serving Pods receive read-only S3
+credentials and do not mount a Kubernetes API token.
+The list policy uses `StringLikeIfExists` for the prefix because KServe first
+calls HeadBucket without a prefix. Explicit listings of another model's prefix
+and reads of its objects remain denied; this is not a promise to hide bucket
+metadata from requests without a prefix.
+
+The centralized `lab-bootstrap` release is removed. Domain Jobs generate stable
+credentials locally. Cross-domain contracts are deliberately narrow:
+
+- Dex publishes `oidc-client` for oauth2-proxy, separately from the admin password.
+- Gateway publishes the API key and a public CA ConfigMap for the bastion.
+- RustFS publishes one reader/writer credential Secret per model.
+- Dex/oauth2-proxy own their cross-namespace Gateway ReferenceGrants.
+
+`platform/helm/plugins/domain-render` is a repository-local Helm 4 subprocess
+post-renderer. It appends declarative resources and hook scripts from
+`platform/helm/domains` to the official upstream release. It makes no Kubernetes
+calls and generates no secrets during rendering. This keeps upstream downloads
+direct and pinned while keeping domain additions under the same release owner.
+Helm 4.3.1's combined post-render strategy includes the appended Helm hooks.
 
 ## Local image prerequisite
 
-GHCR rejected publication with the available token; the operator selected local
-image import. A new VM needs this explicit import before lab-bootstrap can run.
-Build on the host with `bash oci/prepare.sh` or reuse the previously qualified archive.
-With the native VM SSH destination in `VM`:
+GHCR publication remains unavailable with the previously supplied token. The
+qualified bastion image is also the current hook tooling image: it already
+contains the locked `huggingface_hub`, boto3, bcrypt and RustFS rc dependencies.
+No additional image build is required for the Python import implementation.
+
+Build with `bash oci/prepare.sh` or reuse a qualified OCI archive. A fresh VM must
+receive the image before these domain hooks can run:
 
 ```sh
 VM="$(id -un)@$(cat .devenv/.uuid).local"
@@ -21,102 +65,133 @@ ssh "$VM" 'sudo k0s ctr images import --digests -' < dist/bastion.oci.tar
 ssh "$VM" "sudo k0s ctr images tag --force localhost/ai-inference-basics-bastion:dev $(cat dist/bastion.ref)"
 ```
 
-Set `toolsImage` in `platform/helm/values/lab.yaml.gotmpl` to `dist/bastion.ref`.
-Copy updated charts and Helmfile inputs to `/etc/ai-inference-basics/` in an existing
-guest, then run `sudo systemctl restart platform-k0s-bootstrap.service` there.
-Synchronize chart directories including removal of obsolete template filenames;
-overlaying a split chart onto its old combined templates would render duplicates.
-Ignition's custom copies populate these paths only on first boot. Keep the ignored
-`.devenv/config.k` aligned with all authored-chart files and component values.
+When using a different qualified image, set `LAB_TOOLS_IMAGE` consistently for
+Helmfile and its post-renderer (including the bootstrap service environment).
+The default reference is pinned in `values/lab.yaml.gotmpl` and `render-domain.sh`.
+`IfNotPresent` reuses the imported image; it does not make an unpublished localhost
+image remotely available.
 
-## Browser and API access
+Ignition copies chart sources, Helm inputs, the renderer and plugin descriptor
+to `/etc/ai-inference-basics`. Local config.k uses file globs so template splits
+are included automatically. Updating sources does not update an existing guest:
+synchronize those directories, remove obsolete templates, and update the unit
+before restarting `platform-k0s-bootstrap.service`.
 
-The native VM hostname exposes HTTPS on port 30443. Trust the public lab CA from
-`gateway/lab-root-ca` (key `tls.crt`) in your browser or use it with `curl --cacert`.
-The CA private key must stay in Kubernetes.
+## Model import and activation
 
-Retrieve credentials privately from inside the VM:
+Each model's `files/model.lock.json` pins the Hugging Face repository revision
+and each file's size/SHA-256. The import Job uses the Python `huggingface_hub`
+package, verifies the downloaded bytes, and uploads them through boto3:
+
+```text
+s3://models/qwen3-0-6b/<revision>/...
+s3://models/qwen3-embedding-0-6b/<revision>/...
+s3://models/qwen3-reranker-0-6b/<revision>/...
+```
+
+Existing objects are reused when size and SHA metadata agree; their contents are
+not downloaded again for hashing. A mismatch fails the immutable import.
+
+Models default to `serving.replicas: 0`. This maps to KServe's supported
+`serving.kserve.io/stop: "true"` annotation. `minReplicas: 1` describes the active
+state; the explicit stop annotation prevents inference Pods from running. The
+post-sync check expects `Stopped=True` and zero model Pods, not `Ready=True`.
+Imports still run by default and temporarily consume CPU, memory and disk.
+
+Inside the VM, activate only the chat model:
+
+```sh
+export LAB_HOSTNAME="$(hostname)"
+export HELM_PLUGINS=/etc/ai-inference-basics/platform/helm/plugins
+LAB_MODEL_REPLICAS=1 helmfile \
+  -f /etc/ai-inference-basics/platform/helm/helmfile.yaml.gotmpl \
+  -l name=qwen3-0-6b sync
+```
+
+Set `LAB_MODEL_REPLICAS=0` to stop it. Select all three names to activate all APIs.
+The lab accepts 0 or 1 replica per model. There is no automatic wake-up on an API
+request. A normal full bootstrap without the environment override stops models.
+For active models, the readiness hook checks the desired Deployment and KServe
+Ready/UpToDate via JSONPath, accommodating stale observedGeneration in v0.21.0.
+
+## Admin access
+
+Use `https://<native-VM-hostname>:30443` over the native bridge/mDNS connection.
+Trust the public lab CA. The server certificate terminates TLS at the Gateway;
+Dex and oauth2-proxy's internal Services still use HTTP.
+
+| Path | Purpose |
+| --- | --- |
+| `/terminal/` | Shared ttyd/Zellij CLI session |
+| `/code/` | Shared code-server and workspace files |
+| `/headlamp/` | Full Kubernetes administration |
+| `/v1/chat/completions` | Bearer API, model `qwen3-0-6b` |
+| `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
+| `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
+
+Dex has one account named `admin`; its login email is `admin@example.test`.
+Retrieve the qualification file privately inside the VM:
 
 ```sh
 umask 077
-kubectl -n gateway get secret lab-access -o jsonpath='{.data.credentials\.json}' |
-  base64 -d > "$HOME/lab-credentials.json"
-kubectl -n gateway get secret lab-root-ca -o jsonpath='{.data.tls\.crt}' |
-  base64 -d > "$HOME/lab-ca.crt"
+kubectl -n dex get secret admin-access -o jsonpath='{.data.credentials\.json}' |
+  base64 -d > "$HOME/admin-identity.json"
+kubectl -n gateway get secret lab-api-key -o json |
+  jq --slurpfile admin "$HOME/admin-identity.json" \
+    '(.data.lab | @base64d) as $key | $admin[0] | {username,email,password,api_key:$key}' \
+    > "$HOME/lab-credentials.json"
+rm "$HOME/admin-identity.json"
+kubectl -n gateway get configmap lab-ca -o jsonpath='{.data.ca\.crt}' > "$HOME/lab-ca.crt"
 ```
 
-The JSON contains `accounts.a` (alice@example.test), `accounts.b` (bob@example.test)
-and `api_key`, along with internal credentials. Keep it out of logs and version
-control; give participants only their own login and the shared model API key.
+Both bastion and Headlamp use ServiceAccounts bound to `cluster-admin`. The
+bastion's Linux user remains UID 1000; Kubernetes administration is authorized
+by its ServiceAccount. Browser cookies do not authorize model API calls.
+The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust for clients.
 
-| Path | Access |
-| --- | --- |
-| `/terminal-a/`, `/code-a/` | Alice's ttyd/Zellij and code-server |
-| `/terminal-b/`, `/code-b/` | Bob's ttyd/Zellij and code-server |
-| `/headlamp/` | Shared read-only Kubernetes browser |
-| `/v1/chat/completions` | Bearer key; model `ai-inference-basics-chat` |
-| `/v1/embeddings` | Bearer key; model `ai-inference-basics-embeddings` |
-| `/cohere/v2/rerank` | Bearer key; model `ai-inference-basics-rerank` |
+## Validation
 
-Browser access uses one oauth2-proxy/Dex session. The localhost-only Caddy sidecar
-authorizes participant paths using the authenticated email. NetworkPolicies restrict
-direct access to bastions, Headlamp and model backends. Browser cookies do not
-authorize APIs. Bastions have `OPENAI_BASE_URL`, `OPENAI_API_KEY` and lab CA trust
-configured for the internal HTTPS Gateway.
-Zellij may display first-use tips or a keybinding dialog; this is a local UI
-preference rather than another authentication step.
-
-## Model storage and readiness
-
-Three standard `InferenceService` resources serve pinned Qwen3 chat, embedding and
-reranker snapshots on CPU. `models.lock.json` pins revisions and file SHA-256 hashes.
-The import hook verifies downloads before S3 upload and reuses objects matching
-the recorded size/hash metadata. KServe's initializer reads RustFS using a
-models-bucket-only, read-only IAM identity; imports use a separate writer.
-
-KServe v0.21.0 can leave `status.observedGeneration` stale during otherwise-ready
-upgrades. The models release disables generic Helm waiting, but still waits for
-its import hook. Its explicit postsync hook compares desired image, arguments,
-resources and storage URI with the generated Deployments, verifies rollout, then
-checks JSONPath `Ready=True` and model transition `UpToDate`.
-
-## Qualification
-
-Offline: `python tests/validate_storage.py`, `python tests/validate_lab.py`, the
-platform-unit and RustFS-credential tests, and strict lint of the four authored
-charts. Helm, Helmfile and the dependencies in `requirements-dev.txt` are required.
-
-Runtime checks require explicit authorization and a deployed lab:
+Offline commands require Helm 4.3.1, Helmfile and `requirements-dev.txt`:
 
 ```sh
-export LAB_ORIGIN="https://$(cat .devenv/.uuid).local:30443"
-export LAB_CREDENTIALS_FILE=/private/path/lab-credentials.json
-export LAB_CA_FILE=/private/path/lab-ca.crt
-python tests/qualify_model_apis.py
-npm ci --prefix tests/browser
-node tests/browser/qualify.mjs
-# Run with the lab administrator kubeconfig, for example inside the VM:
-bash tests/qualify_participants.sh
+export HELM_PLUGINS="$PWD/platform/helm/plugins"
+python tests/validate_storage.py
+python tests/validate_lab.py
+python tests/test_platform_units.py
+python tests/test_rustfs_credentials.py
 ```
 
-For a short `vllm bench serve` run, copy `tests/qualify_benchmark.py` into a
-participant terminal container and pipe `models.lock.json` to its stdin. It checks
-the pinned tokenizer files and submits three requests through the internal HTTPS
-Gateway, printing only aggregate metrics. The qualification run completed all
-three requests (about 3.84 seconds and 12.51 output tokens/s); this tiny CPU sample
-is a functional check, not a capacity estimate.
+Runtime checks require the deployed lab and explicit authorization:
 
-The API check verifies TLS with the CA. Chromium accepts the lab certificate for
-browser interaction testing; this is separate from the API TLS verification.
-Browser test failures report only the phase to avoid leaking login/OIDC values.
-Reports and credentials remain development-local and untracked.
+- `tests/qualify_admin.sh`: actual bastion and Headlamp cluster-admin permissions
+  and the shared terminal/editor volume.
+- `tests/browser/qualify.mjs`: one Dex login, real terminal command, editor,
+  Headlamp, anonymous-header spoof rejection and API-cookie rejection.
+- `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
+  embeddings and reranking; models must be activated first.
+- `tests/qualify_model_storage.py`: run inside the bastion with a JSON map of model
+  locks on stdin; verify own-prefix reads and rejection of writes/other prefixes.
+- `tests/qualify_benchmark.py`: run inside the bastion with the chat lock on stdin;
+  download only the verified tokenizer and submit three requests through HTTPS.
 
-## Observed deployment
+Browser/API tests consume `LAB_ORIGIN`, `LAB_CREDENTIALS_FILE` (a private JSON
+object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
+Chromium accepts the lab certificate for interaction tests; API TLS verification
+is performed separately with the CA. Reports and credentials stay untracked.
 
-All 15 releases and the complete bootstrap service succeeded in the existing VM.
-The three model services are Ready; browser/API and isolation checks passed.
-The guest uses about 30 GiB of its 64-GiB disk and has about 30 GiB of memory
-available with the models loaded. No VM destruction or recreation was performed
-for these stages. A clean-VM bootstrap of the extended lab remains conditional on
-the explicit local-image import described above. Beszel cleanup authentication
-is the separately deferred issue.
+The authorized VM qualification passed the admin browser journey, both
+cluster-admin identities, prefix-scoped S3 checks, all three real APIs and the
+bastion benchmark. Reexecuting the complete bootstrap preserved nine credential
+Secrets and the workspace PVC, deployed all 16 releases, and returned all three
+models to Stopped=True with zero inference Pods.
+
+## Existing installations of the previous layout
+
+This layout changes Helm ownership and model namespaces. Do not overlay it and
+blindly uninstall `lab-bootstrap` or `lab-gateway`: their release records still
+own certificates and routes. A migration must first preserve/adopt those resources
+under the new owners, retain old bastion PVCs, and validate the new identity and
+routes before retiring the old releases. S3 prefixes are new; old model objects
+can remain until their replacement is qualified. No automatic legacy-data deletion
+is part of this configuration. The current qualification began with foundation
+releases only, so it does not prove that legacy Helm ownership migration.

@@ -33,6 +33,9 @@ for name, (repository, revision) in MODELS.items():
             checksum = hashlib.sha256(data).hexdigest()
         files.append({'path': path, 'size': item['size'], 'sha256': checksum})
     result[name] = {'repository': repository, 'revision': revision, 'files': files}
-destination = Path(__file__).resolve().parent.parent / 'charts/ai-inference-models/files/models.lock.json'
-destination.write_text(json.dumps(result, indent=2) + '\n')
+charts = Path(__file__).resolve().parent.parent / 'charts'
+names = {'chat': 'qwen3-0-6b', 'embeddings': 'qwen3-embedding-0-6b', 'rerank': 'qwen3-reranker-0-6b'}
+for task, snapshot in result.items():
+    destination = charts / names[task] / 'files/model.lock.json'
+    destination.write_text(json.dumps(snapshot, indent=2) + '\n')
 print({name: sum(f['size'] for f in model['files']) for name, model in result.items()})

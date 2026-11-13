@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: lab-bootstrap
-  namespace: {{ .Release.Namespace }}
-data:
-  settings.json: {{ dict "hostname" .Values.hostname "nodePort" .Values.nodePort "users" .Values.users | toJson | quote }}
-  bootstrap.py: |
-{{ .Files.Get "files/bootstrap.py" | indent 4 }}

@@ -20,7 +20,7 @@ def request(path, body, token=key):
     return urlopen(Request(origin + path, data=json.dumps(body).encode(), headers=headers), context=context, timeout=180)
 
 
-chat = {'model': 'ai-inference-basics-chat', 'messages': [{'role': 'user', 'content': 'Reply only OK.'}],
+chat = {'model': 'qwen3-0-6b', 'messages': [{'role': 'user', 'content': 'Reply only OK.'}],
         'max_tokens': 64, 'temperature': 0, 'chat_template_kwargs': {'enable_thinking': False}}
 for token in (None, 'invalid-lab-key'):
     try:
@@ -36,11 +36,11 @@ assert result['choices'][0]['message']['content']
 with request('/v1/chat/completions', chat | {'stream': True, 'max_tokens': 8}) as response:
     events = response.read().decode()
 assert 'data: [DONE]' in events and '"choices"' in events
-with request('/v1/embeddings', {'model': 'ai-inference-basics-embeddings', 'input': ['hello', 'world']}) as response:
+with request('/v1/embeddings', {'model': 'qwen3-embedding-0-6b', 'input': ['hello', 'world']}) as response:
     embeddings = json.load(response)['data']
 assert len(embeddings) == 2 and len(embeddings[0]['embedding']) > 0
 assert all(math.isfinite(x) for row in embeddings for x in row['embedding'])
-with request('/cohere/v2/rerank', {'model': 'ai-inference-basics-rerank', 'query': 'What is the capital of France?',
+with request('/cohere/v2/rerank', {'model': 'qwen3-reranker-0-6b', 'query': 'What is the capital of France?',
                                   'documents': ['Paris is the capital of France.', 'Berlin is in Germany.'], 'top_n': 2}) as response:
     rerank = json.load(response)['results']
 assert len(rerank) == 2 and rerank[0]['index'] == 0

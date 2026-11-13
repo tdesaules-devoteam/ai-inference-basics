@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run inside a participant terminal; receive models.lock.json on stdin."""
+"""Run inside the admin terminal; receive the chat model.lock.json on stdin."""
 import hashlib
 import json
 import os
@@ -9,7 +9,7 @@ import sys
 import tempfile
 from urllib.request import urlopen
 
-model = json.load(sys.stdin)['chat']
+model = json.load(sys.stdin)
 os.umask(0o077)
 with tempfile.TemporaryDirectory(prefix='lab-bench-') as directory:
     target = Path(directory)
@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='lab-bench-') as directory:
         (target / entry['path']).write_bytes(data)
     command = ['vllm', 'bench', 'serve', '--backend', 'openai-chat',
                '--base-url', os.environ['OPENAI_BASE_URL'].removesuffix('/v1'),
-               '--endpoint', '/v1/chat/completions', '--model', 'ai-inference-basics-chat',
+               '--endpoint', '/v1/chat/completions', '--model', 'qwen3-0-6b',
                '--tokenizer', directory, '--dataset-name', 'random', '--num-prompts', '3',
                '--random-input-len', '32', '--random-output-len', '16',
                '--max-concurrency', '1', '--save-result', '--result-dir', directory,

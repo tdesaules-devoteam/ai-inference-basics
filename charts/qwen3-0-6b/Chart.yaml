@@ -1,0 +1,6 @@
+apiVersion: v2
+name: qwen3-0-6b
+description: Verified S3 import and CPU serving of Qwen3-0.6B
+type: application
+version: 0.1.0
+appVersion: "0.23.0"

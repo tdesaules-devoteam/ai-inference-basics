@@ -1,55 +1,48 @@
 # Local lab architecture
 
-This page records the former umbrella architecture. For the current Helmfile
-storage milestone and systemd unit layout, see [platform setup](platform.md).
+The lab runs native single-node k0s in a 24-vCPU, 48-GiB RAM, 64-GiB Fedora CoreOS
+VM. The upstream devenv lifecycle renders KCL/Butane/Ignition; focused systemd units
+install native tools and invoke Helmfile. There is no nested container cluster.
 
-`task up` obtains the checkout identity through the native devenv task, prepares
-the bastion OCI archive and umbrella package, and renders the final configuration
-and credentials on the workstation. The original devenv lifecycle then creates
-the VM through KCL/Butane/Ignition. Normal package/tool installation remains intact.
+Helmfile is the only release reconciler. Infrastructure charts are fetched directly
+from upstream with manifest-digest pins for OCI and exact HTTP chart versions.
+Project charts own five application domains: gateway, bastion and the three models.
+Each model's chart, release, namespace and S3 prefix have the same normalized name.
 
-The historical flow rendered the hostname and bastion digest from the k0s source
-(now located at `platform/k0s/k0s.yaml`) into `.local/build/runtime/k0s.yaml`, copied to
-`/etc/k0s/k0s.yaml`. It is not transformed again inside the VM. A second private
-copy supplies credential manifests to the k0s manifest deployer.
+```text
+Browser / API client
+        |
+        | HTTPS :30443, native VM hostname
+        v
+gateway: Envoy + certificates + routes
+        |                         |
+        | browser                 | static Bearer API key
+        v                         v
+oauth2-proxy <-- OIDC --> dex      Agent Router
+        |                         |
+        +--> bastion              +--> qwen3-0-6b
+        |    ttyd/Zellij          +--> qwen3-embedding-0-6b
+        |    code-server          +--> qwen3-reranker-0-6b
+        +--> headlamp                    |
+                                         | read-only S3 initialization
+                                         v
+                                       RustFS
+```
 
-The systemd unit in config.k contains the k0s download, SHA-256 verification,
-installation in `/usr/local/bin/k0s`, controller startup and OCI import inline.
-No bootstrap.sh, provision.py or artifacts.json is copied to the guest.
-The host-side readiness check only observes k0s/Helm/model readiness.
+Envoy Gateway in `envoy-gateway` is the control plane configuring the proxy in
+`gateway`. KServe in `kserve` manages the model InferenceServices. TLS terminates
+at the Gateway; browser application Services use internal HTTP.
 
-## One umbrella, ordered k0s-owned releases
+One Dex account, `admin`, uses the shared workspace and Headlamp. Both Kubernetes
+ServiceAccounts have cluster-admin rights. Authentication at oauth2-proxy remains
+mandatory; browser cookies are not accepted as model API credentials.
 
-All four entries reference `/var/lib/k0s/charts/ai-inference-basics.tgz`:
+Models start stopped through KServe's stop annotation. Imports use huggingface_hub
+with pinned revisions, SHA-256 verification and boto3 uploads. Each model receives
+distinct reader/writer identities restricted to its S3 prefix. Activation is
+explicit; there is no request-triggered scale-from-zero.
 
-1. `ai-inference-basics-foundation`: Envoy Gateway and cert-manager.
-2. `ai-inference-basics-crds`: KServe and Agent Router CRDs.
-3. `ai-inference-basics-controllers`: KServe and Agent Router controllers.
-4. `ai-inference-basics`: access, models, bastions and observability.
-
-`concurrencyLevel: 1`, explicit order, timeouts and `forceUpgrade: false` express
-the intended bootstrap order. Each release enables a disjoint subset of the same umbrella;
-offline tests reject cross-release resource ownership conflicts. These stages are
-necessary for CRDs/webhooks, not four independently maintained platform charts.
-
-k0s owns reconciliation. Guest bootstrap waits for its Chart resources to become
-deployed; it does not execute `helm install` or `helm upgrade`.
-
-The selected k0s implementation hardcodes concurrent Chart reconciliation and does
-not copy the configured order into the generated Chart spec. Do not treat those
-configuration fields as a proven dependency barrier. Native retries must converge
-as CRDs/controllers appear; this must be qualified on a fresh VM. Bootstrap checks
-the actual release/revision/error status fields and model readiness before success.
-
-## Access
-
-Browser → VM's native mDNS hostname, HTTPS 30443 → Envoy → oauth2-proxy/Dex →
-Zellij bastions, Headlamp, Grafana and previews. No workstation tunnel is needed.
-
-API clients → Envoy static Bearer-key policy → Agent Router → KServe-managed vLLM.
-Chat is an LLMInferenceService without a scheduler; pooling models are
-InferenceServices. The aliases are ai-inference-basics-chat,
-ai-inference-basics-embeddings and ai-inference-basics-rerank.
-
-The local VM is configured for 24 vCPUs, 48 GiB RAM and 64 GiB disk. Cloud provisioning
-has been removed from this version. The empty cloud directories are reserved only.
+Credential generation is domain-local. A deterministic Helm 4 post-renderer adds
+Jobs and RBAC to upstream releases where chart extension points are insufficient.
+It does not run provisioning while rendering. See [lab operations](lab.md) for
+ownership, access, model activation and qualification.

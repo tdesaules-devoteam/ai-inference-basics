@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Render the complete lab and validate cross-chart isolation, model and credential contracts."""
+"""Validate domain ownership, admin access, stopped models and pinned artifacts."""
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
-import hashlib
 import tempfile
 
 import yaml
 
 root = Path(__file__).resolve().parent.parent
 os.environ.setdefault('LAB_HOSTNAME', 'fixture.local')
-raw = subprocess.check_output(['helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), 'template'], text=True)
-objects = list(filter(None, yaml.safe_load_all(raw)))
+os.environ.setdefault('HELM_PLUGINS', str(root / 'platform/helm/plugins'))
+os.environ.pop('LAB_MODEL_REPLICAS', None)
+helmfile = ['helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl')]
+objects = list(filter(None, yaml.safe_load_all(subprocess.check_output(helmfile + ['template'], text=True))))
 keys = set()
 images = []
 for obj in objects:
@@ -34,9 +36,53 @@ for obj in objects:
         for name, content in obj.get('data', {}).items():
             if name.endswith('.py'):
                 compile(content, name, 'exec')
-    elif obj['kind'] == 'Secret':
-        assert metadata['name'] not in {'lab-access', 'lab-api-key', 'model-reader', 'model-writer', 'oauth-config', 'dex-config'}
 assert all(re.search(r'@sha256:[a-f0-9]{64}$', image) for image in images), images
+
+def find(kind, name, namespace):
+    return next(o for o in objects if o['kind'] == kind and o['metadata']['name'] == name
+                and o['metadata'].get('namespace', '') == namespace)
+
+names = ('qwen3-0-6b', 'qwen3-embedding-0-6b', 'qwen3-reranker-0-6b')
+assert len([o for o in objects if o['kind'] == 'InferenceService']) == 3
+assert not any(o['kind'].startswith('LLMInference') for o in objects)
+for name in names:
+    model = find('InferenceService', name, name)
+    assert model['metadata']['annotations']['serving.kserve.io/stop'] == 'true'
+    assert model['spec']['predictor']['serviceAccountName'] == 'model-reader'
+    assert model['spec']['predictor']['model']['runtime'] == name
+    lock = json.loads((root / 'charts' / name / 'files/model.lock.json').read_text())
+    assert model['spec']['predictor']['model']['storageUri'] == f's3://models/{name}/{lock["revision"]}/'
+    assert all(re.fullmatch('[a-f0-9]{64}', f['sha256']) and f['size'] > 0 for f in lock['files'])
+    find('Job', 'model-import', name)
+    find('Job', 'model-credentials', name)
+    role = find('Role', name + '-credentials', 'rustfs')
+    assert role['rules'][0]['resourceNames'] == ['s3-' + name]
+    assert role['rules'][0]['verbs'] == ['get']
+    assert (root / 'charts' / name / 'files/kube.py').read_bytes() == (root / 'platform/helm/files/kube.py').read_bytes()
+deployment = find('Deployment', 'bastion', 'bastion')
+assert len(deployment['spec']['template']['spec']['containers']) == 2
+assert deployment['spec']['template']['spec']['serviceAccountName'] == 'bastion'
+find('PersistentVolumeClaim', 'bastion', 'bastion')
+assert find('ClusterRoleBinding', 'bastion-admin', '')['roleRef']['name'] == 'cluster-admin'
+headlamp_binding = next(o for o in objects if o['kind'] == 'ClusterRoleBinding'
+                        and any(s.get('namespace') == 'headlamp' for s in o.get('subjects', [])))
+assert headlamp_binding['roleRef']['name'] == 'cluster-admin'
+for domain in ('dex', 'oauth2-proxy', 'rustfs'):
+    find('Job', domain + '-domain', domain)
+    role = find('Role', domain + '-domain', domain)
+    assert all(r['resources'] == ['secrets'] for r in role['rules'])
+find('Certificate', 'lab-root-ca', 'gateway')
+find('Certificate', 'lab-tls', 'gateway')
+assert find('SecurityPolicy', 'model-api-key', 'gateway')['spec']['apiKeyAuth']['extractFrom'] == [{'headers': ['Authorization']}]
+assert not any(o['metadata'].get('namespace') in ('inference-service', 'lab-a', 'lab-b') for o in objects)
+state = yaml.safe_load(subprocess.check_output(helmfile + ['build'], text=True))
+releases = {r['name']: r for r in state['releases']}
+assert len(releases) == 16
+assert 'lab-bootstrap' not in releases and 'models' not in releases
+for name in names:
+    assert releases[name]['namespace'] == name
+    assert 'rustfs/rustfs' in releases[name]['needs']
+assert 'oauth2-proxy/oauth2-proxy' not in releases['gateway']['needs']
 http_charts = [
     ('dex', 'https://charts.dexidp.io', '0.26.0', '3b22c1447935221a040870508274bff85a68b2b841902097d6fcacb3e9badd03'),
     ('headlamp', 'https://kubernetes-sigs.github.io/headlamp/', '0.46.0', 'faa471a8c5c55125b3dceed1cf73000e1ced18f07e2088e5e12e75292fb9ae62'),
@@ -46,35 +92,5 @@ with tempfile.TemporaryDirectory() as directory:
     for chart, repo, version, digest in http_charts:
         subprocess.run(['helm', 'pull', chart, '--repo', repo, '--version', version, '--destination', directory], check=True)
         assert hashlib.sha256((Path(directory) / f'{chart}-{version}.tgz').read_bytes()).hexdigest() == digest
-models = [o for o in objects if o['kind'] == 'InferenceService']
-assert len(models) == 3 and not any(o['kind'].startswith('LLMInference') for o in objects)
-for model in models:
-    assert model['metadata']['namespace'] == 'inference-service'
-    predictor = model['spec']['predictor']
-    assert predictor['serviceAccountName'] == 'model-reader'
-    assert re.fullmatch(r's3://models/(chat|embeddings|rerank)/[a-f0-9]{40}/', predictor['model']['storageUri'])
-for participant in ('a', 'b'):
-    deployment = next(o for o in objects if o['kind'] == 'Deployment' and o['metadata']['name'] == 'bastion-' + participant)
-    spec = deployment['spec']['template']['spec']
-    assert spec['serviceAccountName'] == 'bastion-' + participant
-    assert next(v for v in spec['volumes'] if v['name'] == 'workspace')['persistentVolumeClaim']['claimName'] == 'bastion-' + participant
-    namespace = next(o for o in objects if o['kind'] == 'Namespace' and o['metadata']['name'] == 'lab-' + participant)
-    assert namespace['metadata']['labels']['pod-security.kubernetes.io/enforce'] == 'restricted'
-    assert not any(o['kind'] == 'ClusterRoleBinding' and o['roleRef']['name'] == 'cluster-admin'
-                   and any(s.get('name') == 'bastion-' + participant for s in o.get('subjects', [])) for o in objects)
-proxy = next(o for o in objects if o['kind'] == 'Deployment' and o['metadata']['name'] == 'oauth2-proxy')
-assert len(proxy['spec']['template']['spec']['containers']) == 2
-router = next(o for o in objects if o['kind'] == 'ConfigMap' and o['metadata']['name'] == 'browser-router')['data']['Caddyfile']
-assert 'bind 127.0.0.1' in router and 'respond @deniedA 403' in router and 'respond @deniedB 403' in router
-policy = next(o for o in objects if o['kind'] == 'SecurityPolicy' and o['metadata']['name'] == 'model-api-key')
-assert policy['metadata']['namespace'] == 'gateway'
-assert policy['spec']['apiKeyAuth']['extractFrom'] == [{'headers': ['Authorization']}]
-lock = json.loads((root / 'charts/ai-inference-models/files/models.lock.json').read_text())
-assert set(lock) == {'chat', 'embeddings', 'rerank'}
-for model in lock.values():
-    assert re.fullmatch(r'[a-f0-9]{40}', model['revision'])
-    assert any(f['path'].endswith('.safetensors') for f in model['files'])
-    assert all(re.fullmatch(r'[a-f0-9]{64}', f['sha256']) and f['size'] > 0 for f in model['files'])
-print(json.dumps({'inference_services': len(models), 'pinned_workload_images': len(images),
-                  'model_bytes': sum(f['size'] for m in lock.values() for f in m['files']),
-                  'isolated_participants': 2, 'runtime_tested': False}))
+print(json.dumps({'releases': len(releases), 'models_stopped': 3, 'shared_admin_workspace': True,
+                  'pinned_workload_images': len(images), 'runtime_tested': False}))

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bastion
+  namespace: {{ $.Release.Namespace }}
+spec:
+  selector:
+    app: bastion
+  ports:
+    - name: terminal
+      port: 7681
+      targetPort: 7681
+    - name: editor
+      port: 8080
+      targetPort: 8080

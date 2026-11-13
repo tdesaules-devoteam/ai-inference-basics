@@ -33,6 +33,12 @@
 - Dex and oauth2-proxy authenticate browser access, including ttyd with Zellij CLI.
   Model APIs use a separate static Bearer key enforced at Envoy Gateway.
 - Chat, embeddings and reranker use InferenceService. No llm-d/EPP.
+- Each model has its own chart, release, namespace and matching S3 prefix:
+  qwen3-0-6b, qwen3-embedding-0-6b, qwen3-reranker-0-6b. Models start stopped.
+- One shared admin account uses the bastion workspace and Headlamp, both with
+  cluster-admin access. No per-participant workspaces or namespaces.
+- Domain credential Jobs own their local Secrets. Upstream chart extensions remain
+  in the same Helm release through the repository's Helm 4 post-renderer.
 - Local Path Provisioner runs in local-path-provisioner; RustFS runs in rustfs on a PVC.
 - Initialize the six application buckets through RustFS extraManifests; no dedicated
   storage-bootstrap chart or benchmark-results/platform-checks buckets in new installs.

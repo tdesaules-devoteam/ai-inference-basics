@@ -1,0 +1,23 @@
+apiVersion: aigateway.envoyproxy.io/v1beta1
+kind: AIGatewayRoute
+metadata:
+  name: model-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostnames:
+    - {{ .Values.hostname | quote }}
+    - ai-inference-basics.gateway.svc.cluster.local
+  parentRefs:
+    - name: ai-inference-basics
+      kind: Gateway
+      group: gateway.networking.k8s.io
+  rules:
+    {{- range $name := list "qwen3-0-6b" "qwen3-embedding-0-6b" "qwen3-reranker-0-6b" }}
+    - matches:
+        - headers:
+            - type: Exact
+              name: x-ai-eg-model
+              value: {{ $name }}
+      backendRefs:
+        - name: {{ $name }}
+    {{- end }}

@@ -1,9 +1,0 @@
-{{- range $ns := list "dex" "oauth2-proxy" "bastion" "headlamp" "inference-service" }}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ $ns }}
-  annotations:
-    helm.sh/resource-policy: keep
-{{- end }}

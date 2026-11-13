@@ -28,6 +28,8 @@ releases:
     namespace: rustfs
     chart: rustfs/rustfs
     version: "1.0.5"
+    postRenderer: domain-render
+    postRendererArgs: [rustfs]
     needs:
       - local-path-provisioner/local-path-provisioner
     values:
@@ -106,60 +108,14 @@ releases:
     values:
       - values/kserve.yaml
 
-  - name: lab-bootstrap
-    namespace: gateway
-    chart: ../../charts/ai-inference-bootstrap
-    needs:
-      - cert-manager/cert-manager
-      - rustfs/rustfs
-    values:
-      - values/lab.yaml.gotmpl
-
-  - name: models
-    namespace: inference-service
-    chart: ../../charts/ai-inference-models
-    # KServe can leave status.observedGeneration stale on otherwise-ready upgrades.
-    # Check desired workload convergence and Ready explicitly; hooks still wait.
-    wait: false
-    timeout: 3600
-    needs:
-      - kserve/kserve
-      - gateway/lab-bootstrap
-    values:
-      - values/lab.yaml.gotmpl
-    hooks:
-      - events: [postsync]
-        showlogs: true
-        command: timeout
-        args:
-          - "1200"
-          - bash
-          - -ec
-          - |
-            for model in chat embeddings rerank; do
-              name="ai-inference-basics-$model"
-              until
-                desired=$(kubectl -n inference-service get inferenceservice "$name" -o json)
-                runtime=$(kubectl -n inference-service get servingruntime "vllm-cpu-$model" -o json)
-                kubectl -n inference-service get deployment "$name-predictor" -o json | jq -e \
-                  --arg uri "$(echo "$desired" | jq -r .spec.predictor.model.storageUri)" \
-                  --arg image "$(echo "$runtime" | jq -r '.spec.containers[0].image')" \
-                  --argjson args "$(echo "$runtime" | jq -c '.spec.containers[0].args')" \
-                  --argjson resources "$(echo "$desired" | jq -c '.spec.predictor.model.resources')" \
-                  '.spec.template.metadata.annotations["internal.serving.kserve.io/storage-initializer-sourceuri"] == $uri and
-                   any(.spec.template.spec.containers[]; .name == "kserve-container" and .image == $image and .args == $args and .resources == $resources)' >/dev/null
-              do sleep 3; done
-              kubectl -n inference-service rollout status "deployment/$name-predictor" --timeout=300s
-              kubectl -n inference-service wait "inferenceservice/$name" --for=jsonpath='{.status.conditions[?(@.type=="Ready")].status}'=True --timeout=300s
-              kubectl -n inference-service wait "inferenceservice/$name" --for=jsonpath='{.status.modelStatus.transitionStatus}'=UpToDate --timeout=300s
-            done
-
   - name: dex
     namespace: dex
     chart: dex/dex
     version: "0.26.0"
+    postRenderer: domain-render
+    postRendererArgs: [dex]
     needs:
-      - gateway/lab-bootstrap
+      - gateway/gateway
     values:
       - values/dex.yaml
 
@@ -168,15 +124,16 @@ releases:
     chart: headlamp/headlamp
     version: "0.46.0"
     needs:
-      - gateway/lab-bootstrap
+      - gateway/gateway
     values:
       - values/headlamp.yaml
 
   - name: bastion
     namespace: bastion
-    chart: ../../charts/ai-inference-bastion
+    chart: ../../charts/bastion
     needs:
-      - gateway/lab-bootstrap
+      - gateway/gateway
+      - local-path-provisioner/local-path-provisioner
     values:
       - values/lab.yaml.gotmpl
 
@@ -184,6 +141,8 @@ releases:
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
     version: "10.7.4"
+    postRenderer: domain-render
+    postRendererArgs: [oauth2-proxy]
     needs:
       - dex/dex
       - bastion/bastion
@@ -193,15 +152,40 @@ releases:
       - podAnnotations:
           checksum/browser-router: '{{ readFile "values/oauth2-proxy.yaml" | sha256sum }}'
 
-  - name: lab-gateway
+  - name: gateway
     namespace: gateway
-    chart: ../../charts/ai-inference-gateway
+    chart: ../../charts/gateway
+    wait: false
     needs:
       - agent-router/agent-router
-      - oauth2-proxy/oauth2-proxy
     values:
       - values/lab.yaml.gotmpl
     hooks:
       - events: [postsync]
         command: kubectl
         args: [-n, gateway, wait, gateway/ai-inference-basics, --for=condition=Programmed, --timeout=180s]
+
+{{- range $model := list "qwen3-0-6b" "qwen3-embedding-0-6b" "qwen3-reranker-0-6b" }}
+  - name: {{ $model }}
+    namespace: {{ $model }}
+    chart: ../../charts/{{ $model }}
+    wait: false
+    timeout: 3600
+    needs:
+      - kserve/kserve
+      - rustfs/rustfs
+      - gateway/gateway
+    values:
+      - values/lab.yaml.gotmpl
+      - serving:
+          replicas: {{ env "LAB_MODEL_REPLICAS" | default "0" }}
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: timeout
+        args:
+          - "1200"
+          - bash
+          - files/check-model.sh
+          - {{ $model }}
+{{- end }}

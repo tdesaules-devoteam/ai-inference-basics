@@ -1,20 +1,22 @@
 # Acceptance
 
-Offline checks cover the k0s YAML, ordered chart rendering, archive checksums,
-image pins, cross-release ownership and the config.k/Butane rendering contract.
-They do not start a VM.
+Offline checks validate upstream archive checksums, digest-pinned workload images,
+unique ownership, domain namespaces, embedded scripts, model locks and stopped
+defaults. Strict Helm lint covers active/stopped settings; KCL/Butane checks verify
+all source files are copied exactly. Offline checks do not constitute boot evidence.
 
-After explicit operator authorization, qualify a fresh `task up`:
+After explicit VM authorization:
 
-- Fedora CoreOS resource sizing, CPU flags and correct repository workspace share.
-- Normal devenv provisioning completes; native k0s and instructor tools are usable.
-- Four k0s Helm Chart resources reconcile in order from the local archive.
-- Browser access works directly through the VM hostname, without a host tunnel.
-- Two Dex accounts and independent Zellij tokens work; unauthorized access fails.
-- Chat JSON/SSE, embedding dimension/repeatability and reranker relevance pass.
-- Bearer-key enforcement, NetworkPolicies and prefix-cache behavior are verified.
-- Metrics, logs and correlated traces are retrievable through OpenTelemetry.
-- `task down` destroys the VM; another `task up` rebuilds the lab from scratch.
+- The full 16-release Helmfile bootstrap completes successfully.
+- One admin login reaches ttyd/Zellij, code-server and Headlamp over native HTTPS.
+- Bastion and Headlamp have actual cluster-admin permissions.
+- Anonymous identity-header spoofing fails, and browser cookies cannot authorize APIs.
+- All three verified model snapshots are present under their named S3 prefixes.
+- Each reader can read its own model but cannot write or read another model's objects.
+- Models initially report Stopped=True with zero inference Pods.
+- Explicit activation produces real chat/SSE, embeddings and reranking responses.
+- A short vLLM benchmark succeeds from the bastion through the internal Gateway.
+- A final bootstrap preserves credentials/PVCs and restores the stopped default.
 
-Development evidence may be written to ignored reports/. No cloud or GPU acceptance
-is claimed for this local CPU revision.
+Scripts and prerequisites are listed in [lab validation](lab.md#validation).
+Observability and GPU acceptance remain future milestones. Reports stay ignored.

@@ -17,6 +17,7 @@ Environment=PATH=/usr/local/bin:/usr/bin:/usr/sbin
 Environment=HELM_CACHE_HOME=/var/lib/ai-inference-basics/platform/helm/cache
 Environment=HELM_CONFIG_HOME=/var/lib/ai-inference-basics/platform/helm/config
 Environment=HELM_DATA_HOME=/var/lib/ai-inference-basics/platform/helm/data
+Environment=HELM_PLUGINS=/etc/ai-inference-basics/platform/helm/plugins
 Environment=KUBECONFIG=/run/platform-k0s-bootstrap/kubeconfig
 WorkingDirectory=/etc/ai-inference-basics/platform/helm
 # Preserve normal devenv provisioning and defer across its staged reboot.
@@ -26,6 +27,7 @@ ExecStart=/usr/bin/bash -ec 'k0s kubeconfig admin > "$${KUBECONFIG}"'
 ExecStart=/usr/bin/bash -ec 'export LAB_HOSTNAME=$$(hostname); exec /usr/local/bin/helmfile --file /etc/ai-inference-basics/platform/helm/helmfile.yaml.gotmpl sync'
 ExecStart=/usr/local/bin/k0s kubectl -n rustfs wait job/rustfs-buckets --for=condition=Complete --timeout=300s
 ExecStart=/usr/local/bin/k0s kubectl -n rustfs get pvc rustfs-data
+ExecStart=/usr/local/bin/k0s kubectl -n gateway wait httproute/browser httproute/model-api '--for=jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout=180s
 ExecStart=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig
 ExecStopPost=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig
 

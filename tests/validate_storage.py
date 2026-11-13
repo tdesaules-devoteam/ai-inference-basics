@@ -17,6 +17,7 @@ import yaml
 
 root = Path(__file__).resolve().parent.parent
 os.environ.setdefault('LAB_HOSTNAME', 'fixture.local')
+os.environ.setdefault('HELM_PLUGINS', str(root / 'platform/helm/plugins'))
 foundation = {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
 selection = [arg for name in sorted(foundation) for arg in ('--selector', 'name=' + name)]
 cluster = yaml.safe_load((root / 'platform/k0s/k0s.yaml').read_text())
@@ -111,7 +112,7 @@ assert set(releases) == {'local-path-provisioner', 'rustfs', 'cert-manager', 'en
 assert set(releases['agent-router']['needs']) == {'cert-manager/cert-manager', 'envoy-gateway/envoy-gateway', 'agent-router/agent-router-crds'}
 assert state['helmDefaults']['wait'] and state['helmDefaults']['waitForJobs']
 # build resolves OCI references to the Helmfile cache. Validate declared references separately.
-declared = yaml.safe_load((root / 'platform/helm/helmfile.yaml.gotmpl').read_text())
+declared = yaml.safe_load((root / 'platform/helm/helmfile.yaml.gotmpl').read_text().split('\n{{- range $model :=', 1)[0])
 for release in declared['releases']:
     if release['name'] not in foundation:
         continue
