@@ -9,8 +9,21 @@ There is no preparation or runtime dependency on the repository's `.local/` dire
 
 Initialize the pinned submodule with `git submodule update --init --recursive`.
 Use the operator's existing Task, KCL, Butane, QEMU/KVM and native bridge/mDNS setup.
-The runtime revision is `895792e5980cb7fee1354bec5442fb42b483df93`.
+The runtime revision is `37369bd7590dd31a0b175115441984c19a50c770`.
 It supplies Fedora CoreOS 44.20261023.3.1 stable and normal provisioning units.
+Its Task metadata view excludes provisioning payloads, avoiding Linux environment
+size limits with the lab's embedded charts and scripts.
+
+After pulling this repository, align the submodule with its recorded revision:
+
+```sh
+git submodule update --init --recursive
+task devenv:status
+```
+
+Pulling the parent repository alone does not necessarily update the submodule
+checkout. Pulling the runtime's upstream repository also does not change the
+revision recorded by this repository.
 
 `.devenv/config.k` is ignored and user-owned. The current hardware is 24 vCPU,
 49152 MiB RAM and 64 GiB disk. Beszel uses `http://10.10.10.1:8090`.
