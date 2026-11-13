@@ -1,0 +1,11 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: lab-backend-buffers
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: ai-inference-basics}
+  connection:
+    # Embeddings and ttyd's embedded assets exceed the default 32-KiB buffer.
+    bufferLimit: 2Mi

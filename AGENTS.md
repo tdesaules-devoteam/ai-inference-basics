@@ -11,6 +11,9 @@
 - Keep platform/k0s/k0s.yaml. platform/cloud-init and platform/terraform are empty placeholders.
 - Keep Helmfile and values in platform/helm, project-authored charts in charts,
   and systemd units in platform/units.
+- Keep one resource declaration per chart template, using kebab-case kind filenames
+  (for example cluster-role.yaml). Add a purpose suffix for distinct resources of
+  the same kind; loops may instantiate that resource for participants or models.
 - Install k0s, Helm, Helmfile, kubectl, k9s and curl through separate units. Generate
   user kubeconfigs through `platform-kubeconfig@.service`, preserving existing files.
   Keep provisioning logic inline in focused units, coordinated by

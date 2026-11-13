@@ -1,0 +1,13 @@
+{{- range $backend := list (dict "namespace" "oauth2-proxy" "name" "oauth2-proxy") (dict "namespace" "dex" "name" "dex") }}
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: lab-gateway
+  namespace: {{ $backend.namespace }}
+spec:
+  from:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: {{ $.Release.Namespace }}}
+  to:
+    - {group: "", kind: Service, name: {{ $backend.name }}}
+{{- end }}

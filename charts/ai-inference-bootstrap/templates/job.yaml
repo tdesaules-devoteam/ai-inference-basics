@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lab-bootstrap
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      serviceAccountName: lab-bootstrap
+      restartPolicy: Never
+      securityContext: {runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
+      containers:
+        - name: bootstrap
+          image: {{ required "toolsImage is required" .Values.toolsImage | quote }}
+          imagePullPolicy: {{ .Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          command: [python3, /scripts/bootstrap.py]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - {name: scripts, mountPath: /scripts, readOnly: true}
+            - {name: home, mountPath: /workspace}
+      volumes:
+        - name: scripts
+          configMap: {name: lab-bootstrap}
+        - name: home
+          emptyDir: {}

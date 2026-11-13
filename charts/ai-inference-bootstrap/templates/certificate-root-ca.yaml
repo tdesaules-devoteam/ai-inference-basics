@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-root-ca
+  namespace: {{ .Release.Namespace }}
+spec:
+  isCA: true
+  commonName: AI Inference Basics Lab CA
+  secretName: lab-root-ca
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: lab-selfsigned, kind: Issuer}

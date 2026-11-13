@@ -1,0 +1,71 @@
+{{- range $participant := .Values.participants }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bastion-{{ . }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: bastion-{{ . }}}
+  template:
+    metadata:
+      labels: {app: bastion-{{ . }}}
+    spec:
+      serviceAccountName: bastion-{{ . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        {{- range $component := list "terminal" "editor" }}
+        - name: {{ $component }}
+          image: {{ required "toolsImage is required" $.Values.toolsImage | quote }}
+          imagePullPolicy: {{ $.Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          {{- if eq $component "editor" }}
+          command: [code-server]
+          args: [--auth, none, --bind-addr, "0.0.0.0:8080", --disable-telemetry, --disable-update-check, /workspace]
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          env:
+            - {name: LAB_NAMESPACE, value: lab-{{ $participant }}}
+            - {name: TERMINAL_BASE_PATH, value: /terminal-{{ $participant }}}
+            - {name: OPENAI_BASE_URL, value: {{ $.Values.apiBaseUrl | quote }}}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: {name: lab-api-key, key: lab}
+            - {name: SSL_CERT_FILE, value: /workspace/.config/lab-ca-bundle.pem}
+            - {name: REQUESTS_CA_BUNDLE, value: /workspace/.config/lab-ca-bundle.pem}
+            - {name: CURL_CA_BUNDLE, value: /workspace/.config/lab-ca-bundle.pem}
+            - {name: NODE_EXTRA_CA_CERTS, value: /etc/lab-ca/ca.crt}
+          ports:
+            - name: {{ $component }}
+              containerPort: {{ if eq $component "terminal" }}7681{{ else }}8080{{ end }}
+          readinessProbe:
+            httpGet:
+              path: {{ if eq $component "terminal" }}/terminal-{{ $participant }}/{{ else }}/healthz{{ end }}
+              port: {{ $component }}
+            initialDelaySeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "2", memory: 2Gi}
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+            - {name: ca, mountPath: /etc/lab-ca, readOnly: true}
+            - {name: temporary, mountPath: /tmp}
+        {{- end }}
+      volumes:
+        - name: workspace
+          persistentVolumeClaim: {claimName: bastion-{{ . }}}
+        - name: ca
+          secret: {secretName: lab-ca}
+        - name: temporary
+          emptyDir: {sizeLimit: 1Gi}
+{{- end }}

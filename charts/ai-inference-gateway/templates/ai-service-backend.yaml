@@ -1,0 +1,15 @@
+{{- range $name := list "chat" "embeddings" "rerank" }}
+---
+apiVersion: aigateway.envoyproxy.io/v1beta1
+kind: AIServiceBackend
+metadata:
+  name: ai-inference-basics-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  schema:
+    name: {{ if eq $name "rerank" }}Cohere{{ else }}OpenAI{{ end }}
+  backendRef:
+    name: ai-inference-basics-{{ $name }}
+    kind: Backend
+    group: gateway.envoyproxy.io
+{{- end }}

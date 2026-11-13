@@ -1,0 +1,16 @@
+{{- range .Values.participants }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bastion-{{ . }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ $.Values.storageClass }}
+  resources:
+    requests:
+      storage: {{ $.Values.storageSize }}
+{{- end }}

@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lab-bootstrap-root-read
+  namespace: rustfs
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lab-bootstrap-root-read}
+subjects:
+  - {kind: ServiceAccount, name: lab-bootstrap, namespace: {{ .Release.Namespace }}}

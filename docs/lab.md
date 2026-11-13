@@ -3,6 +3,9 @@
 The lab extends the six foundation releases with KServe CRDs/controller, identity
 bootstrap, models, Dex, Headlamp, two bastions, oauth2-proxy and the HTTPS Gateway.
 Helmfile owns all 15 releases. Project-authored charts live under `charts/`.
+Each chart template declares one resource, named after its kind in kebab-case;
+purpose suffixes distinguish multiple resources of the same kind. Participant
+and model loops remain inside the corresponding resource template.
 
 ## Local image prerequisite
 
@@ -21,6 +24,8 @@ ssh "$VM" "sudo k0s ctr images tag --force localhost/ai-inference-basics-bastion
 Set `toolsImage` in `platform/helm/values/lab.yaml.gotmpl` to `dist/bastion.ref`.
 Copy updated charts and Helmfile inputs to `/etc/ai-inference-basics/` in an existing
 guest, then run `sudo systemctl restart platform-k0s-bootstrap.service` there.
+Synchronize chart directories including removal of obsolete template filenames;
+overlaying a split chart onto its old combined templates would render duplicates.
 Ignition's custom copies populate these paths only on first boot. Keep the ignored
 `.devenv/config.k` aligned with all authored-chart files and component values.
 

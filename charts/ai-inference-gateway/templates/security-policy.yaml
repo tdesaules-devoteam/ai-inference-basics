@@ -1,0 +1,13 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: model-api-key
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: model-api}
+  apiKeyAuth:
+    credentialRefs:
+      - {group: "", kind: Secret, name: lab-api-key}
+    extractFrom:
+      - headers: [Authorization]
