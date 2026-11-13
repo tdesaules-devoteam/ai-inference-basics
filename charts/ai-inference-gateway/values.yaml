@@ -1,0 +1,3 @@
+hostname: ""
+nodePort: 30443
+envoyImage: docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a

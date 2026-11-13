@@ -26,9 +26,14 @@
 
 ## Subsequent milestones
 
-- [ ] Replace LLMInferenceService with three InferenceServices in inference-service.
-- [ ] Import pinned model artifacts into RustFS and configure read-only S3 access.
-- [ ] Provide Dex/oauth2-proxy, ttyd with Zellij CLI, code-server and administration tools.
+- [x] Replace LLMInferenceService with three CPU InferenceServices in inference-service.
+- [x] Import pinned model artifacts into RustFS and configure read-only S3 access.
+- [x] Qualify TLS, Bearer rejection, real chat/SSE, embeddings and reranking through the Gateway.
+- [x] Qualify participant RBAC, independent PVCs and direct-access network isolation.
+- [x] Provide Dex/oauth2-proxy, ttyd with Zellij CLI, code-server and administration tools.
+- [x] Qualify both browser journeys, terminal commands, editors, Headlamp and cross-user/header-spoof rejection.
+- [x] Run vLLM bench from a participant bastion through the internal TLS/Bearer Gateway.
+- [ ] Publish the bastion image when registry authorization is available; local import is required meanwhile.
 - [ ] Deploy Grafana, Loki, Tempo and Mimir separately with RustFS storage.
 - [ ] Deploy node and cluster OpenTelemetry Collector pipelines.
 - [ ] Configure HAMi/DCGM for eligible GPU nodes only.

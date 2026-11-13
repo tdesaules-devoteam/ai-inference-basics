@@ -1,0 +1,12 @@
+toolsImage: ""
+hostname: ""
+nodePort: 30443
+users:
+  a: alice@example.test
+  b: bob@example.test
+secretNames:
+  gateway: [lab-access, lab-api-key, lab-root-ca, lab-tls]
+  dex: [dex-config]
+  oauth2-proxy: [oauth-config, lab-ca]
+  bastion: [lab-api-key, lab-ca]
+  inference-service: [model-reader, model-writer]

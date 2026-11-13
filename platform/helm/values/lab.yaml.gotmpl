@@ -1,0 +1,7 @@
+hostname: {{ requiredEnv "LAB_HOSTNAME" | quote }}
+nodePort: 30443
+toolsImage: localhost/ai-inference-basics-bastion@sha256:8db01fd11860abeb0074c86956ee9b283fbd73f1b80a4184bd232cbd4172fae4
+toolsImagePullPolicy: Never
+users:
+  a: alice@example.test
+  b: bob@example.test

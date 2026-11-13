@@ -2,9 +2,9 @@
 
 <img src="docs/logo.png" alt="Devoteam AI Inference Basics" width="280">
 
-A disposable QEMU VM with native single-node k0s. The current provisioning scope
-includes native k0s plus Helmfile-managed storage and gateway foundations:
-Local Path Provisioner, RustFS, cert-manager, Envoy Gateway and Agent Router.
+A disposable QEMU CPU lab with native single-node k0s and 15 Helmfile releases:
+storage, TLS and gateway foundations, three KServe inference services, Dex browser
+authentication and two isolated ttyd/Zellij and code-server workspaces.
 
 ```sh
 task devenv:up     # create/provision the VM
@@ -13,7 +13,8 @@ task devenv:down   # destroy the VM
 ```
 
 See [local setup](docs/devenv.md) before the first run. The root Taskfile exposes
-the upstream devenv tasks directly. No host artifact preparation is required.
+the upstream devenv tasks directly. The bastion currently requires an explicit
+local image import; see [lab access and qualification](docs/lab.md).
 
 ## Structure
 
@@ -23,14 +24,20 @@ the upstream devenv tasks directly. No host artifact preparation is required.
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
-- `charts/`: reserved for project-authored charts to publish; current releases are upstream charts.
-- `tests/`: offline checks; `reports/` is optional, local-only and ignored by Git.
+- `charts/`: project-authored identity, model, bastion and gateway integration charts.
+- `tests/`: render checks and opt-in runtime qualification; `reports/` stays local and ignored.
 
 See [the platform](docs/platform.md) for upstream chart references, namespace
 boundaries, deployment and test commands.
-Older platform documents describe the broader lab, not the components installed now.
+See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image import.
 
-**Current validation:** all six releases deployed in the authorized VM. A temporary
+**Current lab validation:** all 15 releases deployed in the existing authorized VM.
+Real TLS/Bearer chat, SSE, embeddings and reranking passed. Both browser journeys,
+terminal execution, code-server, Headlamp, participant isolation and a short vLLM
+benchmark passed. The VM retains its 24-vCPU/48-GiB/64-GiB sizing. Registry
+publication remains unavailable; a fresh VM requires explicit bastion image import.
+
+**Foundation history:** a temporary
 Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations
 and anonymous rejection passed, and test resources were removed. Reexecuting the
 bootstrap preserved the PVC and credential Secrets. A subsequent user-initiated

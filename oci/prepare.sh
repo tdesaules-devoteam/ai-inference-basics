@@ -1,34 +1,18 @@
 #!/usr/bin/env bash
+# Build and qualify the local bastion artifact. Does not operate a VM or publish.
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT"
-# Logging helpers belong to the pinned upstream runtime.
-# shellcheck source=/dev/null
-source .devenv/scripts/utils.sh
-[[ $(uname -sm) == 'Linux x86_64' ]] || { _error_handler 'This lab is currently prepared for Linux x86_64'; exit 1; }
-for binary in podman skopeo curl tar sha256sum python3; do command -v "$binary" >/dev/null; done
-mkdir -p .local/build
-_log title 'Build the administration bastion'
-podman build --format docker -f oci/bastion/Containerfile -t localhost/ai-inference-basics-bastion:dev .
-podman run --rm --entrypoint bash localhost/ai-inference-basics-bastion:dev -c \
-  'zellij --version && kubectl version --client && k9s version && helm version --short && task --version'
-podman save --format oci-archive -o .local/build/bastion.oci.tar localhost/ai-inference-basics-bastion:dev
-skopeo inspect --raw oci-archive:.local/build/bastion.oci.tar > .local/build/bastion.manifest.json
-_log title 'Package the locked local umbrella chart'
-(cd charts/ai-inference-basics && sha256sum -c dependencies.sha256)
-bash oci/helm.sh package charts/ai-inference-basics --destination .local/build
-python3 - <<'PY'
-import hashlib,pathlib,re,shutil
-root=pathlib.Path.cwd(); build=root/'.local/build'
-version=re.search(r'^version:\s*(\S+)',(root/'charts/ai-inference-basics/Chart.yaml').read_text(),re.M).group(1)
-chart=build/f'ai-inference-basics-{version}.tgz'
-digest='sha256:'+hashlib.sha256((build/'bastion.manifest.json').read_bytes()).hexdigest()
-shutil.copyfile(chart, build/'ai-inference-basics.tgz')
-(build/'bastion.ref').write_text('localhost/ai-inference-basics-bastion@'+digest+'\n')
-checksums=[]
-for name in ('ai-inference-basics.tgz','bastion.oci.tar','bastion.ref'):
-    with (build/name).open('rb') as source:
-        checksums.append(hashlib.file_digest(source,'sha256').hexdigest()+'  '+name)
-(build/'SHA256SUMS').write_text('\n'.join(checksums)+'\n')
-PY
-_log success 'Local artifacts ready; VM provisioning remains owned by devenv'
+[[ $(uname -sm) == 'Linux x86_64' ]] || { echo 'Linux AMD64 build required.' >&2; exit 1; }
+for binary in podman skopeo sha256sum; do command -v "$binary" >/dev/null; done
+mkdir -p dist
+image=localhost/ai-inference-basics-bastion:dev
+podman build --format docker -f oci/bastion/Containerfile -t "$image" .
+podman run --rm --entrypoint bash "$image" -ec \
+  'kubectl version --client; k9s version; ttyd --version; zellij --version; starship --version; hx --version; code-server --version; curl --version; jq --version; rc --version; vllm bench serve --help >/dev/null; python3 -c "import bcrypt,boto3,yaml"'
+podman save --format oci-archive -o dist/bastion.oci.tar "$image"
+digest=$(skopeo inspect --raw oci-archive:dist/bastion.oci.tar | sha256sum | cut -d' ' -f1)
+echo "localhost/ai-inference-basics-bastion@sha256:$digest" > dist/bastion.ref
+(cd dist && sha256sum bastion.oci.tar bastion.ref > SHA256SUMS)
+echo 'Qualified local artifact. Import explicitly into k0s, then align toolsImage in platform/helm/values/lab.yaml.gotmpl with:'
+cat dist/bastion.ref

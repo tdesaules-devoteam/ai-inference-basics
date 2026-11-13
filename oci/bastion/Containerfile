@@ -1,29 +1,48 @@
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS tools
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN microdnf install -y tar-2:1.35-10.fc45 gzip-1.14-4.fc45 && microdnf clean all
-RUN curl -fL --retry 3 https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl -o /kubectl \
-    && echo 'c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4  /kubectl' | sha256sum -c - \
-    && chmod 755 /kubectl
-RUN curl -fL --retry 3 https://github.com/zellij-org/zellij/releases/download/v0.46.0/zellij-x86_64-unknown-linux-gnu.tar.gz -o /zellij.tar.gz \
-    && echo '0940e467f99ca57aec5a63edcad633450d49cd6f22e8a7d9c686771a0d9f86ae  /zellij.tar.gz' | sha256sum -c - \
-    && tar -xzf /zellij.tar.gz -C / && chmod 755 /zellij
+RUN microdnf install -y tar gzip && microdnf clean all
+COPY oci/bastion/tools.lock /tmp/tools.lock
+RUN mkdir -p /tools /opt/code-server && cd /tmp && \
+    while read -r sha name url; do \
+      [[ -z "$sha" || "$sha" == \#* ]] && continue; \
+      curl -fLsS --retry 3 "$url" -o "$name" && echo "$sha  $name" | sha256sum -c - || exit 1; \
+    done < tools.lock && \
+    install -m 0755 kubectl /tools/kubectl && \
+    tar -xzf k9s.tar.gz -C /tools k9s && tar -xzf zellij.tar.gz -C /tools zellij && \
+    tar -xzf starship.tar.gz -C /tools starship && tar -xzf rc.tar.gz -C /tools rc && \
+    tar -xzf uv.tar.gz --strip-components=1 -C /tools uv-x86_64-unknown-linux-gnu/uv && \
+    tar -xzf code-server.tar.gz --strip-components=1 -C /opt/code-server
+
+FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS python
+RUN microdnf install -y python3.12-3.12.16-2.fc45 libgomp numactl-libs && microdnf clean all
+COPY --from=tools /tools/uv /usr/local/bin/uv
+COPY oci/bastion/requirements.lock /tmp/requirements.lock
+RUN uv venv --python /usr/bin/python3.12 /opt/venv && \
+    uv pip install --python /opt/venv/bin/python --require-hashes --torch-backend cpu -r /tmp/requirements.lock && \
+    uv cache clean
 
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS runtime
+LABEL org.opencontainers.image.source="https://github.com/tdesaules-devoteam/ai-inference-basics" \
+      org.opencontainers.image.title="AI Inference Basics participant bastion"
 RUN microdnf install -y --setopt=install_weak_deps=0 \
-      k9s-0.51.0-3.fc45 helm-4.2.2-1.fc45 go-task-3.54.0-1.fc45 \
-      bash-5.3.15-2.fc45 jq-1.8.2-5.fc45 git-core-2.56.0-1.fc45 \
-      ca-certificates-2026.2.92_v9.0.319-2.fc45 libgcc-16.2.1-3.fc45 \
-      libstdc++-16.2.1-3.fc45 openssl-libs-4.0.3-1.fc45 ncurses-term-6.6-3.fc45 \
-    && microdnf clean all \
-    && ln -s /usr/bin/go-task /usr/local/bin/task \
-    && mkdir -p /workspace && chown 1000:1000 /workspace \
-    && printf 'lab:x:1000:1000:Workshop:/workspace:/bin/bash\n' >> /etc/passwd \
-    && printf 'lab:x:1000:\n' >> /etc/group
-COPY --from=tools /kubectl /usr/local/bin/kubectl
-COPY --from=tools /zellij /usr/local/bin/zellij
+      bash jq curl git-core ca-certificates libgcc libstdc++ openssl-libs ncurses-term \
+      python3.12-3.12.16-2.fc45 libgomp numactl-libs \
+      ttyd-1.7.7-11.fc45 helix-25.07.1-13.fc45 && microdnf clean all && \
+    mkdir -p /workspace /usr/share/ai-inference-basics && chown 1000:1000 /workspace && \
+    echo 'lab:x:1000:1000:Lab participant:/workspace:/bin/bash' >> /etc/passwd && \
+    echo 'lab:x:1000:' >> /etc/group && \
+    rpm -qa | sort > /usr/share/ai-inference-basics/rpms.txt
+COPY --from=tools /tools/ /usr/local/bin/
+COPY --from=tools /opt/code-server /opt/code-server
+COPY --from=python /opt/venv /opt/venv
 COPY oci/bastion/entrypoint.sh /usr/local/bin/workspace-entrypoint
-ENV HOME=/workspace TERM=xterm-256color SHELL=/bin/bash XDG_RUNTIME_DIR=/workspace/.run
+COPY oci/bastion/bashrc /etc/lab-bashrc
+COPY oci/bastion/zellij.kdl /etc/zellij/config.kdl
+RUN ln -s /opt/code-server/bin/code-server /usr/local/bin/code-server
+ENV HOME=/workspace TERM=xterm-256color SHELL=/bin/bash XDG_RUNTIME_DIR=/workspace/.run \
+    PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin \
+    HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 USER 1000:1000
 WORKDIR /workspace
-EXPOSE 7681
+EXPOSE 7681 8080
 ENTRYPOINT ["bash", "/usr/local/bin/workspace-entrypoint"]

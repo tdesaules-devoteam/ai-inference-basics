@@ -3,3 +3,5 @@
 .devenv
 reports
 **/.terraform
+dist
+**/node_modules

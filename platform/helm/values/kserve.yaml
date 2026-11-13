@@ -1,0 +1,43 @@
+kserve:
+  security:
+    autoMountServiceAccountToken: false
+  controller:
+    deploymentMode: Standard
+    image: docker.io/kserve/kserve-controller
+    tag: v0.21.0@sha256:74c5de4f166f04a12e5926af37751554e8f4be900bdf3368d0a348abf5f7b0a6
+    rbacProxyImage: quay.io/brancz/kube-rbac-proxy@sha256:754ab2a723c8fc7ea8e09ae1224f8af5be91849b8b2f2a3735c6237f1c534187
+    gateway:
+      domain: svc.cluster.local
+      domainTemplate: '{{ .Name }}-predictor.{{ .Namespace }}.{{ .IngressDomain }}'
+      disableIngressCreation: true
+      disableIstioVirtualHost: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 768Mi
+  storage:
+    image: docker.io/kserve/storage-initializer
+    tag: v0.21.0@sha256:3a3a6a8053478c8d8d90f96fc5e54c1892c07784102dda70104374d4f89a3672
+    enableModelcar: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    s3:
+      endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+      useHttps: "0"
+      region: us-east-1
+      useVirtualBucket: "false"
+      useAnonymousCredential: "false"
+  agent:
+    image: docker.io/kserve/agent
+    tag: v0.21.0@sha256:eb4d4cc887a414500b22f2c79d4f939f3fd5e273ce5e33cc2bbdeebe800b6236
+  router:
+    image: docker.io/kserve/router
+    tag: v0.21.0@sha256:ccd726163e61932f592551132cf347be04aa28ecace2b5ed4681780cb5a867ec

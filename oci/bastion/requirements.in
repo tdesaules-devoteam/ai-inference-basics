@@ -1,0 +1,4 @@
+vllm @ https://github.com/vllm-project/vllm/releases/download/v0.23.0/vllm-0.23.0%2Bcpu-cp38-abi3-manylinux_2_34_x86_64.whl#sha256=571a4ac24629d6100479cdf20d67b4c5cd1dd9bab1b485cd4f3bd631c961187d
+boto3==1.42.1
+bcrypt==5.0.0
+PyYAML==6.0.3

@@ -1,0 +1,143 @@
+{{- range $ns := list "dex" "oauth2-proxy" "bastion" "headlamp" "inference-service" }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  annotations:
+    helm.sh/resource-policy: keep
+---
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: lab-selfsigned
+  namespace: {{ .Release.Namespace }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-root-ca
+  namespace: {{ .Release.Namespace }}
+spec:
+  isCA: true
+  commonName: AI Inference Basics Lab CA
+  secretName: lab-root-ca
+  privateKey: {algorithm: ECDSA, size: 256}
+  issuerRef: {name: lab-selfsigned, kind: Issuer}
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: lab-ca
+  namespace: {{ .Release.Namespace }}
+spec:
+  ca: {secretName: lab-root-ca}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: lab-tls
+  dnsNames:
+    - {{ required "hostname is required" .Values.hostname | quote }}
+    - ai-inference-basics.gateway.svc.cluster.local
+  issuerRef: {name: lab-ca, kind: Issuer}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lab-bootstrap
+  namespace: {{ .Release.Namespace }}
+{{- range $ns, $names := .Values.secretNames }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lab-bootstrap
+  namespace: {{ $ns }}
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: {{ toJson $names }}
+    verbs: [get, update]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lab-bootstrap
+  namespace: {{ $ns }}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lab-bootstrap}
+subjects:
+  - {kind: ServiceAccount, name: lab-bootstrap, namespace: {{ $.Release.Namespace }}}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lab-bootstrap-root-read
+  namespace: rustfs
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [rustfs-root]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lab-bootstrap-root-read
+  namespace: rustfs
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lab-bootstrap-root-read}
+subjects:
+  - {kind: ServiceAccount, name: lab-bootstrap, namespace: {{ .Release.Namespace }}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lab-bootstrap
+  namespace: {{ .Release.Namespace }}
+data:
+  settings.json: {{ dict "hostname" .Values.hostname "nodePort" .Values.nodePort "users" .Values.users | toJson | quote }}
+  bootstrap.py: |
+{{ .Files.Get "files/bootstrap.py" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lab-bootstrap
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      serviceAccountName: lab-bootstrap
+      restartPolicy: Never
+      securityContext: {runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
+      containers:
+        - name: bootstrap
+          image: {{ required "toolsImage is required" .Values.toolsImage | quote }}
+          imagePullPolicy: {{ .Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          command: [python3, /scripts/bootstrap.py]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - {name: scripts, mountPath: /scripts, readOnly: true}
+            - {name: home, mountPath: /workspace}
+      volumes:
+        - name: scripts
+          configMap: {name: lab-bootstrap}
+        - name: home
+          emptyDir: {}

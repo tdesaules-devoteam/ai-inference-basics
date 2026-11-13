@@ -3,6 +3,7 @@
 <img src="logo.png" alt="Devoteam AI Inference Basics" width="220">
 
 - [Local setup](devenv.md)
+- [Current CPU lab: access, image import and qualification](lab.md)
 - [Architecture](architecture.md)
 - [Operations](operations-runbook.md)
 - [Bastions and browser access](workspaces.md)

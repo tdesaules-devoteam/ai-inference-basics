@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: model-reader
+  namespace: {{ .Release.Namespace }}
+automountServiceAccountToken: false
+secrets:
+  - name: model-reader
+{{- $snapshots := .Files.Get "files/models.lock.json" | fromJson }}
+{{- range $name, $model := .Values.models }}
+{{- $snapshot := index $snapshots $name }}
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: vllm-cpu-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  supportedModelFormats:
+    - name: huggingface
+      version: "1"
+      autoSelect: false
+  protocolVersions: [v1]
+  multiModel: false
+  containers:
+    - name: kserve-container
+      image: {{ $.Values.image | quote }}
+      command: [vllm]
+      args:
+        - serve
+        - /mnt/models
+        - --served-model-name
+        - ai-inference-basics-{{ $name }}
+        - --port
+        - "8080"
+        - --max-model-len
+        - {{ $.Values.maxModelLen | quote }}
+        - --dtype
+        - bfloat16
+        - --max-num-seqs
+        - "2"
+        {{- if eq $name "chat" }}
+        - --enable-prefix-caching
+        {{- else }}
+        - --runner
+        - pooling
+        {{- end }}
+        {{- if eq $name "rerank" }}
+        - --convert
+        - classify
+        - --hf-overrides
+        - '{"architectures":["Qwen3ForSequenceClassification"],"classifier_from_token":["no","yes"],"is_original_qwen3_reranker":true}'
+        {{- end }}
+      env:
+        - {name: VLLM_CPU_KVCACHE_SPACE, value: "1"}
+        - {name: OMP_NUM_THREADS, value: {{ $model.threads | quote }}}
+        - {name: VLLM_CPU_OMP_THREADS_BIND, value: {{ $model.cores | quote }}}
+        - {name: HF_HUB_OFFLINE, value: "1"}
+        - {name: TRANSFORMERS_OFFLINE, value: "1"}
+        - {name: HF_HUB_DISABLE_TELEMETRY, value: "1"}
+      ports:
+        - {name: http1, containerPort: 8080}
+      startupProbe:
+        httpGet: {path: /health, port: 8080}
+        periodSeconds: 10
+        failureThreshold: 120
+      readinessProbe:
+        httpGet: {path: /health, port: 8080}
+        periodSeconds: 5
+      volumeMounts:
+        - {name: shm, mountPath: /dev/shm}
+  volumes:
+    - name: shm
+      emptyDir: {medium: Memory, sizeLimit: 1Gi}
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: ai-inference-basics-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    serving.kserve.io/deploymentMode: Standard
+    serving.kserve.io/autoscalerClass: external
+    serving.kserve.io/secretName: model-reader
+spec:
+  predictor:
+    serviceAccountName: model-reader
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat: {name: huggingface, version: "1"}
+      runtime: vllm-cpu-{{ $name }}
+      protocolVersion: v1
+      storageUri: {{ printf "s3://%s/%s/%s/" $.Values.bucket $name $snapshot.revision | quote }}
+      resources:
+        requests: {cpu: "1", memory: {{ $model.requestMemory }}}
+        limits: {cpu: {{ $model.threads | quote }}, memory: {{ $model.memory }}}
+{{- end }}

@@ -1,13 +1,20 @@
-# Administration bastion image
+# Participant bastion image
 
-Digest-pinned Fedora Minimal with bash, curl, jq, git, kubectl, k9s, Helm, Task and
-the checksum-pinned Zellij 0.46.0 web binary. No container engine or privileged shell.
+The digest-pinned Fedora Minimal AMD64 image includes kubectl, k9s, vLLM
+(`vllm bench`), curl, bash, Zellij CLI, Starship, jq, Helix, code-server and RustFS rc.
+Downloaded tools and Python dependencies have checksum locks. RPM versions actually
+installed are recorded in `/usr/share/ai-inference-basics/rpms.txt` in the image.
 
-`oci/prepare.sh` builds and smoke-tests the AMD64 image, exports an OCI archive,
-records its exact digest/checksum and packages the umbrella. Guest bootstrap imports
-that verified archive into k0s's embedded containerd. Docker build format is used
-only to honor Containerfile SHELL semantics before OCI export.
+`bash oci/prepare.sh` builds, checks the CLI tools and exports `dist/bastion.oci.tar`,
+`dist/bastion.ref` and `dist/SHA256SUMS`. It does not operate the VM or publish.
+The build uses Docker format for SHELL semantics, then exports an OCI archive.
 
-Zellij binds Pod-local loopback. The Caddy sidecar exposes its web client and the
-fixed port-forward preview. Dex and native Zellij token authentication remain
-separate; automation never prints the generated tokens.
+ttyd runs Zellij CLI as UID 1000. code-server runs in a separate container sharing
+the participant's PVC. Both are behind the same Dex/oauth2-proxy session; neither
+requires a second application login. Each participant has a distinct ServiceAccount,
+workspace PVC and editable namespace. Headlamp provides shared read-only inspection.
+
+GHCR publication was rejected by the available token. The current lab uses an
+explicit local k0s import with `toolsImagePullPolicy: Never`. After recreating the
+VM, import the archive again and align `toolsImage` with its manifest digest before
+retrying bootstrap. See [lab access and qualification](../../docs/lab.md).

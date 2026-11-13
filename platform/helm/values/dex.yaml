@@ -1,0 +1,13 @@
+fullnameOverride: dex
+image:
+  tag: v2.46.1
+  digest: sha256:65b72ca0f4b0bf6d4ada84ec21da8851782563404ac7b8f926923d27ceced9ab
+configSecret:
+  create: false
+  name: dex-config
+config:
+  storage:
+    type: kubernetes
+resources:
+  requests: {cpu: 20m, memory: 64Mi}
+  limits: {memory: 256Mi}

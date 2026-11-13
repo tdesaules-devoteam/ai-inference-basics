@@ -2,6 +2,12 @@
 repositories:
   - name: rustfs
     url: https://charts.rustfs.com
+  - name: dex
+    url: https://charts.dexidp.io
+  - name: headlamp
+    url: https://kubernetes-sigs.github.io/headlamp/
+  - name: oauth2-proxy
+    url: https://oauth2-proxy.github.io/manifests
 
 helmDefaults:
   wait: true
@@ -83,3 +89,119 @@ releases:
           - bash
           - -ec
           - 'until test -n "$(kubectl get mutatingwebhookconfiguration envoy-ai-gateway-gateway-pod-mutator.agent-router -o jsonpath="{.webhooks[0].clientConfig.caBundle}")"; do sleep 2; done'
+
+  - name: kserve-crds
+    namespace: kserve
+    chart: oci://ghcr.io/kserve/charts/kserve-crd-minimal@sha256:62362337168d1675b8dc90a846dc9cd51af944f59160a42fc387755aca2fbfec
+    hooks:
+      - events: [postsync]
+        command: kubectl
+        args: [wait, --for=condition=Established, crd/inferenceservices.serving.kserve.io, crd/servingruntimes.serving.kserve.io, --timeout=180s]
+  - name: kserve
+    namespace: kserve
+    chart: oci://ghcr.io/kserve/charts/kserve-resources@sha256:2d189c8c9d51e1ad658f9a973eaf9ea73b251305e7f93507adb1b559303f1e9a
+    needs:
+      - kserve/kserve-crds
+      - cert-manager/cert-manager
+    values:
+      - values/kserve.yaml
+
+  - name: lab-bootstrap
+    namespace: gateway
+    chart: ../../charts/ai-inference-bootstrap
+    needs:
+      - cert-manager/cert-manager
+      - rustfs/rustfs
+    values:
+      - values/lab.yaml.gotmpl
+
+  - name: models
+    namespace: inference-service
+    chart: ../../charts/ai-inference-models
+    # KServe can leave status.observedGeneration stale on otherwise-ready upgrades.
+    # Check desired workload convergence and Ready explicitly; hooks still wait.
+    wait: false
+    timeout: 3600
+    needs:
+      - kserve/kserve
+      - gateway/lab-bootstrap
+    values:
+      - values/lab.yaml.gotmpl
+    hooks:
+      - events: [postsync]
+        showlogs: true
+        command: timeout
+        args:
+          - "1200"
+          - bash
+          - -ec
+          - |
+            for model in chat embeddings rerank; do
+              name="ai-inference-basics-$model"
+              until
+                desired=$(kubectl -n inference-service get inferenceservice "$name" -o json)
+                runtime=$(kubectl -n inference-service get servingruntime "vllm-cpu-$model" -o json)
+                kubectl -n inference-service get deployment "$name-predictor" -o json | jq -e \
+                  --arg uri "$(echo "$desired" | jq -r .spec.predictor.model.storageUri)" \
+                  --arg image "$(echo "$runtime" | jq -r '.spec.containers[0].image')" \
+                  --argjson args "$(echo "$runtime" | jq -c '.spec.containers[0].args')" \
+                  --argjson resources "$(echo "$desired" | jq -c '.spec.predictor.model.resources')" \
+                  '.spec.template.metadata.annotations["internal.serving.kserve.io/storage-initializer-sourceuri"] == $uri and
+                   any(.spec.template.spec.containers[]; .name == "kserve-container" and .image == $image and .args == $args and .resources == $resources)' >/dev/null
+              do sleep 3; done
+              kubectl -n inference-service rollout status "deployment/$name-predictor" --timeout=300s
+              kubectl -n inference-service wait "inferenceservice/$name" --for=jsonpath='{.status.conditions[?(@.type=="Ready")].status}'=True --timeout=300s
+              kubectl -n inference-service wait "inferenceservice/$name" --for=jsonpath='{.status.modelStatus.transitionStatus}'=UpToDate --timeout=300s
+            done
+
+  - name: dex
+    namespace: dex
+    chart: dex/dex
+    version: "0.26.0"
+    needs:
+      - gateway/lab-bootstrap
+    values:
+      - values/dex.yaml
+
+  - name: headlamp
+    namespace: headlamp
+    chart: headlamp/headlamp
+    version: "0.46.0"
+    needs:
+      - gateway/lab-bootstrap
+    values:
+      - values/headlamp.yaml
+
+  - name: bastion
+    namespace: bastion
+    chart: ../../charts/ai-inference-bastion
+    needs:
+      - gateway/lab-bootstrap
+    values:
+      - values/lab.yaml.gotmpl
+
+  - name: oauth2-proxy
+    namespace: oauth2-proxy
+    chart: oauth2-proxy/oauth2-proxy
+    version: "10.7.4"
+    needs:
+      - dex/dex
+      - bastion/bastion
+      - headlamp/headlamp
+    values:
+      - values/oauth2-proxy.yaml
+      - podAnnotations:
+          checksum/browser-router: '{{ readFile "values/oauth2-proxy.yaml" | sha256sum }}'
+
+  - name: lab-gateway
+    namespace: gateway
+    chart: ../../charts/ai-inference-gateway
+    needs:
+      - agent-router/agent-router
+      - oauth2-proxy/oauth2-proxy
+    values:
+      - values/lab.yaml.gotmpl
+    hooks:
+      - events: [postsync]
+        command: kubectl
+        args: [-n, gateway, wait, gateway/ai-inference-basics, --for=condition=Programmed, --timeout=180s]

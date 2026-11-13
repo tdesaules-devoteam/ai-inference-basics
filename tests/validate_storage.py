@@ -9,16 +9,20 @@ import re
 import subprocess
 import hashlib
 import tempfile
+import os
 from urllib.parse import urlsplit
 from pathlib import Path
 
 import yaml
 
 root = Path(__file__).resolve().parent.parent
+os.environ.setdefault('LAB_HOSTNAME', 'fixture.local')
+foundation = {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
+selection = [arg for name in sorted(foundation) for arg in ('--selector', 'name=' + name)]
 cluster = yaml.safe_load((root / 'platform/k0s/k0s.yaml').read_text())
 assert not cluster['spec'].get('extensions', {}).get('helm'), 'Competing k0s Helm deployer configuration'
 rendered = subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), 'template',
+    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), *selection, 'template',
 ], text=True)
 objects = list(filter(None, yaml.safe_load_all(rendered)))
 owners = set()
@@ -99,7 +103,7 @@ assert 'envoy-gateway-system' not in rendered and 'envoy-ai-gateway-system' not 
 # Build the resolved state as well as the manifests: needs is an orchestration
 # property, not visible in Kubernetes YAML.
 state = yaml.safe_load(subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), 'build',
+    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), *selection, 'build',
 ], text=True))
 releases = {r['name']: r for r in state['releases']}
 assert releases['rustfs']['needs'] == ['local-path-provisioner/local-path-provisioner']
@@ -109,6 +113,8 @@ assert state['helmDefaults']['wait'] and state['helmDefaults']['waitForJobs']
 # build resolves OCI references to the Helmfile cache. Validate declared references separately.
 declared = yaml.safe_load((root / 'platform/helm/helmfile.yaml.gotmpl').read_text())
 for release in declared['releases']:
+    if release['name'] not in foundation:
+        continue
     if release['name'] == 'rustfs':
         assert release['chart'] == 'rustfs/rustfs' and release['version'] == '1.0.5'
     else:
