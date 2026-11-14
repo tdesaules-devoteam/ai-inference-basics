@@ -20,12 +20,12 @@ spec:
           - CREATE
           - UPDATE
         resources:
-          - namespaces
+          - configmaps
         resourceNames:
-          - {{ .Release.Namespace }}
-  variables:
-    - name: source
-      expression: resource.Get("v1", "configmaps", "gateway", "lab-ca")
+          - lab-ca
+  matchConditions:
+    - name: public-gateway-ca
+      expression: object.metadata.namespace == "gateway"
   generate:
     - template:
         interpolate: cel
@@ -37,4 +37,4 @@ spec:
             namespace: {{ .Release.Namespace }}
           type: Opaque
           stringData:
-            ca.crt: (( variables.source.data["ca.crt"] ))
+            ca.crt: (( object.data["ca.crt"] ))

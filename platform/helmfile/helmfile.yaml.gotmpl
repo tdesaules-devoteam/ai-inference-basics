@@ -46,7 +46,7 @@ releases:
     hooks:
       - events: [postsync]
         command: kubectl
-        args: [wait, --for=condition=Established, crd/generatingpolicies.policies.kyverno.io, --timeout=180s]
+        args: [wait, --for=condition=Established, crd/generatingpolicies.policies.kyverno.io, crd/mutatingpolicies.policies.kyverno.io, --timeout=180s]
 
   - name: local-path-provisioner
     namespace: local-path-provisioner
@@ -161,7 +161,7 @@ releases:
     values:
       - values/dex.yaml
       - podAnnotations:
-          checksum/domain-config: '{{ printf "%s%s" (readFile "../../charts/dex-config/files/configure.py") (toJson $infra.access) | sha256sum }}'
+          checksum/domain-config: '{{ printf "%s%s%s" (readFile "../../charts/dex-config/files/configure.py") (toJson $infra.access) (toJson $infra.network) | sha256sum }}'
 
   - name: headlamp
     namespace: headlamp

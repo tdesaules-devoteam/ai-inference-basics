@@ -10,8 +10,8 @@ Domain-local Helm hook Jobs generate and preserve credentials in Kubernetes:
 
 - `dex/admin-access`: admin identity/password, bcrypt hash and the OIDC client state.
 - `dex/admin-login`: email/password supplied by the private environment definition.
-- `dex/oidc-client`: the published browser client credentials, readable by the
-  oauth2-proxy configuration Job.
+- `dex/oidc-client`: browser client credentials cloned by Kyverno into oauth2-proxy.
+- `oauth2-proxy/oauth-config`: Kyverno combines the local OIDC client and session key.
 - `oauth2-proxy/browser-session`: the stable cookie key.
 - `gateway/lab-api-key`: the separate static model API key.
 - `rustfs/s3-models`: shared read/write credentials for the models bucket.
@@ -47,6 +47,22 @@ cannot cross namespaces. Model-reader credentials originate in RustFS's domain
 and are synchronized into each model namespace. The compatibility names
 model-reader/model-writer now hold the same account. Existing root/shared S3
 credentials are preserved during upgrades without putting their values in Git.
+
+Model prefixes organize artifacts, but are not authorization boundaries. The
+shared account can overwrite objects in any model prefix; revision naming and
+import hash checks do not implement S3 Object Lock. Storage qualification checks
+cross-prefix reads/writes and denies all five observability buckets.
+
+Kyverno transforms the shared S3 source on Secret updates, then uses synchronized
+clones for consumers. Public CA generation watches the source ConfigMap, and
+oauth configuration watches its local source Secrets. Data-changing updates to
+bastion, Dex and oauth2-proxy credential Secrets trigger scoped MutatingPolicies
+that change a Deployment Pod-template annotation. This rolls out processes that
+read credentials or CA bundles only at startup. Only resource versions, not
+credential contents, appear in those annotations. Metadata-only Secret updates
+do not trigger a rollout. The background controller has namespaced permissions
+restricted to the three named Deployments. Rotation can briefly interrupt the
+single-instance applications and requires runtime qualification.
 
 The public CA is distributed through `gateway/lab-ca` and consumer trust
 configuration. Private CA/server keys remain in cert-manager Secrets; publishing

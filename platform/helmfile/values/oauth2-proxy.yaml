@@ -76,6 +76,80 @@ extraContainers:
     volumeMounts:
       - {name: browser-router, mountPath: /etc/browser, readOnly: true}
 extraObjects:
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: credential-reload
+      namespace: '{{ .Release.Namespace }}'
+    rules:
+      - apiGroups:
+          - apps
+        resources:
+          - deployments
+        resourceNames:
+          - oauth2-proxy
+        verbs:
+          - get
+          - update
+          - patch
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: credential-reload
+      namespace: '{{ .Release.Namespace }}'
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: credential-reload
+    subjects:
+      - kind: ServiceAccount
+        name: kyverno-background-controller
+        namespace: kyverno
+  - apiVersion: policies.kyverno.io/v1
+    kind: MutatingPolicy
+    metadata:
+      name: oauth2-proxy-reload-credentials
+    spec:
+      evaluation:
+        mutateExisting:
+          enabled: true
+      matchConstraints:
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: oauth2-proxy
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - UPDATE
+            resources:
+              - secrets
+            resourceNames:
+              - oauth-config
+              - oidc-client
+      matchConditions:
+        - name: credential-data-changed
+          expression: request.object.data != request.oldObject.data
+      targetMatchConstraints:
+        expression: resource.Get("apps/v1", "deployments", "oauth2-proxy", "oauth2-proxy")
+      variables:
+        - name: dataChanged
+          expression: request.object.data != request.oldObject.data
+        - name: sourceName
+          expression: request.object.metadata.name
+        - name: sourceVersion
+          expression: request.object.metadata.resourceVersion
+      mutations:
+        - patchType: JSONPatch
+          jsonPatch:
+            expression: >-
+              !variables.dataChanged ? [] : has(object.spec.template.metadata.annotations) ?
+              [JSONPatch{op: "add", path: "/spec/template/metadata/annotations/lab.ai~1credential-" + variables.sourceName,
+                value: variables.sourceVersion}] :
+              [JSONPatch{op: "add", path: "/spec/template/metadata/annotations",
+                value: {"lab.ai/credential-" + variables.sourceName: variables.sourceVersion}}]
   - apiVersion: v1
     kind: ServiceAccount
     metadata:
@@ -214,12 +288,16 @@ extraObjects:
               - CREATE
               - UPDATE
             resources:
-              - namespaces
+              - secrets
             resourceNames:
-              - oauth2-proxy
+              - oidc-client
+              - browser-session
+      matchConditions:
+        - name: local-session-sources
+          expression: object.metadata.namespace == "oauth2-proxy"
       variables:
         - name: client
-          expression: resource.Get("v1", "secrets", "dex", "oidc-client")
+          expression: resource.Get("v1", "secrets", "oauth2-proxy", "oidc-client")
         - name: cookie
           expression: resource.Get("v1", "secrets", "oauth2-proxy", "browser-session")
       generate:

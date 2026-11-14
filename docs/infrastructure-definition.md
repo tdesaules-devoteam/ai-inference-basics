@@ -96,6 +96,9 @@ and consumers use it; no automatic account or data deletion is performed.
 The compatibility names `model-reader` and `model-writer` now carry the same
 bucket-scoped credential, with write access to `models` and no access to Loki.
 
-After changing credentials, verify the source and synchronized Secret values
-privately and roll out consumers that read Secrets through environment variables.
-Secret synchronization alone does not restart an existing application process.
+Data-changing credential updates trigger scoped Kyverno MutatingPolicies to roll
+out bastion, Dex and oauth2-proxy. Public CA and generated configuration policies
+watch their source resources; cloned Secrets use source synchronization. Verify
+source/consumer equality and Deployment rollout after rotation. Single-instance
+applications can briefly disconnect; hardware/cluster qualification is separate
+from offline policy validation.

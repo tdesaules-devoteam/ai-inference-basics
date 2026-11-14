@@ -13,6 +13,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 locks = json.load(sys.stdin)
+assert locks, 'Supply at least one imported model lock'
 endpoint = 'http://rustfs-svc.rustfs.svc.cluster.local:9000'
 
 
@@ -41,8 +42,11 @@ def denied(operation, **kwargs):
 
 
 identities = set()
+root = secret('rustfs', 'rustfs-root')
+admin = client(root['RUSTFS_ACCESS_KEY'], root['RUSTFS_SECRET_KEY'])
 for name, lock in locks.items():
     credentials = secret(name, 'model-reader')
+    assert credentials == secret(name, 'model-writer')
     identities.add(credentials['AWS_ACCESS_KEY_ID'])
     reader = client(credentials['AWS_ACCESS_KEY_ID'], credentials['AWS_SECRET_ACCESS_KEY'])
     prefix = name + '/' + lock['revision'] + '/'
@@ -50,17 +54,23 @@ for name, lock in locks.items():
     reader.list_objects_v2(Bucket='models', Prefix=prefix, MaxKeys=1)
     result = reader.get_object(Bucket='models', Key=prefix + 'snapshot-manifest.json')
     assert json.loads(result['Body'].read()) == lock
-    other = next(n for n in locks if n != name)
-    reader.list_objects_v2(Bucket='models', Prefix=other + '/', MaxKeys=1)
-    result = reader.get_object(Bucket='models', Key=other + '/' + locks[other]['revision'] + '/snapshot-manifest.json')
-    assert json.loads(result['Body'].read()) == locks[other]
-    denied(reader.list_objects_v2, Bucket='loki', MaxKeys=1)
+    for other in locks:
+        reader.list_objects_v2(Bucket='models', Prefix=other + '/', MaxKeys=1)
+        result = reader.get_object(Bucket='models', Key=other + '/' + locks[other]['revision'] + '/snapshot-manifest.json')
+        assert json.loads(result['Body'].read()) == locks[other]
+    for bucket in ('loki', 'tempo', 'mimir-blocks', 'mimir-ruler', 'mimir-alertmanager'):
+        denied(reader.list_objects_v2, Bucket=bucket, MaxKeys=1)
+        forbidden_key = '_qualification-' + uuid.uuid4().hex
+        try:
+            denied(reader.put_object, Bucket=bucket, Key=forbidden_key, Body=b'qualification')
+        except AssertionError:
+            admin.delete_object(Bucket=bucket, Key=forbidden_key)
+            raise
     key = prefix + '_qualification-' + uuid.uuid4().hex
     try:
         reader.put_object(Bucket='models', Key=key, Body=b'qualification')
         assert reader.get_object(Bucket='models', Key=key)['Body'].read() == b'qualification'
     finally:
-        root = secret('rustfs', 'rustfs-root')
-        client(root['RUSTFS_ACCESS_KEY'], root['RUSTFS_SECRET_KEY']).delete_object(Bucket='models', Key=key)
+        admin.delete_object(Bucket='models', Key=key)
 assert len(identities) == 1
-print(f'{len(locks)} models share one bucket account: reads/writes across model prefixes allowed; Loki denied.')
+print(f'{len(locks)} models share one bucket account: reads/writes across model prefixes allowed; five observability buckets denied.')

@@ -62,7 +62,7 @@ extraManifests:
         resourceNames: [rustfs-root, s3-models]
         verbs: [get]
       # Kubernetes RBAC cannot restrict create by resourceNames. The script creates
-      # only rustfs-root, and this Role is confined to the release namespace.
+      # only rustfs-root and s3-models, confined to the release namespace.
       - apiGroups: [""]
         resources: [secrets]
         verbs: [create]
@@ -323,6 +323,60 @@ extraManifests:
   - apiVersion: policies.kyverno.io/v1
     kind: GeneratingPolicy
     metadata:
+      name: model-bucket-sources
+    spec:
+      evaluation:
+        generateExisting:
+          enabled: true
+        synchronize:
+          enabled: true
+        orphanDownstreamOnPolicyDelete:
+          enabled: true
+      matchConstraints:
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - CREATE
+              - UPDATE
+            resources:
+              - secrets
+            resourceNames:
+              - s3-models
+      matchConditions:
+        - name: shared-model-account
+          expression: object.metadata.namespace == "rustfs"
+      generate:
+        - template:
+            interpolate: cel
+            value: |
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: model-reader
+                namespace: rustfs
+                annotations:
+                  serving.kserve.io/s3-endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+                  serving.kserve.io/s3-usehttps: "0"
+                  serving.kserve.io/s3-region: us-east-1
+                  serving.kserve.io/s3-usevirtualbucket: "false"
+              type: Opaque
+              data: (( object.data ))
+        - template:
+            interpolate: cel
+            value: |
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: model-writer
+                namespace: rustfs
+              type: Opaque
+              data: (( object.data ))
+  - apiVersion: policies.kyverno.io/v1
+    kind: GeneratingPolicy
+    metadata:
       name: model-bucket-access
     spec:
       evaluation:
@@ -347,31 +401,10 @@ extraManifests:
         - name: selected-model
           expression: 'object.metadata.name in {{ .Values.modelNames | toJson }}'
       variables:
-        - name: source
-          expression: resource.Get("v1", "secrets", "rustfs", "s3-models")
+        - name: reader
+          expression: resource.Get("v1", "secrets", "rustfs", "model-reader")
+        - name: writer
+          expression: resource.Get("v1", "secrets", "rustfs", "model-writer")
       generate:
-        - template:
-            interpolate: cel
-            value: |
-              apiVersion: v1
-              kind: Secret
-              metadata:
-                name: model-reader
-                namespace: (( object.metadata.name ))
-                annotations:
-                  serving.kserve.io/s3-endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
-                  serving.kserve.io/s3-usehttps: "0"
-                  serving.kserve.io/s3-region: us-east-1
-                  serving.kserve.io/s3-usevirtualbucket: "false"
-              type: Opaque
-              data: (( variables.source.data ))
-        - template:
-            interpolate: cel
-            value: |
-              apiVersion: v1
-              kind: Secret
-              metadata:
-                name: model-writer
-                namespace: (( object.metadata.name ))
-              type: Opaque
-              data: (( variables.source.data ))
+        # Clone mode tracks source updates, unlike a template reading an external Secret.
+        - expression: generator.Apply(object.metadata.name, [variables.reader, variables.writer])
