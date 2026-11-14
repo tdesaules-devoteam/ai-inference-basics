@@ -1,0 +1,298 @@
+fullnameOverride: oauth2-proxy
+image:
+  registry: quay.io
+  repository: oauth2-proxy/oauth2-proxy
+  tag: v7.15.6@sha256:c3415e8660af553f5e18f5d90db050614c02493c0ac6260ac59442f6d9b12048
+config:
+  existingSecret: oauth-config
+  requiredSecretKeys:
+    - client-id
+    - client-secret
+    - cookie-secret
+  cookieName: _lab_session
+  forceLegacyConfig: false
+  configFile: |
+    provider = "oidc"
+    provider_display_name = "Lab admin"
+    oidc_issuer_url = "{{ .Values.origin }}/dex"
+    skip_oidc_discovery = true
+    login_url = "{{ .Values.origin }}/dex/auth"
+    redeem_url = "http://dex.dex.svc.cluster.local:5556/dex/token"
+    oidc_jwks_url = "http://dex.dex.svc.cluster.local:5556/dex/keys"
+    redirect_url = "{{ .Values.origin }}/oauth2/callback"
+    cookie_secure = true
+    cookie_httponly = true
+    cookie_samesite = "lax"
+    cookie_expire = "8h"
+    reverse_proxy = true
+    http_address = "0.0.0.0:4180"
+    skip_provider_button = true
+    scope = "openid profile email"
+    code_challenge_method = "S256"
+    authenticated_emails_file = "/etc/oauth/allowed-emails"
+    request_logging = false
+    upstreams = ["http://127.0.0.1:4181/"]
+    pass_access_token = false
+    pass_authorization_header = false
+    pass_basic_auth = false
+    set_authorization_header = false
+    pass_user_headers = true
+podLabels:
+  app: oauth2-proxy
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+extraVolumes:
+  - name: oauth-config
+    secret:
+      secretName: oidc-client
+      items:
+        - key: admin-email
+          path: allowed-emails
+  - name: browser-router
+    configMap: {name: browser-router}
+extraVolumeMounts:
+  - {name: oauth-config, mountPath: /etc/oauth, readOnly: true}
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {memory: 256Mi}
+extraContainers:
+  - name: browser-router
+    image: docker.io/library/caddy@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    command: [caddy, run, --config, /etc/browser/Caddyfile, --adapter, caddyfile]
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      allowPrivilegeEscalation: false
+      # The upstream executable has cap_net_bind_service=ep; retain its bounding bit.
+      capabilities: {drop: [ALL], add: [NET_BIND_SERVICE]}
+    resources:
+      requests: {cpu: 20m, memory: 32Mi}
+      limits: {memory: 128Mi}
+    volumeMounts:
+      - {name: browser-router, mountPath: /etc/browser, readOnly: true}
+extraObjects:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: oauth2-proxy-session
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-30"
+        helm.sh/hook-delete-policy: before-hook-creation
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: oauth2-proxy-session
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-20"
+        helm.sh/hook-delete-policy: before-hook-creation
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - secrets
+        resourceNames:
+          - browser-session
+        verbs:
+          - get
+      - apiGroups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - create
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: oauth2-proxy-session
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-10"
+        helm.sh/hook-delete-policy: before-hook-creation
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: oauth2-proxy-session
+    subjects:
+      - kind: ServiceAccount
+        name: oauth2-proxy-session
+        namespace: '{{ .Release.Namespace }}'
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: oauth2-proxy-session
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "0"
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 180
+      template:
+        spec:
+          serviceAccountName: oauth2-proxy-session
+          restartPolicy: Never
+          containers:
+            - name: initialize
+              image: '{{ .Values.provisionImage }}'
+              imagePullPolicy: '{{ .Values.imagePullPolicy }}'
+              command:
+                - python3
+                - -c
+              args:
+                - |
+                  import base64, json, secrets, subprocess
+                  ns = 'oauth2-proxy'
+                  raw = subprocess.check_output(['kubectl', '-n', ns, 'get', 'secret', 'browser-session', '--ignore-not-found', '-o', 'json'], text=True)
+                  if raw.strip():
+                      assert json.loads(raw)['data']['cookie-secret'], 'Empty cookie key'
+                  else:
+                      document = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
+                                  'metadata': {'name': 'browser-session', 'namespace': ns},
+                                  'stringData': {'cookie-secret': base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()}}
+                      subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(document), text=True, check=True)
+                  print('Browser cookie key preserved or initialized.')
+  - apiVersion: policies.kyverno.io/v1
+    kind: GeneratingPolicy
+    metadata:
+      name: oauth2-proxy-oidc-client
+    spec:
+      evaluation:
+        generateExisting:
+          enabled: true
+        synchronize:
+          enabled: true
+        orphanDownstreamOnPolicyDelete:
+          enabled: true
+      matchConstraints:
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - CREATE
+              - UPDATE
+            resources:
+              - namespaces
+            resourceNames:
+              - oauth2-proxy
+      variables:
+        - name: source
+          expression: resource.Get("v1", "secrets", "dex", "oidc-client")
+      generate:
+        - expression: generator.Apply("oauth2-proxy", [variables.source])
+  - apiVersion: policies.kyverno.io/v1
+    kind: GeneratingPolicy
+    metadata:
+      name: oauth2-proxy-config
+    spec:
+      evaluation:
+        generateExisting:
+          enabled: true
+        synchronize:
+          enabled: true
+        orphanDownstreamOnPolicyDelete:
+          enabled: true
+      matchConstraints:
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - CREATE
+              - UPDATE
+            resources:
+              - namespaces
+            resourceNames:
+              - oauth2-proxy
+      variables:
+        - name: client
+          expression: resource.Get("v1", "secrets", "dex", "oidc-client")
+        - name: cookie
+          expression: resource.Get("v1", "secrets", "oauth2-proxy", "browser-session")
+      generate:
+        - template:
+            interpolate: cel
+            value: |
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: oauth-config
+                namespace: oauth2-proxy
+              type: Opaque
+              data:
+                client-id: (( variables.client.data["client-id"] ))
+                client-secret: (( variables.client.data["client-secret"] ))
+                cookie-secret: (( variables.cookie.data["cookie-secret"] ))
+  - apiVersion: gateway.networking.k8s.io/v1beta1
+    kind: ReferenceGrant
+    metadata:
+      name: lab-gateway
+      namespace: '{{ .Release.Namespace }}'
+    spec:
+      from:
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          namespace: gateway
+      to:
+        - group: ""
+          kind: Service
+          name: oauth2-proxy
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: browser-router
+      namespace: '{{ .Release.Namespace }}'
+    data:
+      Caddyfile: |
+        {
+          admin off
+          auto_https off
+        }
+        http://:4181 {
+          bind 127.0.0.1
+          route {
+            redir /terminal /terminal/ 308
+            redir /code /code/ 308
+            redir /headlamp /headlamp/ 308
+            handle /terminal/* {
+              reverse_proxy bastion.bastion.svc.cluster.local:7681
+            }
+            handle_path /code/* {
+              reverse_proxy bastion.bastion.svc.cluster.local:8080
+            }
+            handle /headlamp/* {
+              reverse_proxy headlamp.headlamp.svc.cluster.local:80
+            }
+            respond 404
+          }
+        }
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: browser-gateway-only
+      namespace: '{{ .Release.Namespace }}'
+    spec:
+      podSelector:
+        matchLabels: {app: oauth2-proxy}
+      policyTypes: [Ingress]
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels: {kubernetes.io/metadata.name: gateway}
+              podSelector:
+                matchLabels: {gateway.envoyproxy.io/owning-gateway-name: ai-inference-basics}
+          ports:
+            - {protocol: TCP, port: 4180}

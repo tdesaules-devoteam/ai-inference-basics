@@ -27,8 +27,8 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: workspace
-          image: {{ required "toolsImage is required" .Values.toolsImage | quote }}
-          imagePullPolicy: {{ .Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          image: {{ required "bastionImage is required" .Values.bastionImage | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - python3
             - /scripts/workspace.py
@@ -63,8 +63,8 @@ spec:
       containers:
         {{- range $component := list "terminal" "editor" }}
         - name: {{ $component }}
-          image: {{ required "toolsImage is required" $.Values.toolsImage | quote }}
-          imagePullPolicy: {{ $.Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          image: {{ required "bastionImage is required" $.Values.bastionImage | quote }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy | default "IfNotPresent" }}
           {{- if eq $component "editor" }}
           command:
             - code-server
@@ -85,6 +85,14 @@ spec:
               drop:
                 - ALL
           env:
+            - name: EDITOR
+              value: hx
+            - name: VISUAL
+              value: hx
+            - name: KUBE_EDITOR
+              value: hx
+            - name: STARSHIP_CONFIG
+              value: /etc/lab-ui/starship.toml
             - name: LAB_NAMESPACE
               value: bastion
             - name: TERMINAL_BASE_PATH
@@ -120,6 +128,9 @@ spec:
               cpu: "2"
               memory: 2Gi
           volumeMounts:
+            - name: workspace-config
+              mountPath: /etc/lab-ui
+              readOnly: true
             - name: workspace
               mountPath: /workspace
             - name: ca

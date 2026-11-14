@@ -14,15 +14,6 @@ rules:
       - secrets
     resourceNames:
       - lab-api-key
-      - lab-root-ca
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    resourceNames:
-      - lab-ca
     verbs:
       - get
       - update
@@ -30,6 +21,5 @@ rules:
       - ""
     resources:
       - secrets
-      - configmaps
     verbs:
       - create

@@ -1,0 +1,46 @@
+# Scaleway supplies the NVIDIA driver. Only configure the container runtime.
+driver:
+  enabled: false
+devicePlugin:
+  enabled: false
+gfd:
+  enabled: false
+migManager:
+  enabled: false
+mig:
+  strategy: none
+dcgm:
+  enabled: false
+dcgmExporter:
+  enabled: false
+nodeStatusExporter:
+  enabled: false
+cdi:
+  enabled: false
+operator:
+  version: v26.7.2@sha256:02933b43d286d1321cd0dadd460b9ae8f5e5c0ee99a087e2d10254febc94ba45
+validator:
+  version: v26.7.2@sha256:02933b43d286d1321cd0dadd460b9ae8f5e5c0ee99a087e2d10254febc94ba45
+  cuda:
+    env:
+      - name: WITH_WORKLOAD
+        value: "false"
+hostPaths:
+  kubeletRootDir: /var/lib/k0s/kubelet
+toolkit:
+  enabled: true
+  version: v1.20.1@sha256:00a422252dd875b112f5974321c2feebbdf11c338f8ad131e5ce18e5b3a3bfac
+  env:
+    - name: CONTAINERD_CONFIG
+      value: /etc/k0s/containerd.d/nvidia.toml
+    - name: CONTAINERD_SOCKET
+      value: /run/k0s/containerd.sock
+    - name: CONTAINERD_RUNTIME_CLASS
+      value: nvidia
+    - name: CONTAINERD_SET_AS_DEFAULT
+      value: "false"
+    - name: RUNTIME_CONFIG_SOURCE
+      value: file=/etc/k0s/containerd.toml
+node-feature-discovery:
+  image:
+    tag: v0.19.0@sha256:2fa1c99ad09bdf2c8ad97706a4ad2fd548c84d5ecd70ba32a6152c667b96c4d2

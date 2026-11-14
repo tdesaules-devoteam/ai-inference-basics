@@ -1,4 +1,11 @@
 hostname: ""
-toolsImage: ""
+provisionImage: ""
+apiBearerToken: ""
 nodePort: 30443
+bufferLimit: 32Mi
 envoyImage: docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a
+modelNames:
+  - qwen3-0-6b
+  - qwen3-embedding-0-6b
+  - qwen3-reranker-0-6b
+  - lfm3-omni-2b

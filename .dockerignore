@@ -5,3 +5,4 @@ reports
 **/.terraform
 dist
 **/node_modules
+infra/infra-definition.*.json

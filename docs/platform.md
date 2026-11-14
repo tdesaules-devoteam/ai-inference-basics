@@ -16,7 +16,7 @@ charts belong in `charts/`; this milestone uses upstream charts exclusively.
 | agent-router | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-helm |
 
 The complete OCI manifest digests are recorded directly in
-`platform/helm/helmfile.yaml.gotmpl`. Helmfile 1.8.3 / Helm 4.3.1 fetch these official
+`platform/helmfile/helmfile.yaml.gotmpl`. Helmfile 1.8.3 / Helm 4.3.1 fetch these official
 references directly; there is no custom downloader, artifact lock or required
 PLATFORM_ARTIFACTS directory. The qualified RustFS HTTP archive SHA-256 is checked
 by `tests/validate_storage.py`. Its version pin is not OCI content addressing:
@@ -59,7 +59,7 @@ The default StorageClass `local-path-provisioner` creates local volumes under
 of 20 GiB and a Recreate strategy. Requested capacity is not a filesystem quota;
 monitor free space on the 64 GiB VM disk.
 
-`platform/helm/values/rustfs.yaml` uses the upstream `extraManifests` field for two
+`platform/helmfile/values/rustfs.yaml` uses the upstream `extraManifests` field for
 stages, without a dedicated chart or host credential service:
 
 1. Pre-install/pre-upgrade hooks create the `rustfs-credentials` ServiceAccount,
@@ -100,7 +100,7 @@ per-application bucket-scoped credentials will accompany the application consume
 
 ## Provisioning units
 
-Ignition copies Helmfile and values to `/etc/ai-inference-basics/platform/helm/`.
+Ignition copies Helmfile and values to `/etc/ai-inference-basics/platform/helmfile/`.
 Tool installers and the per-user kubeconfig unit live in `platform/units/`.
 The bootstrap requires verified Helm/Helmfile/kubectl and the k0s readiness unit.
 Helm controls credential preparation inside Kubernetes. The temporary bootstrap
@@ -149,8 +149,8 @@ explicit migration; merely omitting a release from Helmfile does not uninstall i
 With Helm 4.3.1, Helmfile 1.8.3 and a Python environment containing PyYAML:
 
 ```sh
-helmfile -f platform/helm/helmfile.yaml.gotmpl show-dag
-helmfile -f platform/helm/helmfile.yaml.gotmpl lint
+helmfile -f platform/helmfile/helmfile.yaml.gotmpl show-dag
+helmfile -f platform/helmfile/helmfile.yaml.gotmpl lint
 python3 tests/validate_storage.py
 python3 tests/test_platform_units.py
 python3 tests/test_rustfs_credentials.py

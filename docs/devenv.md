@@ -45,14 +45,16 @@ custom_copies = [
 ```
 
 Additional custom copies place the Helmfile and per-component values
-from `platform/helm/` under `/etc/ai-inference-basics/platform/helm`.
-The five authored charts are copied to `/etc/ai-inference-basics/charts`, including
+from `platform/helmfile/` under `/etc/ai-inference-basics/platform/helmfile`.
+The authored charts are copied to `/etc/ai-inference-basics/charts`, including
 their templates, Python hook programs and model lock. The local bastion image must
 be imported into k0s explicitly after VM recreation while registry publication is
 unavailable; bootstrap can then be retried without recreating the VM.
-Local custom copies also include the Helm 4 domain post-renderer, its plugin
-descriptor and its declarative resources/scripts. The bootstrap unit sets
-`HELM_PLUGINS=/etc/ai-inference-basics/platform/helm/plugins`.
+Local custom copies include the JSON schema, private environment definition
+(mode 0600), shared `infra/helmfile/lab.yaml.gotmpl` adapter and readiness checks.
+The local config reads machine sizing from `infra/infra-definition.devenv.json`;
+the bootstrap unit selects this guest-side definition through `INFRA_DEFINITION`.
+The host Python package `python3-jsonschema` validates it before Helmfile rendering.
 Units are loaded with KCL `file.read` from `../platform/units/`:
 
 - `platform-k0s-install.service` installs native k0s;

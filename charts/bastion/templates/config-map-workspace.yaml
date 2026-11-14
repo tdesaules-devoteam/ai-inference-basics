@@ -4,5 +4,7 @@ metadata:
   name: bastion-workspace
   namespace: {{ .Release.Namespace }}
 data:
+  starship.toml: |
+{{ .Files.Get "files/starship.toml" | indent 4 }}
   workspace.py: |
 {{ .Files.Get "files/workspace.py" | indent 4 }}

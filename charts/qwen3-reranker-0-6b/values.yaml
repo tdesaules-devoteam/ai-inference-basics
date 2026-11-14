@@ -1,4 +1,4 @@
-toolsImage: ""
+provisionImage: ""
 image: docker.io/vllm/vllm-openai-cpu:v0.23.0-x86_64@sha256:6240a6bba604e607300e47490e3477211f968bdf125211bb877d19a70b8fe844
 endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models

@@ -9,8 +9,15 @@
 - Use custom_pkgs/custom_mise_tools/custom_files/custom_copies and append units.
   Do not replace normal provisioning units with no-ops.
 - Keep platform/k0s/k0s.yaml. platform/cloud-init and platform/terraform are empty placeholders.
-- Keep Helmfile and values in platform/helm, project-authored charts in charts,
-  and systemd units in platform/units.
+- Keep Helmfile orchestration and upstream chart values in platform/helmfile,
+  with readiness checks in platform/helmfile/scripts. Keep the shared environment
+  values adapter in infra/helmfile/lab.yaml.gotmpl, project-authored charts
+  (including dedicated configuration charts) in charts, and systemd units in
+  platform/units.
+- Describe the desired infrastructure in a schema-validated environment JSON.
+  Track the schema and a sample with placeholder credentials; keep real
+  environment definitions containing credentials untracked. Helmfile values
+  adapt this definition rather than maintaining competing environment defaults.
 - Keep one resource declaration per chart template, using kebab-case kind filenames
   (for example cluster-role.yaml). Add a purpose suffix for distinct resources of
   the same kind; loops may instantiate that resource for participants or models.
@@ -33,12 +40,24 @@
 - Dex and oauth2-proxy authenticate browser access, including ttyd with Zellij CLI.
   Model APIs use a separate static Bearer key enforced at Envoy Gateway.
 - Chat, embeddings and reranker use InferenceService. No llm-d/EPP.
-- Each model has its own chart, release, namespace and matching S3 prefix:
-  qwen3-0-6b, qwen3-embedding-0-6b, qwen3-reranker-0-6b. Models start with one replica.
+- Each model has its own chart, release, namespace and matching S3 prefix.
+  The environment definition explicitly selects installed releases, imports and
+  zero or one inference replica; zero uses KServe's supported stopped state.
 - One shared admin account uses the bastion workspace and Headlamp, both with
   cluster-admin access. No per-participant workspaces or namespaces.
-- Domain credential Jobs own their local Secrets. Upstream chart extensions remain
-  in the same Helm release through the repository's Helm 4 post-renderer.
+- Use upstream chart settings and native extraObjects/extraManifests extension
+  points first. When an upstream chart cannot express a required resource, use
+  a focused project-authored chart in charts, ordered explicitly by Helmfile
+  needs. Configuration releases may share their component's namespace. Do not
+  use a custom post-renderer, Helm plugin, or placeholder-substitution layer.
+- Domain initialization Jobs create missing technical credentials using a
+  cryptographic generator and preserve existing values. A Dex configuration Job
+  computes the password's bcrypt hash. Kyverno owns cross-namespace Secret
+  synchronization and public CA publication; cert-manager owns TLS keys and
+  certificates. Keep credentials.py and kube.py removed.
+- Use one shared non-admin S3 account for the models bucket, configured by a
+  RustFS rc Job and distributed by Kyverno. Model S3 prefixes remain separate;
+  the shared account is not granted access to the observability buckets.
 - Local Path Provisioner runs in local-path-provisioner; RustFS runs in rustfs on a PVC.
 - Initialize the six application buckets through RustFS extraManifests; no dedicated
   storage-bootstrap chart or benchmark-results/platform-checks buckets in new installs.

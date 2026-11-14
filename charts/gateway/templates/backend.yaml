@@ -1,4 +1,4 @@
-{{- range $name := list "qwen3-0-6b" "qwen3-embedding-0-6b" "qwen3-reranker-0-6b" }}
+{{- range $name := .Values.modelNames }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: Backend

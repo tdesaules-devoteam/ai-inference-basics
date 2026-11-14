@@ -1,0 +1,6 @@
+provisionImage: ""
+imagePullPolicy: IfNotPresent
+origin: ""
+access:
+  adminEmail: ""
+  adminPassword: ""

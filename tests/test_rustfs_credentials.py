@@ -8,7 +8,7 @@ from urllib.error import HTTPError
 
 import yaml
 
-VALUES = Path(__file__).resolve().parent.parent / 'platform/helm/values/rustfs.yaml'
+VALUES = Path(__file__).resolve().parent.parent / 'platform/helmfile/values/rustfs.yaml'
 job = next(obj for obj in yaml.safe_load(VALUES.read_text())['extraManifests']
            if obj['kind'] == 'Job' and obj['metadata']['name'] == 'rustfs-credentials')
 hook = {'__name__': 'credential_hook_test'}

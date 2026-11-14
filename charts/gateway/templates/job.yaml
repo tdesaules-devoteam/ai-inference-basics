@@ -1,41 +1,44 @@
-{{- range $phase := list "key" "ca" }}
----
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: gateway-{{ $phase }}
-  namespace: {{ $.Release.Namespace }}
+  name: gateway-key
+  namespace: {{ .Release.Namespace }}
   annotations:
-    helm.sh/hook: {{ if eq $phase "key" }}pre-install,pre-upgrade{{ else }}post-install,post-upgrade{{ end }}
+    helm.sh/hook: pre-install,pre-upgrade
     helm.sh/hook-weight: "0"
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  activeDeadlineSeconds: 360
+  activeDeadlineSeconds: 120
   backoffLimit: 1
   template:
     spec:
       serviceAccountName: gateway-credentials
       restartPolicy: Never
       containers:
-        - name: configure
-          image: {{ required "toolsImage is required" $.Values.toolsImage | quote }}
-          imagePullPolicy: {{ $.Values.toolsImagePullPolicy | default "IfNotPresent" }}
+        - name: initialize-api-key
+          image: {{ required "provisionImage is required" .Values.provisionImage | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - python3
-            - /scripts/credentials.py
-            - {{ $phase }}
-          volumeMounts:
-            - name: scripts
-              mountPath: /scripts
-              readOnly: true
+            - -c
+          args:
+            - |
+              import json, os, subprocess
+              namespace = {{ .Release.Namespace | quote }}
+              existing = subprocess.check_output(['kubectl', '-n', namespace, 'get', 'secret', 'lab-api-key', '--ignore-not-found', '-o', 'json'], text=True)
+              document = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
+                          'metadata': {'name': 'lab-api-key', 'namespace': namespace},
+                          'stringData': {'lab': os.environ['API_BEARER_TOKEN']}}
+              if existing.strip():
+                  document['metadata'] = json.loads(existing)['metadata']
+              subprocess.run(['kubectl', 'replace' if existing.strip() else 'create', '-f', '-'], input=json.dumps(document), text=True, check=True)
+              print('Gateway API key preserved or initialized.')
+          env:
+            - name: API_BEARER_TOKEN
+              value: {{ required "apiBearerToken is required" .Values.apiBearerToken | quote }}
           resources:
             requests:
               cpu: 20m
               memory: 64Mi
             limits:
               memory: 128Mi
-      volumes:
-        - name: scripts
-          configMap:
-            name: gateway-credentials
-{{- end }}

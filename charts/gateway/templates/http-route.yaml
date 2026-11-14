@@ -1,47 +1,29 @@
+{{- $routes := list
+  (dict "name" "terminal" "path" "/terminal" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
+  (dict "name" "code" "path" "/code" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
+  (dict "name" "headlamp" "path" "/headlamp" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
+  (dict "name" "oauth2" "path" "/oauth2" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
+  (dict "name" "dex" "path" "/dex" "service" "dex" "namespace" "dex" "port" 5556)
+}}
+{{- range $route := $routes }}
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: browser
-  namespace: {{ .Release.Namespace }}
+  name: browser-{{ $route.name }}
+  namespace: {{ $.Release.Namespace }}
 spec:
   hostnames:
-    - {{ required "hostname is required" .Values.hostname | quote }}
+    - {{ required "hostname is required" $.Values.hostname | quote }}
   parentRefs:
     - name: ai-inference-basics
   rules:
     - matches:
         - path:
-            type: Exact
-            value: /
-      filters:
-        - type: RequestRedirect
-          requestRedirect:
-            path:
-              type: ReplaceFullPath
-              replaceFullPath: /headlamp/
-            statusCode: 302
-    - matches:
-        - path:
             type: PathPrefix
-            value: /oauth2
-        - path:
-            type: PathPrefix
-            value: /headlamp
-        - path:
-            type: PathPrefix
-            value: /terminal
-        - path:
-            type: PathPrefix
-            value: /code
+            value: {{ $route.path }}
       backendRefs:
-        - name: oauth2-proxy
-          namespace: oauth2-proxy
-          port: 80
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /dex
-      backendRefs:
-        - name: dex
-          namespace: dex
-          port: 5556
+        - name: {{ $route.service }}
+          namespace: {{ $route.namespace }}
+          port: {{ $route.port }}
+{{- end }}

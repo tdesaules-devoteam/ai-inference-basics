@@ -1,0 +1,238 @@
+palette = "nord"
+
+[palettes.nord]
+nord_polar_0 = "#2E3440"
+nord_polar_1 = "#3B4252"
+nord_polar_2 = "#434C5E"
+nord_polar_3 = "#4C566A"
+nord_snow_0 = "#D8DEE9"
+nord_snow_1 = "#E5E9F0"
+nord_snow_2 = "#ECEFF4"
+nord_frost_0 = "#8FBCBB"
+nord_frost_1 = "#88C0D0"
+nord_frost_2 = "#81A1C1"
+nord_frost_3 = "#5E81AC"
+nord_aurora_0 = "#BF616A"
+nord_aurora_1 = "#D08770"
+nord_aurora_2 = "#EBCB8B"
+nord_aurora_3 = "#A3BE8C"
+nord_aurora_4 = "#B48EAD"
+
+format = """
+$username\
+$hostname\
+$localip\
+$shlvl\
+$singularity\
+$kubernetes\
+$directory\
+$vcsh\
+$fossil_branch\
+$fossil_metrics\
+$git_branch\
+$git_commit\
+$git_state\
+$git_metrics\
+$git_status\
+$hg_branch\
+$pijul_channel\
+$docker_context\
+$package\
+$c\
+$cmake\
+$cobol\
+$daml\
+$dart\
+$deno\
+$dotnet\
+$elixir\
+$elm\
+$erlang\
+$fennel\
+$gleam\
+$golang\
+$guix_shell\
+$haskell\
+$haxe\
+$helm\
+$java\
+$julia\
+$kotlin\
+$gradle\
+$lua\
+$nim\
+$nodejs\
+$ocaml\
+$opa\
+$perl\
+$php\
+$pulumi\
+$purescript\
+$python\
+$quarto\
+$raku\
+$rlang\
+$red\
+$ruby\
+$rust\
+$scala\
+$solidity\
+$swift\
+$terraform\
+$typst\
+$vlang\
+$vagrant\
+$zig\
+$buf\
+$nix_shell\
+$conda\
+$meson\
+$spack\
+$memory_usage\
+$aws\
+$gcloud\
+$openstack\
+$azure\
+$nats\
+$direnv\
+$env_var\
+$mise\
+$crystal\
+$custom\
+$sudo\
+$cmd_duration\
+$line_break\
+$jobs\
+$battery\
+$time\
+$status\
+$os\
+$container\
+$netns\
+$shell\
+$character"""
+
+[username]
+disabled = false
+show_always = true
+style_user = 'nord_frost_2'
+style_root = 'nord_aurora_0'
+format = '[$user]($style)'
+
+[hostname]
+disabled = false
+ssh_only = false
+format = ' [@](nord_snow_2) [$hostname](nord_aurora_3)'
+
+[directory]
+disabled = false
+home_symbol = '⾕'
+use_os_path_sep = false
+truncation_length = 0
+truncate_to_repo = false
+format = ' -- \[ [$path](nord_frost_1) \]'
+
+[git_branch]
+disabled = false
+always_show_remote = true
+format = ' -- \[  [[$branch](nord_frost_0)   \([$remote_branch](nord_aurora_4)\)](nord_snow_2)'
+
+[git_commit]
+disabled = false
+commit_hash_length = 7
+format = '   [$hash $tag](nord_aurora_4)'
+only_detached = false
+tag_disabled = false
+tag_max_candidates = 3
+tag_symbol = '󱍵 '
+
+[git_metrics]
+disabled = false
+ignore_submodules = false
+only_nonzero_diffs = true
+format = '( 󱓊 \([$added](nord_aurora_3)\))( 󱓋 \([$deleted](nord_aurora_0)\))'
+
+[git_state]
+disabled = false
+rebase = 'rebasing'
+merge = 'merging'
+revert = 'reverting'
+cherry_pick = 'cherry-picking'
+bisect = 'bisecting'
+am = '.am'
+am_or_rebase = 'am/rebase'
+format = '\( [$state($progress_current/$progress_total)](nord_snow_2) \) '
+
+[git_status]
+use_git_executable = true
+disabled = false
+conflicted = ' [con](nord_aurora_1) '
+deleted = ' [del](nord_aurora_0) '
+ahead = ' [ahe](nord_aurora_3) '
+behind = ' [beh](nord_frost_2) '
+diverged = ' [div](nord_aurora_4) '
+up_to_date = ' [utd](nord_aurora_3) '
+untracked = ' [unt](nord_aurora_2) '
+stashed = ' [sts](nord_snow_0) '
+modified = ' [mod](nord_aurora_2) '
+staged = ' [stg](nord_frost_0) '
+renamed = ' [ren](nord_aurora_4) '
+typechanged = ' [] '
+format = ':([$all_status$ahead_behind](nord_snow_2) \])'
+
+[package]
+disabled = false
+format = ' -- \[ $symbol$version \]'
+symbol = ' '
+version_format = 'v${raw}'
+display_private = true
+
+[rust]
+disabled = false
+format = ' -- \[ $symbol$version \]'
+version_format = 'v${raw}'
+symbol = ' '
+detect_extensions = ['rs']
+detect_files = ['Cargo.toml']
+detect_folders = []
+
+[cmd_duration]
+disabled = true
+
+[time]
+disabled = false
+use_12hr = false
+time_format = '%T'
+format = '\[ [$time](nord_aurora_2) \] '
+
+[shell]
+disabled = false
+bash_indicator = 'bash'
+fish_indicator = 'fish'
+format = '[  \( [$indicator](nord_aurora_0) \)](nord_snow_2) '
+
+[character]
+success_symbol = '[➜](nord_snow_2)'
+error_symbol = '[➜](nord_aurora_0)'
+
+[custom.hw_type]
+description = "Detects if the system is bare-metal, virtual, or distrobox"
+command = """
+if [ -n "$DISTROBOX_ENTER_PATH" ] || [ -f /.distroboxrc ] || pgrep -x distrobox-enter >/dev/null; then
+  echo "distrobox"
+elif [ "$(hostnamectl chassis 2>/dev/null)" = "vm" ] || [ "$(hostnamectl chassis 2>/dev/null)" = "container" ]; then
+  echo "$(hostnamectl property chassis 2>/dev/null)"
+else
+  echo "metal"
+fi
+"""
+when = "which hostnamectl || [ -n \"$DISTROBOX_ENTER_PATH\" ] || [ -f /.distroboxrc ] || command -v distrobox-enter >/dev/null"
+shell = ["bash", "--noprofile", "--norc"]
+format = ' -- \[ [$output](nord_aurora_1) \]'
+
+[custom.os_distro]
+description = "Detects the specific OS distribution"
+command = "grep '^PRETTY_NAME=' /etc/os-release | cut -d'=' -f2 | tr -d '\"' | tr '[:upper:]' '[:lower:]'"
+when = "test -f /etc/os-release"
+shell = ["bash", "--noprofile", "--norc"]
+format = ' / \[ [$output](nord_aurora_0) \]'

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: dex-config
+description: Stable Dex identity initialization and bcrypt configuration Job
+type: application
+version: 0.1.0

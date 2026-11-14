@@ -1,0 +1,16 @@
+{{- $infra := .Values.infra -}}
+{{- $models := list -}}
+{{- range $name, $model := $infra.models -}}
+{{- if $model.enabled -}}
+{{- $models = append $models $name -}}
+{{- end -}}
+{{- end -}}
+hostname: {{ $infra.network.hostname | quote }}
+nodePort: {{ $infra.network.httpsNodePort }}
+origin: {{ printf "https://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
+bastionImage: {{ $infra.images.bastion | quote }}
+provisionImage: {{ $infra.images.provision | quote }}
+omniImage: {{ $infra.images.omni | quote }}
+imagePullPolicy: {{ $infra.images.pullPolicy | quote }}
+modelNames:
+{{ $models | toYaml | indent 2 }}

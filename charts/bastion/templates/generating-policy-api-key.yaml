@@ -1,0 +1,30 @@
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: bastion-api-key
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+    orphanDownstreamOnPolicyDelete:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - namespaces
+        resourceNames:
+          - {{ .Release.Namespace }}
+  variables:
+    - name: source
+      expression: resource.Get("v1", "secrets", "gateway", "lab-api-key")
+  generate:
+    - expression: generator.Apply({{ .Release.Namespace | quote }}, [variables.source])

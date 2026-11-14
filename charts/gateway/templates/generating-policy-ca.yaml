@@ -1,0 +1,39 @@
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: gateway-public-ca
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+    orphanDownstreamOnPolicyDelete:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - secrets
+        resourceNames:
+          - lab-root-ca
+  matchConditions:
+    - name: gateway-certificate
+      expression: object.metadata.namespace == {{ .Release.Namespace | quote }} && has(object.data) && 'tls.crt' in object.data
+  generate:
+    - template:
+        interpolate: cel
+        value: |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: lab-ca
+            namespace: {{ .Release.Namespace }}
+          data:
+            ca.crt: (( string(base64.decode(object.data["tls.crt"])) ))

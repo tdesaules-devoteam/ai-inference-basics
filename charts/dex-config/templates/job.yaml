@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dex-config
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 180
+  template:
+    spec:
+      serviceAccountName: dex-domain
+      restartPolicy: Never
+      containers:
+        - name: configure
+          image: {{ required "provisionImage is required" .Values.provisionImage | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - python3
+            - /scripts/configure.py
+          env:
+            - name: ADMIN_EMAIL
+              value: {{ required "adminEmail is required" .Values.access.adminEmail | quote }}
+            - name: ADMIN_PASSWORD
+              value: {{ required "adminPassword is required" .Values.access.adminPassword | quote }}
+            - name: LAB_ORIGIN
+              value: {{ required "origin is required" .Values.origin | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: dex-config-job

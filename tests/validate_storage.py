@@ -16,14 +16,13 @@ from pathlib import Path
 import yaml
 
 root = Path(__file__).resolve().parent.parent
-os.environ.setdefault('LAB_HOSTNAME', 'fixture.local')
-os.environ.setdefault('HELM_PLUGINS', str(root / 'platform/helm/plugins'))
+os.environ['INFRA_DEFINITION'] = str(root / 'infra/infra-definition.sample.json')
 foundation = {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
 selection = [arg for name in sorted(foundation) for arg in ('--selector', 'name=' + name)]
 cluster = yaml.safe_load((root / 'platform/k0s/k0s.yaml').read_text())
 assert not cluster['spec'].get('extensions', {}).get('helm'), 'Competing k0s Helm deployer configuration'
 rendered = subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), *selection, 'template',
+    'helmfile', '-f', str(root / 'platform/helmfile/helmfile.yaml.gotmpl'), *selection, 'template',
 ], text=True)
 objects = list(filter(None, yaml.safe_load_all(rendered)))
 owners = set()
@@ -71,8 +70,8 @@ assert job['metadata']['annotations']['helm.sh/hook'] == 'post-install,post-upgr
 assert job['spec']['activeDeadlineSeconds'] == 300
 assert job['spec']['ttlSecondsAfterFinished'] == 3600
 script = job['spec']['template']['spec']['containers'][0]['args'][0]
-subprocess.run(['bash', '-n', '-c', script], check=True)
-assert 'for bucket in loki tempo mimir-blocks mimir-ruler mimir-alertmanager models;' in script
+compile(script, '<bucket-hook>', 'exec')
+assert "('loki', 'tempo', 'mimir-blocks', 'mimir-ruler', 'mimir-alertmanager', 'models')" in script
 assert 'benchmark-results' not in rendered and 'platform-checks' not in rendered
 assert not any(o['metadata']['name'] == 'storage-bootstrap' for o in objects)
 credential_objects = {o['kind']: o for o in objects if o['metadata']['name'] == 'rustfs-credentials'}
@@ -83,7 +82,7 @@ for kind, weight in [('ServiceAccount', '-30'), ('Role', '-20'), ('RoleBinding',
     assert obj['metadata']['annotations']['helm.sh/hook'] == 'pre-install,pre-upgrade'
     assert obj['metadata']['annotations']['helm.sh/hook-weight'] == weight
 rules = credential_objects['Role']['rules']
-assert rules == [{'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['rustfs-root'], 'verbs': ['get']},
+assert rules == [{'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['rustfs-root', 's3-models'], 'verbs': ['get']},
                  {'apiGroups': [''], 'resources': ['secrets'], 'verbs': ['create']}]
 credential_job = credential_objects['Job']
 assert credential_job['spec']['ttlSecondsAfterFinished'] == 3600
@@ -104,22 +103,22 @@ assert 'envoy-gateway-system' not in rendered and 'envoy-ai-gateway-system' not 
 # Build the resolved state as well as the manifests: needs is an orchestration
 # property, not visible in Kubernetes YAML.
 state = yaml.safe_load(subprocess.check_output([
-    'helmfile', '-f', str(root / 'platform/helm/helmfile.yaml.gotmpl'), *selection, 'build',
+    'helmfile', '-f', str(root / 'platform/helmfile/helmfile.yaml.gotmpl'), *selection, 'build',
 ], text=True))
 releases = {r['name']: r for r in state['releases']}
-assert releases['rustfs']['needs'] == ['local-path-provisioner/local-path-provisioner']
+assert releases['rustfs']['needs'] == ['local-path-provisioner/local-path-provisioner', 'kyverno/kyverno']
 assert set(releases) == {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
 assert set(releases['agent-router']['needs']) == {'cert-manager/cert-manager', 'envoy-gateway/envoy-gateway', 'agent-router/agent-router-crds'}
 assert state['helmDefaults']['wait'] and state['helmDefaults']['waitForJobs']
 # build resolves OCI references to the Helmfile cache. Validate declared references separately.
-declared = yaml.safe_load((root / 'platform/helm/helmfile.yaml.gotmpl').read_text().split('\n{{- range $model :=', 1)[0])
-for release in declared['releases']:
-    if release['name'] not in foundation:
-        continue
-    if release['name'] == 'rustfs':
-        assert release['chart'] == 'rustfs/rustfs' and release['version'] == '1.0.5'
+declared = (root / 'platform/helmfile/helmfile.yaml.gotmpl').read_text().split('\nreleases:', 1)[1]
+for name in foundation:
+    block = declared.split('  - name: ' + name + '\n', 1)[1].split('\n  - name:', 1)[0]
+    chart = re.search(r'^    chart: (.+)$', block, re.M).group(1)
+    if name == 'rustfs':
+        assert chart == 'rustfs/rustfs' and 'version: "1.0.5"' in block
     else:
-        assert re.fullmatch(r'oci://.+@sha256:[a-f0-9]{64}', release['chart'])
+        assert re.fullmatch(r'oci://.+@sha256:[a-f0-9]{64}', chart)
 # HTTP charts are version-pinned, not addressed by OCI manifest digest. Verify
 # the qualified archive independently without adding a deployment downloader.
 with tempfile.TemporaryDirectory() as directory:

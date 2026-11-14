@@ -1,0 +1,377 @@
+fullnameOverride: rustfs
+replicaCount: 1
+mode:
+  standalone:
+    enabled: true
+    strategy:
+      type: Recreate
+  distributed:
+    enabled: false
+image:
+  rustfs:
+    repository: docker.io/rustfs/rustfs
+    tag: 1.0.5@sha256:b81d16a90ee25bd9511280127ca1471788c6e874cf0f0da759645f46b2dc1d74
+  initImage:
+    repository: docker.io/library/busybox
+    tag: 1.37.0@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+secret:
+  existingSecret: rustfs-root
+storageclass:
+  name: local-path-provisioner
+  dataStorageSize: 20Gi
+config:
+  rustfs:
+    obs_log_directory: ""
+    console_enable: "false"
+ingress:
+  enabled: false
+gatewayApi:
+  enabled: false
+service:
+  type: ClusterIP
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 2Gi
+
+# The upstream chart renders extraManifests through tpl. No separate bootstrap chart.
+extraManifests:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-30"
+        helm.sh/hook-delete-policy: before-hook-creation
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-20"
+        helm.sh/hook-delete-policy: before-hook-creation
+    rules:
+      - apiGroups: [""]
+        resources: [secrets]
+        resourceNames: [rustfs-root, s3-models]
+        verbs: [get]
+      # Kubernetes RBAC cannot restrict create by resourceNames. The script creates
+      # only rustfs-root, and this Role is confined to the release namespace.
+      - apiGroups: [""]
+        resources: [secrets]
+        verbs: [create]
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "-10"
+        helm.sh/hook-delete-policy: before-hook-creation
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: rustfs-credentials
+    subjects:
+      - kind: ServiceAccount
+        name: rustfs-credentials
+        namespace: '{{ .Release.Namespace }}'
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-credentials
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: pre-install,pre-upgrade
+        helm.sh/hook-weight: "0"
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: rustfs-credentials
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: initialize-credentials
+              image: '{{ .Values.provisionImage }}'
+              imagePullPolicy: '{{ .Values.imagePullPolicy }}'
+              command: [python3, -c]
+              args:
+                - |
+                  import base64
+                  import json
+                  import os
+                  from pathlib import Path
+                  import secrets
+                  import ssl
+                  import subprocess
+                  from urllib.error import HTTPError, URLError
+                  from urllib.request import Request, urlopen
+
+                  def validate(secret):
+                      if not isinstance(secret, dict) or not isinstance(secret.get("data"), dict):
+                          raise ValueError("Missing credential data")
+                      for key in ("RUSTFS_ACCESS_KEY", "RUSTFS_SECRET_KEY"):
+                          value = secret.get("data", {}).get(key)
+                          if not isinstance(value, str) or not base64.b64decode(value, validate=True):
+                              raise ValueError("Missing or invalid credential key")
+
+                  def ensure_secret(api, namespace):
+                      collection = "/api/v1/namespaces/" + namespace + "/secrets"
+                      endpoint = collection + "/rustfs-root"
+                      created = False
+                      try:
+                          secret = api("GET", endpoint)
+                      except HTTPError as error:
+                          error.close()
+                          if error.code != 404:
+                              raise
+                          payload = {
+                              "apiVersion": "v1", "kind": "Secret", "type": "Opaque",
+                              "metadata": {"name": "rustfs-root", "namespace": namespace,
+                                           "labels": {"app.kubernetes.io/managed-by": "rustfs-credentials-job"}},
+                              "data": {key: base64.b64encode(secrets.token_hex(size).encode()).decode()
+                                       for key, size in (("RUSTFS_ACCESS_KEY", 12), ("RUSTFS_SECRET_KEY", 32))},
+                          }
+                          try:
+                              secret = api("POST", collection, payload)
+                              created = True
+                          except HTTPError as conflict:
+                              conflict.close()
+                              if conflict.code != 409:
+                                  raise
+                              secret = api("GET", endpoint)
+                      validate(secret)
+                      return created
+
+                  if __name__ == "__main__":
+                      try:
+                          account = Path("/var/run/secrets/kubernetes.io/serviceaccount")
+                          context = ssl.create_default_context(cafile=str(account / "ca.crt"))
+                          token = (account / "token").read_text().strip()
+                          def api(method, path, payload=None):
+                              request = Request("https://kubernetes.default.svc" + path,
+                                                data=json.dumps(payload).encode() if payload is not None else None,
+                                                headers={"Authorization": "Bearer " + token,
+                                                         "Content-Type": "application/json"}, method=method)
+                              with urlopen(request, context=context, timeout=10) as response:
+                                  return json.load(response)
+                          created = ensure_secret(api, os.environ["POD_NAMESPACE"])
+                          raw = subprocess.check_output(['kubectl', '-n', os.environ['POD_NAMESPACE'], 'get', 'secret', 's3-models', '--ignore-not-found', '-o', 'json'], text=True)
+                          if not raw.strip():
+                              document = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
+                                          'metadata': {'name': 's3-models', 'namespace': os.environ['POD_NAMESPACE']},
+                                          'stringData': {'AWS_ACCESS_KEY_ID': 'lab-models', 'AWS_SECRET_ACCESS_KEY': secrets.token_urlsafe(32)}}
+                              subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(document), text=True, check=True)
+                          print("RustFS credentials created." if created else "Existing RustFS credentials preserved.")
+                      except HTTPError as error:
+                          error.close()
+                          raise SystemExit("Kubernetes API request failed: HTTP " + str(error.code)) from None
+                      except (URLError, OSError, ValueError) as error:
+                          raise SystemExit("Credential initialization failed: " + type(error).__name__) from None
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-buckets
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          containers:
+            - name: initialize-buckets
+              image: '{{ .Values.provisionImage }}'
+              imagePullPolicy: '{{ .Values.imagePullPolicy }}'
+              command: [python3, -c]
+              args:
+                - |
+                  import os
+                  import boto3
+                  from botocore.config import Config
+                  from botocore.exceptions import ClientError
+                  s3 = boto3.client('s3', endpoint_url=os.environ['S3_ENDPOINT'], region_name='us-east-1',
+                                    config=Config(s3={'addressing_style': 'path'}))
+                  for bucket in ('loki', 'tempo', 'mimir-blocks', 'mimir-ruler', 'mimir-alertmanager', 'models'):
+                      try:
+                          s3.head_bucket(Bucket=bucket)
+                      except ClientError as error:
+                          if error.response['ResponseMetadata']['HTTPStatusCode'] != 404:
+                              raise
+                          s3.create_bucket(Bucket=bucket)
+                      s3.head_bucket(Bucket=bucket)
+                  print('Six application buckets are available.')
+              env:
+                - name: S3_ENDPOINT
+                  value: 'http://rustfs-svc.{{ .Release.Namespace }}.svc.cluster.local:9000'
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: rustfs-root
+                      key: RUSTFS_ACCESS_KEY
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rustfs-root
+                      key: RUSTFS_SECRET_KEY
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 128Mi
+                limits:
+                   memory: 512Mi
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: rustfs-models-account
+      namespace: '{{ .Release.Namespace }}'
+      annotations:
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-weight: "10"
+        helm.sh/hook-delete-policy: before-hook-creation
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          containers:
+            - name: configure-iam
+              image: '{{ .Values.provisionImage }}'
+              imagePullPolicy: '{{ .Values.imagePullPolicy }}'
+              command:
+                - python3
+                - -c
+              args:
+                - |
+                  import json, os, subprocess
+                  from pathlib import Path
+                  def rc(*args):
+                      result = subprocess.run(['rc', '--quiet', *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                      if result.returncode:
+                          raise RuntimeError('RustFS IAM operation failed: ' + '/'.join(args[:2]))
+                  rc('alias', 'set', 'lab', os.environ['S3_ENDPOINT'], os.environ['RUSTFS_ACCESS_KEY'], os.environ['RUSTFS_SECRET_KEY'], '--bucket-lookup', 'path')
+                  policy = {'Version': '2012-10-17', 'Statement': [
+                      {'Effect': 'Allow', 'Action': ['s3:GetBucketLocation', 's3:ListBucket'], 'Resource': ['arn:aws:s3:::models']},
+                      {'Effect': 'Allow', 'Action': ['s3:GetObject', 's3:PutObject', 's3:AbortMultipartUpload', 's3:ListMultipartUploadParts'], 'Resource': ['arn:aws:s3:::models/*']}]}
+                  Path('/tmp/policy.json').write_text(json.dumps(policy))
+                  rc('admin', 'user', 'add', '--', 'lab', os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY'])
+                  rc('admin', 'policy', 'create', 'lab', 'lab-models', '/tmp/policy.json')
+                  rc('admin', 'policy', 'attach', 'lab', 'lab-models', '--user', os.environ['AWS_ACCESS_KEY_ID'])
+                  print('Shared models bucket account ready.')
+              envFrom:
+                - secretRef:
+                    name: rustfs-root
+                - secretRef:
+                    name: s3-models
+              env:
+                - name: S3_ENDPOINT
+                  value: 'http://rustfs-svc.{{ .Release.Namespace }}.svc.cluster.local:9000'
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 128Mi
+                limits:
+                  memory: 256Mi
+          volumes:
+            - name: workspace
+              emptyDir: {}
+  - apiVersion: policies.kyverno.io/v1
+    kind: GeneratingPolicy
+    metadata:
+      name: model-bucket-access
+    spec:
+      evaluation:
+        generateExisting:
+          enabled: true
+        synchronize:
+          enabled: true
+        orphanDownstreamOnPolicyDelete:
+          enabled: true
+      matchConstraints:
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - CREATE
+              - UPDATE
+            resources:
+              - namespaces
+      matchConditions:
+        - name: selected-model
+          expression: 'object.metadata.name in {{ .Values.modelNames | toJson }}'
+      variables:
+        - name: source
+          expression: resource.Get("v1", "secrets", "rustfs", "s3-models")
+      generate:
+        - template:
+            interpolate: cel
+            value: |
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: model-reader
+                namespace: (( object.metadata.name ))
+                annotations:
+                  serving.kserve.io/s3-endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+                  serving.kserve.io/s3-usehttps: "0"
+                  serving.kserve.io/s3-region: us-east-1
+                  serving.kserve.io/s3-usevirtualbucket: "false"
+              type: Opaque
+              data: (( variables.source.data ))
+        - template:
+            interpolate: cel
+            value: |
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: model-writer
+                namespace: (( object.metadata.name ))
+              type: Opaque
+              data: (( variables.source.data ))

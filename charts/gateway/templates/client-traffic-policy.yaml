@@ -9,4 +9,6 @@ spec:
       kind: Gateway
       name: ai-inference-basics
   connection:
-    bufferLimit: 2Mi
+    bufferLimit: {{ .Values.bufferLimit }}
+  headers:
+    requestID: PreserveOrGenerate

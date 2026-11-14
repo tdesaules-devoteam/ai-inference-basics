@@ -4,3 +4,23 @@ includes:
   devenv:
     taskfile: ./.devenv/taskfile.qemu.yaml
     dir: ./.devenv
+
+tasks:
+  infra:validate:
+    desc: Validate the selected local infrastructure JSON without displaying credentials
+    vars:
+      DEFINITION: '{{default "infra/infra-definition.devenv.json" .INFRA_DEFINITION}}'
+    cmds:
+      - python3 platform/helmfile/scripts/validate-infra.py '{{.DEFINITION}}'
+  lab:access:
+    desc: Print the current lab login and model API key (explicit private use only)
+    silent: true
+    cmds:
+      - |
+        set -e
+        set -o pipefail
+        vm="${LAB_SSH_USER:-$(id -un)}@$(cat .devenv/.uuid).local"
+        ssh -o BatchMode=yes -o ProxyCommand=none -o StrictHostKeyChecking=accept-new "$vm" \
+          'kubectl -n dex get secret admin-access -o json && kubectl -n gateway get secret lab-api-key -o json' |
+          jq -s '(.[0].data["credentials.json"] | @base64d | fromjson) as $admin |
+            {username:$admin.username,email:$admin.email,password:$admin.password,api_key:(.[1].data.lab | @base64d)}'

@@ -18,8 +18,8 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: import
-          image: {{ required "toolsImage is required" .Values.toolsImage | quote }}
-          imagePullPolicy: {{ .Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          image: {{ required "provisionImage is required" .Values.provisionImage | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - python3
             - /scripts/import.py
@@ -63,5 +63,5 @@ spec:
             name: model-import
         - name: cache
           emptyDir:
-            sizeLimit: 3Gi
+            sizeLimit: {{ .Values.import.cacheSize | default "3Gi" }}
 {{- end }}

@@ -1,0 +1,14 @@
+image:
+  tag: 4.9.0@sha256:2490e1dfb5baaee6765ef2841813af7d978bb459a566c22c326a8fc27c64eea9
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+runtimeClassName: nvidia
+kubeletPath: /var/lib/k0s/kubelet/pod-resources
+serviceMonitor:
+  enabled: false
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi

@@ -1,8 +1,8 @@
 # Domain-oriented CPU lab
 
-Helmfile owns 16 releases. Each model has a dedicated chart, release, namespace
+Helmfile declares 25 releases, with 22 enabled by the sample definition. Each model has a dedicated chart, release, namespace
 and S3 prefix. The shared pair-training workstation uses one Dex account named
-`admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
+`cluster-admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
 
 ## Domains and ownership
 
@@ -13,9 +13,9 @@ and S3 prefix. The shared pair-training workstation uses one Dex account named
 | Reranker | qwen3-reranker-0-6b | charts/qwen3-reranker-0-6b |
 | Shared terminal/editor | bastion | charts/bastion |
 | HTTPS, routes, CA and API key | gateway | charts/gateway |
-| Identity | dex | Official Dex chart + domain post-renderer |
-| Browser session | oauth2-proxy | Official oauth2-proxy chart + domain post-renderer |
-| S3 and prefix-scoped IAM | rustfs | Official RustFS chart + domain post-renderer |
+| Identity | dex | Official Dex chart + charts/dex-config |
+| Browser session | oauth2-proxy | Official chart + native extraObjects |
+| S3 and shared bucket IAM | rustfs | Official chart + native extraManifests |
 | Administration dashboard | headlamp | Official Headlamp chart |
 
 Infrastructure controllers retain their own namespaces: `kserve`, `cert-manager`,
@@ -24,54 +24,48 @@ controller configures the proxy in `gateway`; user traffic reaches the proxy,
 not the controller. Controller CRDs can have a separate upstream release.
 
 Each authored template declares one resource in block-style YAML. A model chart
-owns its local Secrets and credential/import hooks. RustFS owns IAM users and
-publishes credentials in model-specific Secrets; its RBAC grants each model's
-credential Job access only to its own Secret. Serving Pods receive read-only S3
-credentials and do not mount a Kubernetes API token.
-The list policy uses `StringLikeIfExists` for the prefix because KServe first
-calls HeadBucket without a prefix. Explicit listings of another model's prefix
-and reads of its objects remain denied; this is not a promise to hide bucket
-metadata from requests without a prefix.
+owns its import hooks and inference resources. RustFS publishes one shared
+bucket account; Kyverno distributes it under the compatibility names model-reader
+and model-writer. Both now have bucket-wide read/write permissions. Serving Pods
+do not mount a Kubernetes API token.
 
 The centralized `lab-bootstrap` release is removed. Domain Jobs generate stable
 credentials locally. Cross-domain contracts are deliberately narrow:
 
 - Dex publishes `oidc-client` for oauth2-proxy, separately from the admin password.
 - Gateway publishes the API key and a public CA ConfigMap for the bastion.
-- RustFS publishes one reader/writer credential Secret per model.
+- RustFS publishes one shared credential Secret for the models bucket.
 - Dex/oauth2-proxy own their cross-namespace Gateway ReferenceGrants.
 
-`platform/helm/plugins/domain-render` is a repository-local Helm 4 subprocess
-post-renderer. It appends declarative resources and hook scripts from
-`platform/helm/domains` to the official upstream release. It makes no Kubernetes
-calls and generates no secrets during rendering. This keeps upstream downloads
-direct and pinned while keeping domain additions under the same release owner.
-Helm 4.3.1's combined post-render strategy includes the appended Helm hooks.
+Helmfile orchestrates official charts, their native extension points and local
+charts directly. There is no custom plugin or post-renderer. See
+[infrastructure definitions](infrastructure-definition.md) for configuration,
+ordering and the existing-installation migration boundary.
 
 ## Local image prerequisite
 
-GHCR publication remains unavailable with the previously supplied token. The
-qualified bastion image is also the current hook tooling image: it already
-contains the locked `huggingface_hub`, boto3, bcrypt and RustFS rc dependencies.
-No additional image build is required for the Python import implementation.
+GHCR publication remains unavailable. Bastion, provision and LFM3 inference are
+separate images; see [GPU and multimodal setup](gpu-and-omni.md). Domain hooks
+use provision, including its locked huggingface_hub, boto3, bcrypt and RustFS rc.
 
 Build with `bash oci/prepare.sh` or reuse a qualified OCI archive. A fresh VM must
-receive the image before these domain hooks can run:
+receive the images before these domain hooks can run:
 
 ```sh
 VM="$(id -un)@$(cat .devenv/.uuid).local"
-(cd dist && sha256sum -c SHA256SUMS)
-ssh "$VM" 'sudo k0s ctr images import --digests -' < dist/bastion.oci.tar
-ssh "$VM" "sudo k0s ctr images tag --force localhost/ai-inference-basics-bastion:dev $(cat dist/bastion.ref)"
+for name in bastion provision lfm3-omni-2b-transformers; do
+  (cd dist && sha256sum -c "$name.SHA256SUMS")
+  ssh "$VM" 'sudo k0s ctr images import --digests -' < "dist/$name.oci.tar"
+  ssh "$VM" "sudo k0s ctr images tag --force localhost/ai-inference-basics-$name:dev $(cat "dist/$name.ref")"
+done
 ```
 
-When using a different qualified image, set `LAB_TOOLS_IMAGE` consistently for
-Helmfile and its post-renderer (including the bootstrap service environment).
-The default reference is pinned in `values/lab.yaml.gotmpl` and `render-domain.sh`.
+When using different qualified images, update the `images` map in the local
+infrastructure JSON. `infra/helmfile/lab.yaml.gotmpl` translates these references.
 `IfNotPresent` reuses the imported image; it does not make an unpublished localhost
 image remotely available.
 
-Ignition copies chart sources, Helm inputs, the renderer and plugin descriptor
+Ignition copies chart sources, Helmfile inputs, checks and the private definition
 to `/etc/ai-inference-basics`. Local config.k uses file globs so template splits
 are included automatically. Updating sources does not update an existing guest:
 synchronize those directories, remove obsolete templates, and update the unit
@@ -93,7 +87,7 @@ Existing objects are reused when size and SHA metadata agree; their contents are
 not downloaded again for hashing. A mismatch fails the immutable import.
 
 Models default to `serving.replicas: 1` in each chart and start automatically.
-Helmfile inherits that value unless `LAB_MODEL_REPLICAS` is explicitly set.
+Helmfile overrides it with each model's `replicas` field from the environment JSON.
 Setting zero uses KServe's supported `serving.kserve.io/stop: "true"` annotation;
 the readiness check then expects `Stopped=True` and zero inference Pods.
 Imports still run by default even when serving is stopped.
@@ -101,16 +95,16 @@ Imports still run by default even when serving is stopped.
 Inside the VM, explicitly start or restart the chat model:
 
 ```sh
-export LAB_HOSTNAME="$(hostname)"
-export HELM_PLUGINS=/etc/ai-inference-basics/platform/helm/plugins
-LAB_MODEL_REPLICAS=1 helmfile \
-  -f /etc/ai-inference-basics/platform/helm/helmfile.yaml.gotmpl \
+export INFRA_DEFINITION=/etc/ai-inference-basics/infra/infra-definition.devenv.json
+# Set this model's replicas to 1 in the definition, then:
+helmfile \
+  -f /etc/ai-inference-basics/platform/helmfile/helmfile.yaml.gotmpl \
   -l name=qwen3-0-6b sync
 ```
 
-Set `LAB_MODEL_REPLICAS=0` to stop it. Select all three names to activate all APIs.
+Set the model's `replicas` to 0 to stop it.
 The lab accepts 0 or 1 replica per model. There is no automatic wake-up on an API
-request. A normal full bootstrap without the environment override starts all three models.
+request. A full bootstrap applies the definition's explicit selection.
 For active models, the readiness hook checks the desired Deployment and KServe
 Ready/UpToDate via JSONPath, accommodating stale observedGeneration in v0.21.0.
 
@@ -129,14 +123,11 @@ Dex and oauth2-proxy's internal Services still use HTTP.
 | `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
 | `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
 
-Dex has one account named `admin`; its login email is `ai-inference-basics@devoteam.com`.
-The optional operator-supplied Secret `dex/admin-login` has `email` and `password`
-keys. The Dex hook applies it while preserving the account ID and OIDC client
-secret; oauth2-proxy reads the published email from `dex/oidc-client`. The requested
-password is configured in that Secret, not in Git. Recreating the cluster requires
-supplying the Secret again; without it, the first password is generated randomly.
-After changing this Secret, synchronize Dex and oauth2-proxy and restart their
-Deployments so their mounted configurations are reloaded.
+Dex has one account named `cluster-admin`. The environment JSON supplies its email
+and password. The dex-config Job preserves its identity and OIDC client secret,
+and recomputes bcrypt only when required. Kyverno distributes the published OIDC
+client. After credential changes, synchronize the releases and roll out consumers
+that read credential environment variables.
 Retrieve the qualification file privately inside the VM:
 
 ```sh
@@ -156,7 +147,7 @@ bastion's Linux user remains UID 1000; Kubernetes administration is authorized
 by its ServiceAccount. Browser cookies do not authorize model API calls.
 The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust for clients.
 code-server opens `/workspace/ai-inference-basics` by default and initializes new
-user settings with the Default Dark Modern theme. Its init container clones the
+user settings with Nord and Geist fonts. Its init container clones the
 configured repository only when no checkout exists, and preserves existing files
 and editor preferences. The workspace is a persistent Git copy, not a bind mount
 of the workstation checkout. For this deployment it was seeded from local Git
@@ -167,7 +158,7 @@ history because the remote does not yet contain the latest lab commits.
 Offline commands require Helm 4.3.1, Helmfile and `requirements-dev.txt`:
 
 ```sh
-export HELM_PLUGINS="$PWD/platform/helm/plugins"
+python platform/helmfile/scripts/validate-infra.py infra/infra-definition.sample.json
 python tests/validate_storage.py
 python tests/validate_lab.py
 python tests/test_platform_units.py
@@ -184,8 +175,9 @@ Runtime checks require the deployed lab and explicit authorization:
   an application; it then checks terminal rendering without typing into it.
 - `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
   embeddings and reranking; models must be Ready.
-- `tests/qualify_model_storage.py`: run inside the bastion with a JSON map of model
-  locks on stdin; verify own-prefix reads and rejection of writes/other prefixes.
+- `tests/qualify_model_storage.py`: run in a temporary provision-image Pod using
+  the bastion ServiceAccount, with a JSON map of model
+   locks on stdin; verify shared-bucket reads/writes and rejection of other buckets.
 - `tests/qualify_benchmark.py`: run inside the bastion with the chat lock on stdin;
   download only the verified tokenizer and submit three requests through HTTPS.
 
@@ -194,15 +186,18 @@ object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
 Chromium accepts the lab certificate for interaction tests; API TLS verification
 is performed separately with the CA. Reports and credentials stay untracked.
 
-The domain reorganization qualification passed the admin browser journey, both
+The previous domain reorganization qualification passed the admin browser journey, both
 cluster-admin identities, prefix-scoped S3 checks, all three real APIs and the
 bastion benchmark. Reexecuting the complete bootstrap preserved nine credential
 Secrets and the workspace PVC, deployed all 16 releases, and returned all three
 models to Stopped=True with zero inference Pods. That validated the stopped mode;
-the current default is now one active replica per model.
+the current JSON definition now controls activation per model.
 The automatic-start default was qualified without `LAB_MODEL_REPLICAS`: all three
 InferenceServices reached Ready=True, and TLS/Bearer, chat/SSE, embeddings and
 reranking checks passed.
+
+Those results predate the JSON/Kyverno/native-extension migration and are not
+runtime evidence for it. This migration has only offline qualification so far.
 
 ## Existing installations of the previous layout
 

@@ -4,6 +4,41 @@ metadata:
   name: ai-inference-basics
   namespace: {{ .Release.Namespace }}
 spec:
+  telemetry:
+    accessLog:
+      settings:
+        - sinks:
+            - type: File
+              file:
+                path: /dev/stdout
+          format:
+            type: JSON
+            json:
+              timestamp: "%START_TIME%"
+              request_id: "%REQ(X-REQUEST-ID)%"
+              traceparent: "%REQ(TRACEPARENT)%"
+              method: "%REQ(:METHOD)%"
+              path: "%REQ_WITHOUT_QUERY(:PATH)%"
+              authority: "%REQ(:AUTHORITY)%"
+              protocol: "%PROTOCOL%"
+              response_code: "%RESPONSE_CODE%"
+              response_flags: "%RESPONSE_FLAGS%"
+              response_code_details: "%RESPONSE_CODE_DETAILS%"
+              duration_ms: "%DURATION%"
+              upstream_service_time_ms: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"
+              bytes_received: "%BYTES_RECEIVED%"
+              bytes_sent: "%BYTES_SENT%"
+              route: "%ROUTE_NAME%"
+              upstream_cluster: "%UPSTREAM_CLUSTER%"
+              upstream_host: "%UPSTREAM_HOST%"
+              upstream_transport_failure: "%UPSTREAM_TRANSPORT_FAILURE_REASON%"
+              user_agent: "%REQ(USER-AGENT)%"
+              model: "%REQ(X-AI-EG-MODEL)%"
+              response_model: "%DYNAMIC_METADATA(io.envoy.ai_gateway:response_model)%"
+              backend: "%DYNAMIC_METADATA(io.envoy.ai_gateway:backend_name)%"
+              input_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:input_tokens)%"
+              output_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:output_tokens)%"
+              total_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:total_tokens)%"
   provider:
     type: Kubernetes
     kubernetes:

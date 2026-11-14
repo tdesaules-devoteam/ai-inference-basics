@@ -22,10 +22,13 @@ try {
   const page = await context.newPage();
   let output = '';
   let markerSeen = false;
+  let terminalPreferences = {};
   page.on('websocket', socket => {
     if (new URL(socket.url()).pathname.startsWith('/terminal/')) {
       socket.on('framereceived', frame => {
-        output = (output + Buffer.from(frame.payload).toString('utf8')).slice(-131072);
+        const text = Buffer.from(frame.payload).toString('utf8');
+        if (text.startsWith('2{')) terminalPreferences = JSON.parse(text.slice(1));
+        output = (output + text).slice(-131072);
         if (stripVTControlCharacters(output).includes('LAB_ADMIN_OK')) markerSeen = true;
       });
     }
@@ -48,6 +51,10 @@ try {
   await page.locator('.xterm-helper-textarea').waitFor({ state: 'attached', timeout: 30000 });
   for (let attempt = 0; attempt < 200 && output.length < 100; attempt++) await page.waitForTimeout(100);
   assert(output.length >= 100, 'Terminal did not produce its initial screen');
+  assert(terminalPreferences.fontFamily?.includes('Geist Mono'), 'ttyd font configuration missing');
+  assert.equal(terminalPreferences.theme?.background, '#2e3440', 'ttyd Nord theme missing');
+  assert(await page.evaluate(async () => (await document.fonts.load('14px "Geist Mono"')).length > 0),
+    'ttyd Geist webfont did not load');
   // A shared session may already run k9s or another user application.
   if (process.env.LAB_SKIP_TERMINAL_COMMAND !== '1') {
     await page.waitForTimeout(1000);
@@ -66,6 +73,11 @@ try {
   await page.goto(`${base}/code/`, { waitUntil: 'domcontentloaded' });
   await page.locator('.monaco-workbench').waitFor({ timeout: 90000 });
   await page.locator('.monaco-workbench.vs-dark').waitFor({ timeout: 30000 });
+  assert(await page.evaluate(async () => (await document.fonts.load('14px "Geist Mono"')).length > 0),
+    'Editor Geist webfont did not load');
+  assert.equal(await page.locator('.monaco-workbench').evaluate(e =>
+    getComputedStyle(e).getPropertyValue('--vscode-editor-background').trim().toLowerCase()), '#2e3440',
+    'Editor Nord theme missing');
   assert.equal(new URL(page.url()).searchParams.get('folder'), '/workspace/ai-inference-basics',
     'Editor did not open the repository by default');
   assert.equal(await page.locator('input[type="password"]:visible').count(), 0);
@@ -78,7 +90,7 @@ try {
   });
   assert.equal(api.status(), 401, 'Browser cookie unexpectedly authorized the model API');
   console.log(JSON.stringify({ adminLogin: true, terminalRendered: true, terminalCommand: markerSeen, editor: true,
-    editorDark: true, repositoryDefault: true, headlamp: true,
+    editorNord: true, geistWebfonts: true, terminalNord: true, repositoryDefault: true, headlamp: true,
     anonymousSpoofDenied: true, apiCookieDenied: true }));
   await context.close();
 } catch (error) {

@@ -21,7 +21,8 @@ local image import; see [lab access and qualification](docs/lab.md).
 
 - `.devenv/config.k`: local VM provisioning, based on `exemple.config.k`.
 - `platform/k0s/k0s.yaml`: minimal native k0s configuration, copied directly by Ignition.
-- `platform/helm/`: ordered Helmfile releases and per-component values.
+- `platform/helmfile/`: ordered Helmfile releases, upstream chart values and checks.
+- `infra/`: environment JSON schema/sample and the shared Helmfile values adapter.
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.

@@ -12,7 +12,3 @@ data:
 {{ .Files.Get "files/import.py" | indent 4 }}
   model.lock.json: |
 {{ .Files.Get "files/model.lock.json" | indent 4 }}
-  kube.py: |
-{{ .Files.Get "files/kube.py" | indent 4 }}
-  credentials.py: |
-{{ .Files.Get "files/credentials.py" | indent 4 }}

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Run inside the admin bastion; receive the three model locks as a JSON map."""
+"""Run in the provision image with the bastion service account; read model locks from stdin."""
 import base64
 import json
-import subprocess
+from pathlib import Path
+import ssl
 import sys
 import uuid
+from urllib.request import Request, urlopen
 
 import boto3
 from botocore.config import Config
@@ -15,7 +17,11 @@ endpoint = 'http://rustfs-svc.rustfs.svc.cluster.local:9000'
 
 
 def secret(namespace, name):
-    obj = json.loads(subprocess.check_output(['kubectl', '-n', namespace, 'get', 'secret', name, '-o', 'json']))
+    account = Path('/var/run/secrets/kubernetes.io/serviceaccount')
+    request = Request(f'https://kubernetes.default.svc/api/v1/namespaces/{namespace}/secrets/{name}',
+                      headers={'Authorization': 'Bearer ' + (account / 'token').read_text().strip()})
+    with urlopen(request, context=ssl.create_default_context(cafile=str(account / 'ca.crt')), timeout=30) as response:
+        obj = json.load(response)
     return {k: base64.b64decode(v).decode() for k, v in obj['data'].items()}
 
 
@@ -45,15 +51,16 @@ for name, lock in locks.items():
     result = reader.get_object(Bucket='models', Key=prefix + 'snapshot-manifest.json')
     assert json.loads(result['Body'].read()) == lock
     other = next(n for n in locks if n != name)
-    denied(reader.list_objects_v2, Bucket='models', Prefix=other + '/', MaxKeys=1)
-    denied(reader.get_object, Bucket='models', Key=other + '/' + locks[other]['revision'] + '/snapshot-manifest.json')
+    reader.list_objects_v2(Bucket='models', Prefix=other + '/', MaxKeys=1)
+    result = reader.get_object(Bucket='models', Key=other + '/' + locks[other]['revision'] + '/snapshot-manifest.json')
+    assert json.loads(result['Body'].read()) == locks[other]
     denied(reader.list_objects_v2, Bucket='loki', MaxKeys=1)
     key = prefix + '_qualification-' + uuid.uuid4().hex
     try:
-        denied(reader.put_object, Bucket='models', Key=key, Body=b'forbidden')
-    except AssertionError:
+        reader.put_object(Bucket='models', Key=key, Body=b'qualification')
+        assert reader.get_object(Bucket='models', Key=key)['Body'].read() == b'qualification'
+    finally:
         root = secret('rustfs', 'rustfs-root')
         client(root['RUSTFS_ACCESS_KEY'], root['RUSTFS_SECRET_KEY']).delete_object(Bucket='models', Key=key)
-        raise
-assert len(identities) == 3
-print('Three distinct model readers: own-prefix read allowed; writes, other prefixes and Loki denied.')
+assert len(identities) == 1
+print(f'{len(locks)} models share one bucket account: reads/writes across model prefixes allowed; Loki denied.')

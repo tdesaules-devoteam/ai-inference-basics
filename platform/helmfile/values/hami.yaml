@@ -1,0 +1,46 @@
+fullnameOverride: hami
+global:
+  imageTag: v2.11.0@sha256:caab978ed50e53163c31ed7c4650c4e6e5d8facf157f377c26e021ff5fa3e5ce
+scheduler:
+  certManager:
+    enabled: true
+  patch:
+    enabled: false
+  kubeScheduler:
+    image:
+      tag: v1.37.2@sha256:028c847fc321b8a7f9787f7b1c0840f832d6b68439be2e5c09279ffb14203d6b
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+  extender:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+  admissionWebhook:
+    whitelistNamespaces:
+      - kube-system
+      - gpu-operator
+      - hami
+      - dcgm-exporter
+devicePlugin:
+  nvidiaNodeSelector:
+    gpu: null
+    nvidia.com/gpu.present: "true"
+  pluginPath: /var/lib/k0s/kubelet/device-plugins
+  nvidiaDriverRoot: auto
+  gpuOperatorToolkitReady:
+    enabled: true
+  service:
+    type: ClusterIP
+devices:
+  nvidia:
+    runtimeClassName: nvidia
+    createRuntimeClass: false
+mockDevicePlugin:
+  enabled: false

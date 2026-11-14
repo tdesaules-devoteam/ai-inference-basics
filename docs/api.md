@@ -10,7 +10,7 @@ model API credentials are independent: APIs require `Authorization: Bearer <key>
 | `POST /cohere/v2/rerank` | `qwen3-reranker-0-6b` |
 
 All three use KServe `InferenceService` and vLLM CPU. They start automatically
-with one replica. An explicit `LAB_MODEL_REPLICAS=0` override can stop selected
+according to the environment JSON. Setting a model's `replicas` to zero stops selected
 models as described in [lab operations](lab.md); requests do not wake stopped models.
 
 The admin bastion has `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust configured.

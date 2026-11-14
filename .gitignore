@@ -15,3 +15,6 @@
 /dist/
 __pycache__/
 **/node_modules/
+/infra/infra-definition.*.json
+!/infra/infra-definition.sample.json
+!/infra/infra-definition.schema.json

@@ -2,7 +2,7 @@
 # Explicit integration test: install/upgrade upstream RustFS in a disposable namespace.
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-values=$(realpath "${1:-$ROOT/../platform/helm/values/rustfs.yaml}")
+values=$(realpath "${1:-$ROOT/../platform/helmfile/values/rustfs.yaml}")
 namespace="rustfs-hook-check-$(openssl rand -hex 4)"
 test -z "$(kubectl get namespace "$namespace" --ignore-not-found -o name)"
 temporary=$(mktemp -d)
@@ -21,6 +21,20 @@ cleanup() {
     exit "$status"
 }
 trap cleanup EXIT
+definition=${INFRA_DEFINITION:-$ROOT/../infra/infra-definition.devenv.json}
+python3 "$ROOT/../platform/helmfile/scripts/validate-infra.py" "$definition"
+# Isolate this test from the production cluster-scoped distribution policy.
+python3 - "$values" "$definition" "$temporary/values.yaml" <<'PY'
+import json, sys, yaml
+from pathlib import Path
+values = yaml.safe_load(Path(sys.argv[1]).read_text())
+infra = json.loads(Path(sys.argv[2]).read_text())
+values['provisionImage'] = infra['images']['provision']
+values['imagePullPolicy'] = infra['images']['pullPolicy']
+values['modelNames'] = []
+values['extraManifests'] = [obj for obj in values['extraManifests'] if obj['kind'] != 'GeneratingPolicy']
+Path(sys.argv[3]).write_text(yaml.safe_dump(values))
+PY
 cat > "$temporary/helmfile.yaml" <<YAML
 repositories:
   - name: rustfs
@@ -36,7 +50,7 @@ releases:
     chart: rustfs/rustfs
     version: "1.0.5"
     values:
-      - "$values"
+      - "$temporary/values.yaml"
       - storageclass:
           dataStorageSize: 1Gi
 YAML

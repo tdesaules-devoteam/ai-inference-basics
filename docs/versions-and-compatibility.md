@@ -16,7 +16,7 @@
 | Guest kubectl / k9s / Task | 1.37.2 / 0.51.0 / 3.54.0 |
 | Bastion (legacy build, not deployed) | Fedora Minimal 45, Zellij 0.46.0 |
 
-`platform/helm/helmfile.yaml.gotmpl` is the active dependency contract; Helmfile
+`platform/helmfile/helmfile.yaml.gotmpl` is the active dependency contract; Helmfile
 retrieves upstream charts directly. OCI manifest digests and the RustFS HTTP version
 are fixed there. The qualified RustFS archive checksum is checked in tests, and
 values pin workload images. There is no deployment-time custom chart downloader.

@@ -9,5 +9,5 @@ spec:
       kind: Gateway
       name: ai-inference-basics
   connection:
-    # Embeddings and ttyd's embedded assets exceed the default 32-KiB buffer.
-    bufferLimit: 2Mi
+    # Multimodal requests include base64 media; this is a connection buffer watermark.
+    bufferLimit: {{ .Values.bufferLimit }}

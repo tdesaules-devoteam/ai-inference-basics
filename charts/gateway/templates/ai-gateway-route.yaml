@@ -1,9 +1,17 @@
+{{- if .Values.modelNames }}
 apiVersion: aigateway.envoyproxy.io/v1beta1
 kind: AIGatewayRoute
 metadata:
   name: model-api
   namespace: {{ .Release.Namespace }}
 spec:
+  llmRequestCosts:
+    - metadataKey: input_tokens
+      type: InputToken
+    - metadataKey: output_tokens
+      type: OutputToken
+    - metadataKey: total_tokens
+      type: TotalToken
   hostnames:
     - {{ .Values.hostname | quote }}
     - ai-inference-basics.gateway.svc.cluster.local
@@ -12,7 +20,7 @@ spec:
       kind: Gateway
       group: gateway.networking.k8s.io
   rules:
-    {{- range $name := list "qwen3-0-6b" "qwen3-embedding-0-6b" "qwen3-reranker-0-6b" }}
+    {{- range $name := .Values.modelNames }}
     - matches:
         - headers:
             - type: Exact
@@ -21,3 +29,4 @@ spec:
       backendRefs:
         - name: {{ $name }}
     {{- end }}
+{{- end }}
