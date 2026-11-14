@@ -1,0 +1,13 @@
+provisionImage: ""
+image: localhost/lfm3-omni-2b-transformers@sha256:9a1d70a5058f0f5716693740d84ffc02a672b64d4a875a67a4b3ca65094ca3e9
+endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
+bucket: models
+modelName: lfm3-omni-2b
+threads: "8"
+memory: 20Gi
+requestMemory: 12Gi
+import:
+  enabled: true
+  cacheSize: 6Gi
+serving:
+  replicas: 1
