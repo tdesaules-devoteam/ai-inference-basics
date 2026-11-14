@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: bastion
+      annotations:
+        checksum/workspace: {{ include (print $.Template.BasePath "/config-map-workspace.yaml") . | sha256sum }}
     spec:
       serviceAccountName: bastion
       securityContext:
@@ -23,6 +25,41 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: workspace
+          image: {{ required "toolsImage is required" .Values.toolsImage | quote }}
+          imagePullPolicy: {{ .Values.toolsImagePullPolicy | default "IfNotPresent" }}
+          command:
+            - python3
+            - /scripts/workspace.py
+          env:
+            - name: REPOSITORY_URL
+              value: {{ .Values.repository.url | quote }}
+            - name: REPOSITORY_DIRECTORY
+              value: {{ .Values.repository.directory | quote }}
+            - name: EDITOR_THEME
+              value: {{ .Values.editor.theme | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: workspace-config
+              mountPath: /scripts
+              readOnly: true
+            - name: temporary
+              mountPath: /tmp
       containers:
         {{- range $component := list "terminal" "editor" }}
         - name: {{ $component }}
@@ -38,7 +75,8 @@ spec:
             - "0.0.0.0:8080"
             - --disable-telemetry
             - --disable-update-check
-            - /workspace
+            - --ignore-last-opened
+            - {{ $.Values.repository.directory | quote }}
           {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -91,6 +129,9 @@ spec:
               mountPath: /tmp
         {{- end }}
       volumes:
+        - name: workspace-config
+          configMap:
+            name: bastion-workspace
         - name: workspace
           persistentVolumeClaim:
             claimName: bastion

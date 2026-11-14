@@ -13,6 +13,11 @@ all namespaces. The terminal's Linux process remains non-root. The namespace and
 workspace are shared intentionally; there are no Alice/Bob instances or `lab-a`
 and `lab-b` namespaces in new installs.
 
+code-server opens the persistent checkout at `/workspace/ai-inference-basics`.
+New editor settings use the Default Dark Modern theme. Initialization preserves
+an existing checkout and user settings; it never resets or automatically pulls
+over local changes. This is a Git copy inside the PVC, not the host checkout.
+
 The Fedora Minimal image includes kubectl, k9s, vLLM benchmarking, curl, bash,
 Zellij, Starship, jq, Helix, code-server and RustFS rc. It is built on the host and
 currently imported locally into native k0s. No nested container engine is needed.

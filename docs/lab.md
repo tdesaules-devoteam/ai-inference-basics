@@ -129,7 +129,14 @@ Dex and oauth2-proxy's internal Services still use HTTP.
 | `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
 | `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
 
-Dex has one account named `admin`; its login email is `admin@example.test`.
+Dex has one account named `admin`; its login email is `ai-inference-basics@devoteam.com`.
+The optional operator-supplied Secret `dex/admin-login` has `email` and `password`
+keys. The Dex hook applies it while preserving the account ID and OIDC client
+secret; oauth2-proxy reads the published email from `dex/oidc-client`. The requested
+password is configured in that Secret, not in Git. Recreating the cluster requires
+supplying the Secret again; without it, the first password is generated randomly.
+After changing this Secret, synchronize Dex and oauth2-proxy and restart their
+Deployments so their mounted configurations are reloaded.
 Retrieve the qualification file privately inside the VM:
 
 ```sh
@@ -148,6 +155,12 @@ Both bastion and Headlamp use ServiceAccounts bound to `cluster-admin`. The
 bastion's Linux user remains UID 1000; Kubernetes administration is authorized
 by its ServiceAccount. Browser cookies do not authorize model API calls.
 The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust for clients.
+code-server opens `/workspace/ai-inference-basics` by default and initializes new
+user settings with the Default Dark Modern theme. Its init container clones the
+configured repository only when no checkout exists, and preserves existing files
+and editor preferences. The workspace is a persistent Git copy, not a bind mount
+of the workstation checkout. For this deployment it was seeded from local Git
+history because the remote does not yet contain the latest lab commits.
 
 ## Validation
 
@@ -167,6 +180,8 @@ Runtime checks require the deployed lab and explicit authorization:
   and the shared terminal/editor volume.
 - `tests/browser/qualify.mjs`: one Dex login, real terminal command, editor,
   Headlamp, anonymous-header spoof rejection and API-cookie rejection.
+  Set `LAB_SKIP_TERMINAL_COMMAND=1` when the shared terminal is already running
+  an application; it then checks terminal rendering without typing into it.
 - `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
   embeddings and reranking; models must be Ready.
 - `tests/qualify_model_storage.py`: run inside the bastion with a JSON map of model

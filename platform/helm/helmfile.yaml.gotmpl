@@ -118,6 +118,8 @@ releases:
       - gateway/gateway
     values:
       - values/dex.yaml
+      - podAnnotations:
+          checksum/domain-config: '{{ readFile "domains/dex/job.py" | sha256sum }}'
 
   - name: headlamp
     namespace: headlamp
@@ -151,6 +153,7 @@ releases:
       - values/oauth2-proxy.yaml
       - podAnnotations:
           checksum/browser-router: '{{ readFile "values/oauth2-proxy.yaml" | sha256sum }}'
+          checksum/domain-config: '{{ readFile "domains/oauth2-proxy/job.py" | sha256sum }}'
 
   - name: gateway
     namespace: gateway

@@ -27,5 +27,5 @@ config = {
     'set_authorization_header': False, 'pass_user_headers': True,
 }
 kube.write('oauth-config', {'oauth2-proxy.cfg': '\n'.join(f'{k} = {json.dumps(v)}' for k, v in config.items()) + '\n',
-                           'allowed-emails': 'admin@example.test\n'})
+                           'allowed-emails': client['admin-email'] + '\n'})
 print('Admin browser session configuration is ready.')

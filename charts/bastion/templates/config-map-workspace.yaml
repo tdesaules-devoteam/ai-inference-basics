@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bastion-workspace
+  namespace: {{ .Release.Namespace }}
+data:
+  workspace.py: |
+{{ .Files.Get "files/workspace.py" | indent 4 }}

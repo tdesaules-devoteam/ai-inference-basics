@@ -1,7 +1,7 @@
 # Security and access
 
 One Dex account named `admin` is shared by the pair at one computer. Its login
-email is `admin@example.test`. The bastion and Headlamp ServiceAccounts both have
+email is `ai-inference-basics@devoteam.com`. The bastion and Headlamp ServiceAccounts both have
 Kubernetes `cluster-admin` rights across all namespaces, as intended for this lab.
 The bastion's Linux process runs as UID 1000; its Kubernetes privileges come from
 the ServiceAccount, not a privileged container.
@@ -9,6 +9,7 @@ the ServiceAccount, not a privileged container.
 Domain-local Helm hook Jobs generate and preserve credentials in Kubernetes:
 
 - `dex/admin-access`: admin identity/password and the OIDC client state.
+- `dex/admin-login`: optional operator-supplied email/password override, kept out of Git.
 - `dex/oidc-client`: the published browser client credentials, readable by the
   oauth2-proxy configuration Job.
 - `oauth2-proxy/browser-session`: the stable cookie key.

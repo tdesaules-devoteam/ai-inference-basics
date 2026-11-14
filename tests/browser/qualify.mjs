@@ -48,20 +48,26 @@ try {
   await page.locator('.xterm-helper-textarea').waitFor({ state: 'attached', timeout: 30000 });
   for (let attempt = 0; attempt < 200 && output.length < 100; attempt++) await page.waitForTimeout(100);
   assert(output.length >= 100, 'Terminal did not produce its initial screen');
-  await page.waitForTimeout(1000);
-  await page.locator('.xterm-helper-textarea').focus();
-  if (/welcome to Zellij|Welcome to Zellij|Keybinding Preset/.test(stripVTControlCharacters(output))) {
-    await page.keyboard.press('Control+p');
-    await page.keyboard.press('x');
-    await page.waitForTimeout(500);
+  // A shared session may already run k9s or another user application.
+  if (process.env.LAB_SKIP_TERMINAL_COMMAND !== '1') {
+    await page.waitForTimeout(1000);
+    await page.locator('.xterm-helper-textarea').focus();
+    if (/welcome to Zellij|Welcome to Zellij|Keybinding Preset/.test(stripVTControlCharacters(output))) {
+      await page.keyboard.press('Control+p');
+      await page.keyboard.press('x');
+      await page.waitForTimeout(500);
+    }
+    await page.keyboard.type("printf 'LAB_%s_OK\\n' ADMIN");
+    await page.keyboard.press('Enter');
+    for (let attempt = 0; attempt < 100 && !markerSeen; attempt++) await page.waitForTimeout(100);
+    assert(markerSeen, 'Terminal command did not return its marker');
   }
-  await page.keyboard.type("printf 'LAB_%s_OK\\n' ADMIN");
-  await page.keyboard.press('Enter');
-  for (let attempt = 0; attempt < 100 && !markerSeen; attempt++) await page.waitForTimeout(100);
-  assert(markerSeen, 'Terminal command did not return its marker');
   phase = 'editor';
   await page.goto(`${base}/code/`, { waitUntil: 'domcontentloaded' });
   await page.locator('.monaco-workbench').waitFor({ timeout: 90000 });
+  await page.locator('.monaco-workbench.vs-dark').waitFor({ timeout: 30000 });
+  assert.equal(new URL(page.url()).searchParams.get('folder'), '/workspace/ai-inference-basics',
+    'Editor did not open the repository by default');
   assert.equal(await page.locator('input[type="password"]:visible').count(), 0);
   phase = 'headlamp';
   await page.goto(`${base}/headlamp/`, { waitUntil: 'domcontentloaded' });
@@ -71,7 +77,8 @@ try {
     data: { model: 'qwen3-0-6b', messages: [{ role: 'user', content: 'hello' }], max_tokens: 1 },
   });
   assert.equal(api.status(), 401, 'Browser cookie unexpectedly authorized the model API');
-  console.log(JSON.stringify({ adminLogin: true, terminalCommand: true, editor: true, headlamp: true,
+  console.log(JSON.stringify({ adminLogin: true, terminalRendered: true, terminalCommand: markerSeen, editor: true,
+    editorDark: true, repositoryDefault: true, headlamp: true,
     anonymousSpoofDenied: true, apiCookieDenied: true }));
   await context.close();
 } catch (error) {

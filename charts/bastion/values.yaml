@@ -2,3 +2,8 @@ toolsImage: ""
 storageClass: local-path-provisioner
 storageSize: 2Gi
 apiBaseUrl: https://ai-inference-basics.gateway.svc.cluster.local/v1
+repository:
+  url: https://github.com/tdesaules-devoteam/ai-inference-basics.git
+  directory: /workspace/ai-inference-basics
+editor:
+  theme: Default Dark Modern
