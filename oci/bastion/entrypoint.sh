@@ -31,4 +31,7 @@ if [[ -r /etc/lab-ca/ca.crt ]]; then
 fi
 export ZELLIJ_AUTO_ATTACH=true
 exec ttyd --writable --check-origin --port 7681 --base-path "${TERMINAL_BASE_PATH:-/terminal}" \
+    --index /usr/share/ai-inference-basics/ttyd.html \
+    --client-option 'fontFamily=Geist Mono, Symbols Nerd Font Mono, monospace' \
+    --client-option 'theme={"background":"#2e3440","foreground":"#d8dee9","cursor":"#d8dee9","black":"#3b4252","red":"#bf616a","green":"#a3be8c","yellow":"#ebcb8b","blue":"#81a1c1","magenta":"#b48ead","cyan":"#88c0d0","white":"#e5e9f0","brightBlack":"#4c566a","brightRed":"#bf616a","brightGreen":"#a3be8c","brightYellow":"#ebcb8b","brightBlue":"#81a1c1","brightMagenta":"#b48ead","brightCyan":"#8fbcbb","brightWhite":"#eceff4"}' \
     zellij --config /etc/zellij/config.kdl attach --create lab

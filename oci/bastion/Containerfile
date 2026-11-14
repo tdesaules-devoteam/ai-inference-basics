@@ -9,7 +9,7 @@ RUN mkdir -p /tools /opt/code-server && cd /tmp && \
     done < tools.lock && \
     install -m 0755 kubectl /tools/kubectl && \
     tar -xzf k9s.tar.gz -C /tools k9s && tar -xzf zellij.tar.gz -C /tools zellij && \
-    tar -xzf starship.tar.gz -C /tools starship && tar -xzf rc.tar.gz -C /tools rc && \
+    tar -xzf starship.tar.gz -C /tools starship && \
     tar -xzf uv.tar.gz --strip-components=1 -C /tools uv-x86_64-unknown-linux-gnu/uv && \
     tar -xzf code-server.tar.gz --strip-components=1 -C /opt/code-server
 
@@ -39,6 +39,9 @@ COPY oci/bastion/entrypoint.sh /usr/local/bin/workspace-entrypoint
 COPY oci/bastion/bashrc /etc/lab-bashrc
 COPY oci/bastion/zellij.kdl /etc/zellij/config.kdl
 RUN ln -s /opt/code-server/bin/code-server /usr/local/bin/code-server
+COPY oci/bastion/ui-assets.lock /usr/share/ai-inference-basics/ui-assets.lock
+COPY oci/bastion/prepare_ui.py /tmp/prepare_ui.py
+RUN python3.12 /tmp/prepare_ui.py && rm /tmp/prepare_ui.py
 ENV HOME=/workspace TERM=xterm-256color SHELL=/bin/bash XDG_RUNTIME_DIR=/workspace/.run \
     PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin \
     HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

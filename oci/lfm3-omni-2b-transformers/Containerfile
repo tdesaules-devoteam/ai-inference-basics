@@ -1,0 +1,24 @@
+FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS python
+RUN microdnf install -y python3.12-3.12.16-2.fc45 tar gzip && microdnf clean all
+RUN curl -fLsS --retry 3 https://github.com/astral-sh/uv/releases/download/0.13.8/uv-x86_64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz && \
+    echo '5acfd9177cfecf0bf87578f059728215ccc884388988f55f7a65041b57387d91  /tmp/uv.tar.gz' | sha256sum -c - && \
+    tar -xzf /tmp/uv.tar.gz -C /tmp --strip-components=1 && install -m 0755 /tmp/uv /usr/local/bin/uv
+COPY oci/lfm3-omni-2b-transformers/requirements.lock /tmp/requirements.lock
+RUN uv venv --python /usr/bin/python3.12 /opt/venv && \
+    uv pip install --python /opt/venv/bin/python --require-hashes --torch-backend cpu -r /tmp/requirements.lock && uv cache clean
+
+FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62
+LABEL org.opencontainers.image.source="https://github.com/tdesaules-devoteam/ai-inference-basics" \
+      org.opencontainers.image.title="LFM3-Omni-2B Transformers CPU runtime"
+RUN microdnf install -y python3.12-3.12.16-2.fc45 ca-certificates libgomp libsndfile ffmpeg-free && microdnf clean all && \
+    echo 'inference:x:1000:1000:Inference runtime:/tmp:/sbin/nologin' >> /etc/passwd && \
+    echo 'inference:x:1000:' >> /etc/group
+COPY --from=python /opt/venv /opt/venv
+COPY oci/lfm3-omni-2b-transformers/server.py /app/server.py
+ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin HOME=/tmp HF_HOME=/tmp/huggingface \
+    HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_TELEMETRY=1 \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt OMP_NUM_THREADS=8
+USER 1000:1000
+WORKDIR /app
+EXPOSE 8080
+ENTRYPOINT ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

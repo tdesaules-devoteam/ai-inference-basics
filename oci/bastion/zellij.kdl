@@ -1,1 +1,2 @@
 default_shell "/bin/bash"
+theme "nord"

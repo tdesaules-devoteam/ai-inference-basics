@@ -1,3 +1,4 @@
 export EDITOR=hx
 export VISUAL=hx
+export KUBE_EDITOR=hx
 eval "$(starship init bash)"
