@@ -8,6 +8,18 @@ state = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'platform/helmf
 
 
 class ModelState(unittest.TestCase):
+    def test_rollout_waits_for_current_generation_and_all_new_replicas(self):
+        deployment = {'metadata': {'generation': 3}, 'spec': {'replicas': 1},
+                      'status': {'observedGeneration': 3, 'replicas': 1, 'updatedReplicas': 1,
+                                 'readyReplicas': 1, 'availableReplicas': 1,
+                                 'conditions': [{'type': 'Progressing', 'reason': 'ProgressDeadlineExceeded', 'status': 'False'}]}}
+        self.assertTrue(state['rollout_ready'](deployment))
+        for field, value in [('observedGeneration', 2), ('replicas', 2), ('updatedReplicas', 0),
+                             ('readyReplicas', 0), ('availableReplicas', 0)]:
+            pending = copy.deepcopy(deployment)
+            pending['status'][field] = value
+            self.assertFalse(state['rollout_ready'](pending), field)
+
     def test_defaulted_resources_and_equivalent_quantities(self):
         runtime = {'spec': {'containers': [{'name': 'kserve-container', 'image': 'pinned-image',
                                            'command': ['vllm'], 'args': ['serve'],

@@ -1,5 +1,5 @@
 provisionImage: ""
-image: localhost/lfm3-omni-2b-transformers@sha256:9a1d70a5058f0f5716693740d84ffc02a672b64d4a875a67a4b3ca65094ca3e9
+image: localhost/lfm3-omni-2b-transformers@sha256:eda4362f77784acc48c1bbe2ece7bcb4bd40cc27a31869cfd6afaf04f4a8381f
 endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: lfm3-omni-2b

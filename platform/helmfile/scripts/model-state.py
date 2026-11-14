@@ -34,8 +34,20 @@ def matches(deployment, desired, runtime):
                for kind, values in model.get('resources', {}).items() for key, value in values.items())
 
 
+def rollout_ready(deployment):
+    """Wait for current replicas without treating a cold-start deadline as final."""
+    spec, status = deployment['spec'], deployment.get('status', {})
+    desired = spec.get('replicas', 1)
+    return (status.get('observedGeneration', 0) >= deployment['metadata']['generation']
+            and all(status.get(field, 0) == desired for field in
+                    ('replicas', 'updatedReplicas', 'readyReplicas', 'availableReplicas')))
+
+
 if __name__ == '__main__':
     try:
-        sys.exit(0 if matches(json.load(sys.stdin), json.loads(sys.argv[1]), json.loads(sys.argv[2])) else 1)
+        deployment = json.load(sys.stdin)
+        ready = (rollout_ready(deployment) if sys.argv[1:] == ['--rollout-ready'] else
+                 matches(deployment, json.loads(sys.argv[1]), json.loads(sys.argv[2])))
+        sys.exit(0 if ready else 1)
     except (KeyError, ValueError, TypeError):
         sys.exit(1)

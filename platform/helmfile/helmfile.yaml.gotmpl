@@ -236,6 +236,7 @@ releases:
     values:
       - values/dcgm-exporter.yaml
 
+{{- $previousModel := "" }}
 {{- range $model, $settings := $infra.models }}
   - name: {{ $model }}
     namespace: {{ $model }}
@@ -247,6 +248,10 @@ releases:
       - kserve/kserve
       - rustfs/rustfs
       - gateway/gateway
+      - oauth2-proxy/oauth2-proxy
+{{- if and $settings.enabled $previousModel }}
+      - {{ $previousModel }}/{{ $previousModel }}
+{{- end }}
 {{- if eq $infra.environment "scaleway" }}
       - hami/hami
 {{- end }}
@@ -269,5 +274,6 @@ releases:
           - bash
           - scripts/check-model.sh
           - {{ $model }}
+{{- $previousModel = $model }}
 {{- end }}
 {{- end }}

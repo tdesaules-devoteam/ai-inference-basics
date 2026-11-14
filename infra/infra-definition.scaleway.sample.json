@@ -1,0 +1,30 @@
+{
+  "$schema": "infra-definition.schema.json",
+  "schemaVersion": 1,
+  "environment": "scaleway",
+  "machines": [
+    {"name": "gpu-lab", "count": 1, "cpu": 24, "memoryGiB": 96, "diskGiB": 200}
+  ],
+  "network": {"hostname": "gpu-lab.example.test", "httpsNodePort": 30443},
+  "access": {
+    "adminEmail": "cluster-admin@devoteam.com",
+    "adminPassword": "REPLACE_ME",
+    "apiBearerToken": "REPLACE_ME"
+  },
+  "images": {
+    "bastion": "localhost/ai-inference-basics-bastion@sha256:c28f75268ffaddef52bfe72c8c03b9f3d4f7b12b5d17a92dea0dbc1fb1b47bf3",
+    "provision": "localhost/ai-inference-basics-provision@sha256:5b01e56aeaa5280cacd5c33f64d67120f3670d9042aac341c6298b366f33036e",
+    "omni": "localhost/ai-inference-basics-lfm3-omni-2b-transformers-cuda@sha256:50c24ff28dc9b04597b92cfbd8842090d7abe1ffd78ccfa7bec8fa6aa4e31ca9",
+    "pullPolicy": "IfNotPresent"
+  },
+  "storage": {"modelsGiB": 100},
+  "models": {
+    "qwen3-0-6b": {"enabled": false, "replicas": 0, "import": false},
+    "qwen3-embedding-0-6b": {"enabled": false, "replicas": 0, "import": false},
+    "qwen3-reranker-0-6b": {"enabled": false, "replicas": 0, "import": false},
+    "lfm3-omni-2b": {"enabled": true, "replicas": 1, "import": true},
+    "qwen3-8b-fp8": {"enabled": true, "replicas": 1, "import": true},
+    "qwen3-embedding-4b": {"enabled": true, "replicas": 1, "import": true},
+    "qwen3-reranker-4b": {"enabled": true, "replicas": 1, "import": true}
+  }
+}

@@ -15,6 +15,10 @@ until
   kubectl -n "$name" get deployment "$name-predictor" -o json |
     python3 "$scripts/model-state.py" "$desired" "$runtime"
 do sleep 3; done
-kubectl -n "$name" rollout status "deployment/$name-predictor" --timeout=900s
+# The enclosing Helmfile timeout bounds this wait. A Deployment's default 600s
+# progress deadline can expire during first image pulls/S3 initialization even
+# though startup is still progressing. Check actual generation and replica counts.
+until kubectl -n "$name" get deployment "$name-predictor" -o json |
+  python3 "$scripts/model-state.py" --rollout-ready; do sleep 3; done
 kubectl -n "$name" wait "inferenceservice/$name" --for=jsonpath='{.status.conditions[?(@.type=="Ready")].status}'=True --timeout=300s
 kubectl -n "$name" wait "inferenceservice/$name" --for=jsonpath='{.status.modelStatus.transitionStatus}'=UpToDate --timeout=300s
