@@ -10,5 +10,10 @@ spec:
       name: ai-inference-basics
   connection:
     bufferLimit: {{ .Values.bufferLimit }}
+  http2:
+    # HTTP/2 stream buffers are independent of the TCP connection watermark.
+    # Buffered multimodal responses must not retain the default 64-KiB limit.
+    initialStreamWindowSize: {{ .Values.bufferLimit }}
+    initialConnectionWindowSize: {{ .Values.bufferLimit }}
   headers:
     requestID: PreserveOrGenerate
