@@ -13,6 +13,36 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(shutil.which('kyverno') and shutil.which('helm'), 'Helm and Kyverno CLI are required')
 class CredentialReload(unittest.TestCase):
+    def test_shared_s3_source_generates_both_current_credentials(self):
+        values = yaml.safe_load((ROOT / 'platform/helmfile/values/rustfs.yaml').read_text())
+        policy = next(o for o in values['extraManifests'] if o['metadata']['name'] == 'model-bucket-sources')
+        for value in ('Zmlyc3Q=', 'cm90YXRlZA=='):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                data = {'AWS_ACCESS_KEY_ID': 'bGFi', 'AWS_SECRET_ACCESS_KEY': value}
+                trigger = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 's3-models', 'namespace': 'rustfs'}, 'data': data}
+                expected = []
+                for name in ('model-reader', 'model-writer'):
+                    secret = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': 'rustfs'},
+                              'type': 'Opaque', 'data': data}
+                    if name == 'model-reader':
+                        secret['metadata']['annotations'] = {
+                            'serving.kserve.io/s3-endpoint': 'rustfs-svc.rustfs.svc.cluster.local:9000',
+                            'serving.kserve.io/s3-usehttps': '0', 'serving.kserve.io/s3-region': 'us-east-1',
+                            'serving.kserve.io/s3-usevirtualbucket': 'false'}
+                    expected.append(secret)
+                for name, doc in [('policy.yaml', policy), ('trigger.yaml', trigger)]:
+                    (root / name).write_text(yaml.safe_dump(doc))
+                (root / 'expected.yaml').write_text(yaml.safe_dump_all(expected))
+                test = {'apiVersion': 'cli.kyverno.io/v1alpha1', 'kind': 'Test', 'metadata': {'name': 'shared-s3'},
+                        'policies': ['policy.yaml'], 'resources': ['trigger.yaml'], 'results': [{
+                            'isGeneratingPolicy': True, 'policy': 'model-bucket-sources', 'kind': 'Secret',
+                            'resources': ['rustfs/s3-models'], 'operation': 'UPDATE', 'result': 'pass',
+                            'generatedResources': ['expected.yaml'], 'failOnMissingResources': True}]}
+                (root / 'kyverno-test.yaml').write_text(yaml.safe_dump(test))
+                result = subprocess.run(['kyverno', 'test', str(root), '--require-tests'], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_changed_credentials_patch_only_the_named_deployment(self):
         policies = []
         for chart in ('bastion', 'dex-config'):
