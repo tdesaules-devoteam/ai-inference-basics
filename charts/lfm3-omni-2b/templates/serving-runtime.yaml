@@ -23,7 +23,13 @@ spec:
         - --port
         - "8080"
         - --no-access-log
+        - --limit-concurrency
+        - "8"
       env:
+        - name: MAX_CONTEXT_TOKENS
+          value: {{ .Values.maxModelLen | quote }}
+        - name: MODEL_DEVICE
+          value: {{ ternary "cuda" "cpu" .Values.gpu.enabled | quote }}
         - name: MODEL_PATH
           value: /mnt/models
         - name: OMP_NUM_THREADS

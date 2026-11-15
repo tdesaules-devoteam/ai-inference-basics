@@ -238,6 +238,7 @@ releases:
 
 {{- $previousModel := "" }}
 {{- range $model, $settings := $infra.models }}
+{{- $native := (readFile (printf "../../charts/%s/values.yaml" $model) | fromYaml).nativeContextTokens }}
   - name: {{ $model }}
     namespace: {{ $model }}
     chart: ../../charts/{{ $model }}
@@ -261,8 +262,11 @@ releases:
           replicas: {{ $settings.replicas }}
         import:
           enabled: {{ $settings.import }}
+        maxModelLen: {{ int $native }}
 {{- if eq $model "lfm3-omni-2b" }}
         image: {{ $infra.images.omni | quote }}
+        gpu:
+          enabled: {{ eq $infra.environment "scaleway" }}
 {{- end }}
 {{- if $settings.enabled }}
     hooks:

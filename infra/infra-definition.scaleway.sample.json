@@ -14,7 +14,7 @@
   "images": {
     "bastion": "localhost/ai-inference-basics-bastion@sha256:c28f75268ffaddef52bfe72c8c03b9f3d4f7b12b5d17a92dea0dbc1fb1b47bf3",
     "provision": "localhost/ai-inference-basics-provision@sha256:5b01e56aeaa5280cacd5c33f64d67120f3670d9042aac341c6298b366f33036e",
-    "omni": "localhost/ai-inference-basics-lfm3-omni-2b-transformers-cuda@sha256:50c24ff28dc9b04597b92cfbd8842090d7abe1ffd78ccfa7bec8fa6aa4e31ca9",
+    "omni": "localhost/ai-inference-basics-lfm3-omni-2b-transformers-cuda@sha256:13d9ab54eb8ce5b01aaf5b62c11a79205b92f971aa7cb086542947deedf7d7fd",
     "pullPolicy": "IfNotPresent"
   },
   "storage": {"modelsGiB": 100},

@@ -1,6 +1,6 @@
 {{- $snapshot := .Files.Get "files/model.lock.json" | fromJson }}
 {{- if not (has (int .Values.serving.replicas) (list 0 1)) }}
-{{- fail "This CPU lab supports serving.replicas of 0 or 1" }}
+{{- fail "This lab supports serving.replicas of 0 or 1" }}
 {{- end }}
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
@@ -29,5 +29,10 @@ spec:
           cpu: "1"
           memory: {{ .Values.requestMemory }}
         limits:
+          {{- if .Values.gpu.enabled }}
+          nvidia.com/gpu: "1"
+          nvidia.com/gpumem: {{ .Values.gpu.memoryMiB | quote }}
+          nvidia.com/gpucores: {{ .Values.gpu.cores | quote }}
+          {{- end }}
           cpu: {{ .Values.threads | quote }}
           memory: {{ .Values.memory }}

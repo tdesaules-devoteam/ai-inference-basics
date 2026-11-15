@@ -15,6 +15,9 @@
 /dist/
 __pycache__/
 **/node_modules/
+/reponse.json
+/reponse.wav
 /infra/infra-definition.*.json
 !/infra/infra-definition.sample.json
+!/infra/infra-definition.scaleway.sample.json
 !/infra/infra-definition.schema.json

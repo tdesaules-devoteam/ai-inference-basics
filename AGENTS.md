@@ -43,6 +43,9 @@
 - Each model has its own chart, release, namespace and matching S3 prefix.
   The environment definition explicitly selects installed releases, imports and
   zero or one inference replica; zero uses KServe's supported stopped state.
+- Use each pinned model's maximum native context in both environments, without
+  an environment divisor or implicit RoPE/YaRN extrapolation. Generation output
+  budgets are separate from context windows; account for input plus requested output.
 - One shared admin account uses the bastion workspace and Headlamp, both with
   cluster-admin access. No per-participant workspaces or namespaces.
 - Use upstream chart settings and native extraObjects/extraManifests extension
@@ -65,6 +68,7 @@
   namespaced RBAC; initialize buckets in a post-install/post-upgrade Job.
 - Observability uses separate Grafana, Loki, Tempo and Mimir deployments, with
   OpenTelemetry Collector for node, application and cluster signals.
+- Do not add Grafana dashboards until the user supplies the example to adapt.
 - Pin workload images by digest. Official upstream
   images have a user-approved base-image exception; own builds use allowed bases.
 - Reuse the VM's native bridge/mDNS access. No host systemd SSH tunnel.

@@ -1,11 +1,18 @@
 provisionImage: ""
-image: localhost/lfm3-omni-2b-transformers@sha256:eda4362f77784acc48c1bbe2ece7bcb4bd40cc27a31869cfd6afaf04f4a8381f
+image: localhost/lfm3-omni-2b-transformers@sha256:25950a0e1b212622e0ee3bc04ac31227f6d082660f314b63fb70c7caafe8a9a3
 endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: lfm3-omni-2b
+# text_config.max_position_embeddings in the pinned config.json.
+nativeContextTokens: 128000
+maxModelLen: 128000
 threads: "8"
 memory: 20Gi
 requestMemory: 12Gi
+gpu:
+  enabled: false
+  memoryMiB: 12288
+  cores: 10
 import:
   enabled: true
   cacheSize: 6Gi

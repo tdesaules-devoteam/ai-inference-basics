@@ -20,6 +20,12 @@ class InfrastructureContract(unittest.TestCase):
     def test_sample_and_invalid_deployment_inputs(self):
         validator = Draft202012Validator(SCHEMA, format_checker=FormatChecker())
         validator.validate(SAMPLE)
+        gpu = json.loads((ROOT / 'infra/infra-definition.scaleway.sample.json').read_text())
+        validator.validate(gpu)
+        self.assertEqual(gpu['environment'], 'scaleway')
+        self.assertTrue(gpu['models']['lfm3-omni-2b']['enabled'])
+        self.assertEqual(gpu['models']['lfm3-omni-2b']['replicas'], 1)
+        self.assertNotEqual(gpu['images']['omni'], SAMPLE['images']['omni'])
         for field, value in [('enabled', False), ('replicas', 2), ('import', 'true')]:
             with self.subTest(field=field):
                 invalid = copy.deepcopy(SAMPLE)

@@ -4,7 +4,8 @@ endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: qwen3-8b-fp8
 task: chat
-maxModelLen: 4096
+nativeContextTokens: 40960
+maxModelLen: 40960
 threads: "4"
 memory: 24Gi
 requestMemory: 12Gi

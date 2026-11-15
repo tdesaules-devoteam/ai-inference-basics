@@ -4,7 +4,8 @@ endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: qwen3-embedding-0-6b
 task: embeddings
-maxModelLen: 2048
+nativeContextTokens: 32768
+maxModelLen: 32768
 threads: "2"
 cores: "4-5"
 memory: 6Gi
