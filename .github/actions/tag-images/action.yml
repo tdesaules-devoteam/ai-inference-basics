@@ -1,6 +1,7 @@
 name: Tag tested images
 description: Create the annotated release tag carrying both verified OCI digests
 inputs:
+  reused: {description: Previously published digests requalified by this workflow, default: "{}"}
   version: {description: Planned stable version, required: true}
   bastion: {description: Verified published bastion digest, required: true}
   provision: {description: Verified published provision digest, required: true}
@@ -8,6 +9,7 @@ runs:
   using: docker
   image: Dockerfile
   env:
+    REUSED_DIGESTS: ${{ inputs.reused }}
     VERSION: ${{ inputs.version }}
     BASTION_DIGEST: ${{ inputs.bastion }}
     PROVISION_DIGEST: ${{ inputs.provision }}

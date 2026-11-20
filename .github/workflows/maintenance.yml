@@ -24,6 +24,7 @@ jobs:
         with:
           repository: ${{ github.repository }}
           token: ${{ steps.bot.outputs.token }}
+          dry-run: ${{ inputs.dry-run || false }}
       - uses: tdesaules/github-actions/lint/lychee@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ steps.plan.outputs.markdown_files }}
@@ -69,4 +70,9 @@ jobs:
 'on':
   schedule:
     - cron: 17 5 * * 1
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Resolve dependency updates without creating pull requests
+        type: boolean
+        default: true

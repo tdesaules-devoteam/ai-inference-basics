@@ -12,7 +12,7 @@ import (
 
 func run() error {
 	n := os.Getenv("COMPONENT")
-	if n != "bastion" && n != "provision" {
+	if !regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`).MatchString(n) {
 		return fmt.Errorf("unknown component")
 	}
 	var r struct {

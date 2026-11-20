@@ -16,7 +16,20 @@ func run() error {
 		return fmt.Errorf("invalid preparation context")
 	}
 	evidence := map[string]string{}
+	var reused map[string]string
+	if raw := os.Getenv("REUSED_DIGESTS"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &reused); err != nil {
+			return err
+		}
+	}
 	for _, name := range []string{"bastion", "provision"} {
+		if digest := reused[name]; digest != "" {
+			if !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(digest) || digest != os.Getenv(strings.ToUpper(name)+"_DIGEST") {
+				return fmt.Errorf("incorrect reused %s digest", name)
+			}
+			evidence[name] = digest
+			continue
+		}
 		var r struct {
 			Image, Revision, Digest string
 			Tested                  bool

@@ -21,6 +21,9 @@ jobs:
       markdown_files: ${{ steps.plan.outputs.markdown_files }}
       yaml_files: ${{ steps.plan.outputs.yaml_files }}
       container_files: ${{ steps.plan.outputs.container_files }}
+      build_images: ${{ steps.plan.outputs.build_images }}
+      scan_only: ${{ steps.plan.outputs.scan_only }}
+      reused: ${{ steps.plan.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -61,12 +64,14 @@ jobs:
         uses: tdesaules/github-actions/lint/hadolint@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.container_files }}
+      - name: Exercise CI contracts
+        uses: ./.github/actions/test-ci
   build:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJSON(needs.check.outputs.images) }}
+        image: ${{ fromJSON(needs.check.outputs.build_images) }}
     needs:
       - check
       - lint
@@ -109,8 +114,8 @@ jobs:
       - check
       - lint
       - build
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && (needs.build.result
-      == 'success') }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && ((needs.check.outputs.has_build
+      == 'true' && needs.build.result == 'success') || (needs.check.outputs.has_build == 'false' && needs.build.result == 'skipped')) }}
     services:
       candidate-registry:
         image: ghcr.io/tdesaules/github-actions/workflow-start-test-registry@sha256:e428ed0f7c5a8d1f9062a041aeeeddbfeb86cf11dcaf8f24a83a4d55173bbb8a
@@ -125,6 +130,7 @@ jobs:
         with:
           name: build-${{ matrix.image }}
           path: dist
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/image.oci.tar
@@ -133,31 +139,44 @@ jobs:
           architecture: amd64
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/workflow/import-candidate-image@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/image.oci.tar
           repository: ${{ matrix.image }}
           host-port: ${{ job.services.candidate-registry.ports['5000'] }}
         id: candidate
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
+      - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !contains(fromJSON(needs.check.outputs.build_images), matrix.image) }}
+        id: published
+        with:
+          image: ghcr.io/${{ github.repository }}/${{ matrix.image }}@${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
+          expected-digest: ${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
       - uses: tdesaules/github-actions/workflow/new-candidate-action@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           directory: .github/actions/smoke-${{ matrix.image }}
-          image: ${{ steps.candidate.outputs.image }}
+          image: ${{ steps.candidate.outputs.image || steps.published.outputs.reference }}
           destination: .candidate
+        if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
       - uses: ./.candidate
+        if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
       - uses: ./.github/actions/record-qualification
         with:
           image: ${{ matrix.image }}
           digest: ${{ steps.candidate.outputs.digest }}
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: qualified-${{ matrix.image }}
           path: dist/
           if-no-files-found: error
           compression-level: 0
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
         with:
-          source: oci-archive:dist/image.oci.tar
+          source: ${{ steps.published.outputs.reference && format('registry:{0}', steps.published.outputs.reference) || 'oci-archive:dist/image.oci.tar'
+            }}
         continue-on-error: true
         id: sbom
       - uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068

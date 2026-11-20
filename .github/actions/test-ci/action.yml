@@ -1,0 +1,5 @@
+name: Test lab CI contracts
+description: Exercise source selection, archive receipts, promotion and release tags in disposable repositories
+runs:
+  using: docker
+  image: Dockerfile

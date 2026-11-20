@@ -9,6 +9,10 @@ name: release
         description: Publish qualified application images without creating a Git tag or GitHub Release
         type: boolean
         default: false
+      helpers:
+        description: Build, exercise and publish dedicated CI helper images only
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -28,6 +32,9 @@ jobs:
       container_files: ${{ steps.plan.outputs.container_files }}
       version: ${{ steps.version.outputs.release-version }}
       changed: ${{ steps.version.outputs.release-changed }}
+      build_images: ${{ steps.plan.outputs.build_images }}
+      scan_only: ${{ steps.plan.outputs.scan_only }}
+      reused: ${{ steps.plan.outputs.reused }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -35,9 +42,11 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/check
         id: plan
+        env:
+          LAB_HELPERS: ${{ inputs.helpers }}
       - uses: tdesaules/github-actions/workflow/new-release-plan@e00720678192c53c13a0ba37fccd5349ea755068
         id: version
-        if: github.event_name == 'workflow_dispatch' && !inputs.images-only
+        if: github.event_name == 'workflow_dispatch' && !inputs.images-only && !inputs.helpers
   lint:
     needs:
       - check
@@ -66,17 +75,19 @@ jobs:
         uses: tdesaules/github-actions/lint/hadolint@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.container_files }}
+      - name: Exercise CI contracts
+        uses: ./.github/actions/test-ci
   build:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJSON(needs.check.outputs.images) }}
+        image: ${{ fromJSON(needs.check.outputs.build_images) }}
     needs:
       - check
       - lint
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' && (inputs.images-only || needs.check.outputs.changed
-      == 'true') }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' && (inputs.helpers
+      || inputs.images-only || needs.check.outputs.changed == 'true') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -84,11 +95,13 @@ jobs:
           persist-credentials: false
       - uses: tdesaules/github-actions/oci/build-image@e00720678192c53c13a0ba37fccd5349ea755068
         with:
-          containerfile: oci/${{ matrix.image }}/Containerfile
+          containerfile: ${{ inputs.helpers && format('.github/actions/{0}/Containerfile', matrix.image) || format('oci/{0}/Containerfile', matrix.image)
+            }}
           image: localhost/${{ matrix.image }}
           version: ${{ github.sha }}
           platform: linux/amd64
           output: dist/image.oci.tar
+          context: ${{ inputs.helpers && format('.github/actions/{0}', matrix.image) || '.' }}
         id: build
       - uses: tdesaules/github-actions/workflow/new-build-receipt@e00720678192c53c13a0ba37fccd5349ea755068
         with:
@@ -115,8 +128,9 @@ jobs:
       - check
       - lint
       - build
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && (needs.build.result
-      == 'success' || (github.ref_type == 'tag' && needs.build.result == 'skipped')) }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && ((needs.check.outputs.has_build
+      == 'true' && needs.build.result == 'success') || (needs.check.outputs.has_build == 'false' && needs.build.result == 'skipped')) && (github.ref_type
+      == 'tag' || inputs.helpers || inputs.images-only || needs.check.outputs.changed == 'true') }}
     services:
       candidate-registry:
         image: ghcr.io/tdesaules/github-actions/workflow-start-test-registry@sha256:e428ed0f7c5a8d1f9062a041aeeeddbfeb86cf11dcaf8f24a83a4d55173bbb8a
@@ -131,7 +145,7 @@ jobs:
         with:
           name: build-${{ matrix.image }}
           path: dist
-        if: github.event_name == 'workflow_dispatch'
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/image.oci.tar
@@ -140,41 +154,83 @@ jobs:
           architecture: amd64
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
-        if: github.event_name == 'workflow_dispatch'
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/workflow/import-candidate-image@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/image.oci.tar
           repository: ${{ matrix.image }}
           host-port: ${{ job.services.candidate-registry.ports['5000'] }}
         id: candidate
-        if: github.event_name == 'workflow_dispatch'
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           image: ghcr.io/${{ github.repository }}/${{ matrix.image }}@${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
           expected-digest: ${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
         id: published
-        if: github.ref_type == 'tag'
+        if: ${{ !contains(fromJSON(needs.check.outputs.build_images), matrix.image) }}
       - uses: tdesaules/github-actions/workflow/new-candidate-action@e00720678192c53c13a0ba37fccd5349ea755068
         with:
-          directory: .github/actions/smoke-${{ matrix.image }}
+          directory: ${{ inputs.helpers && format('.github/actions/{0}', matrix.image) || format('.github/actions/smoke-{0}', matrix.image) }}
           image: ${{ steps.candidate.outputs.image || steps.published.outputs.reference }}
           destination: .candidate
+        if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
       - uses: ./.candidate
+        if: ${{ !inputs.helpers || contains(fromJSON('["test-ci","check","lint-helm"]'), matrix.image) }}
+      - uses: ./.candidate
+        if: inputs.helpers && matrix.image == 'record-qualification'
+        with:
+          image: ${{ matrix.image }}
+          digest: ${{ steps.candidate.outputs.digest }}
+      - uses: ./.github/actions/record-qualification
+        if: inputs.helpers && matrix.image == 'read-qualification'
+        with:
+          image: ${{ matrix.image }}
+          digest: ${{ steps.candidate.outputs.digest }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.helpers && matrix.image == 'read-qualification'
+        with:
+          name: reader-fixture
+          path: dist/
+          compression-level: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: inputs.helpers && matrix.image == 'read-qualification'
+        with:
+          name: reader-fixture
+          path: dist/read-qualification
+      - uses: ./.candidate
+        if: inputs.helpers && matrix.image == 'read-qualification'
+        with:
+          image: read-qualification
+      - name: Reject an unqualified tag request
+        uses: ./.candidate
+        if: inputs.helpers && matrix.image == 'tag-images'
+        id: reject
+        continue-on-error: true
+        with:
+          version: invalid
+          bastion: invalid
+          provision: invalid
+      - uses: tdesaules/github-actions/workflow/test-step-outcomes@e00720678192c53c13a0ba37fccd5349ea755068
+        if: inputs.helpers && matrix.image == 'tag-images'
+        with:
+          outcomes: ${{ toJSON(steps) }}
+          expected-failures: '["reject"]'
       - uses: ./.github/actions/record-qualification
         with:
           image: ${{ matrix.image }}
           digest: ${{ steps.candidate.outputs.digest }}
-        if: github.event_name == 'workflow_dispatch'
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: qualified-${{ matrix.image }}
           path: dist/
           if-no-files-found: error
           compression-level: 0
-        if: github.event_name == 'workflow_dispatch'
+        if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
         with:
-          source: ${{ github.ref_type == 'tag' && format('registry:{0}', steps.published.outputs.reference) || 'oci-archive:dist/image.oci.tar' }}
+          source: ${{ steps.published.outputs.reference && format('registry:{0}', steps.published.outputs.reference) || 'oci-archive:dist/image.oci.tar'
+            }}
         continue-on-error: true
         id: sbom
       - uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
@@ -215,14 +271,15 @@ jobs:
       - lint
       - build
       - test
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && (needs.build.result
-      == 'success' || (github.ref_type == 'tag' && needs.build.result == 'skipped')) && needs.test.result == 'success' }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && ((needs.check.outputs.has_build
+      == 'true' && needs.build.result == 'success') || (needs.check.outputs.has_build == 'false' && needs.build.result == 'skipped')) && needs.test.result
+      == 'success' }}
     permissions:
       contents: read
       packages: write
       id-token: write
     steps:
-      - if: ${{ !inputs.images-only }}
+      - if: ${{ !inputs.helpers && (!inputs.images-only) }}
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
         with:
           app-id: ${{ vars.BOT_APP_ID }}
@@ -238,7 +295,7 @@ jobs:
         with:
           name: qualified-bastion
           path: dist/bastion
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
       - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/bastion/image.oci.tar
@@ -247,10 +304,10 @@ jobs:
           architecture: amd64
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
       - uses: ./.github/actions/read-qualification
         id: verified-bastion
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
         with:
           image: bastion
       - uses: tdesaules/github-actions/oci/publish-image@e00720678192c53c13a0ba37fccd5349ea755068
@@ -259,12 +316,12 @@ jobs:
           destination: docker://ghcr.io/${{ github.repository }}/bastion:sha-${{ github.sha }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ github.token }}
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: qualified-provision
           path: dist/provision
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
       - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           archive: dist/provision/image.oci.tar
@@ -273,10 +330,10 @@ jobs:
           architecture: amd64
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
       - uses: ./.github/actions/read-qualification
         id: verified-provision
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
         with:
           image: provision
       - uses: tdesaules/github-actions/oci/publish-image@e00720678192c53c13a0ba37fccd5349ea755068
@@ -285,16 +342,16 @@ jobs:
           destination: docker://ghcr.io/${{ github.repository }}/provision:sha-${{ github.sha }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ github.token }}
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
       - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           image: ghcr.io/${{ github.repository }}/bastion:sha-${{ github.sha }}
           expected-digest: ${{ steps.verified-bastion.outputs.digest }}
         id: bastion
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
       - name: Sign bastion
         uses: tdesaules/github-actions/oci/new-image-signature@e00720678192c53c13a0ba37fccd5349ea755068
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion')) }}
         continue-on-error: true
         with:
           image: ${{ steps.bastion.outputs.reference }}
@@ -305,10 +362,10 @@ jobs:
           image: ghcr.io/${{ github.repository }}/provision:sha-${{ github.sha }}
           expected-digest: ${{ steps.verified-provision.outputs.digest }}
         id: provision
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
       - name: Sign provision
         uses: tdesaules/github-actions/oci/new-image-signature@e00720678192c53c13a0ba37fccd5349ea755068
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'provision')) }}
         continue-on-error: true
         with:
           image: ${{ steps.provision.outputs.reference }}
@@ -317,13 +374,43 @@ jobs:
       - uses: ./.github/actions/tag-images
         with:
           version: ${{ needs.check.outputs.version }}
-          bastion: ${{ steps.bastion.outputs.digest }}
-          provision: ${{ steps.provision.outputs.digest }}
-        if: github.event_name == 'workflow_dispatch' && !inputs.images-only
+          bastion: ${{ steps.bastion.outputs.digest || fromJSON(needs.check.outputs.reused).bastion }}
+          provision: ${{ steps.provision.outputs.digest || fromJSON(needs.check.outputs.reused).provision }}
+          reused: ${{ needs.check.outputs.reused }}
+        if: ${{ !inputs.helpers && (github.event_name == 'workflow_dispatch' && !inputs.images-only) }}
       - uses: tdesaules/github-actions/workflow/new-github-release@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           repository: ${{ github.repository }}
           tag: ${{ github.ref_name }}
           notes: docs/release-notes.md
           token: ${{ steps.bot.outputs.token }}
-        if: github.ref_type == 'tag'
+        if: ${{ !inputs.helpers && (github.ref_type == 'tag') }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: qualified-${{ matrix.component }}
+          path: dist/${{ matrix.component }}
+        if: inputs.helpers
+      - uses: ./.github/actions/read-qualification
+        id: verified-helper
+        if: inputs.helpers
+        with:
+          image: ${{ matrix.component }}
+      - uses: tdesaules/github-actions/oci/publish-image@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          source: oci-archive:dist/${{ matrix.component }}/image.oci.tar
+          destination: docker://ghcr.io/${{ github.repository }}/ci-helpers:${{ matrix.component }}-sha-${{ github.sha }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ github.token }}
+        if: inputs.helpers
+      - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          image: ghcr.io/${{ github.repository }}/ci-helpers:${{ matrix.component }}-sha-${{ github.sha }}
+          expected-digest: ${{ steps.verified-helper.outputs.digest }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ github.token }}
+        id: helper
+        if: inputs.helpers
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(inputs.helpers && needs.check.outputs.images || '["applications"]') }}

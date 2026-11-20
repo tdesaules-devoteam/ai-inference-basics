@@ -21,3 +21,17 @@ For package publication without a Git release, dispatch `release.yml` on `main`
 with `images-only=true`. This uses the same build, functional test, receipt and
 public digest checks with the job's `packages: write` permission; no bot token
 or source ref mutation is needed in this mode.
+
+Here `x86_64` (Linux) and `amd64` (OCI) mean the same thing. The current lab
+ships AMD64 binaries and Python wheels. ARM64 is a distinct target and is not
+advertised. Both development and release run CI-operation fixtures. Developers
+can run the same suite with `python3 .github/scripts/test-actions.py`.
+
+The selector discovers application Containerfiles under `oci/`. Application
+source changes rebuild the affected archives; smoke changes retest published
+digests; Grype/Syft policy changes scan published digests without issuing a
+functional receipt. Release preparation requalifies the full application set and
+reuses unchanged manifests from the last annotated release. Before the first
+source tag, maintenance takes its subjects from the public environment sample.
+The `helpers` dispatch on main builds and exercises the repository's CI actions
+and publishes them by digest without creating a Git tag or publishing lab images.

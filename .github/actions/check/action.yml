@@ -1,6 +1,9 @@
 name: Plan platform checks
 description: Select platform checks and application image qualification from the event and changed files
 outputs:
+  reused: {description: Immutable digests for selected images not rebuilt}
+  build_images: {description: Components requiring new archives}
+  scan_only: {description: Published components requiring advisory scans only}
   platform: {description: Whether to render and validate the platform}
   images: {description: Ordered JSON list of selected native AMD64 images}
   digests: {description: Qualified manifests from the annotated release tag}
