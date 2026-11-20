@@ -56,6 +56,12 @@ RPMs from the Fedora `updates` repository using rpm-ostree and reboots. It
 skips subsequent boots with the corrected policy. The remote override persists
 in the OSTree deployment; reassess it when moving to another base image.
 
+Include `fastfetch` in `butane.custom_pkgs` and set
+`"github:fastfetch-cli/fastfetch" = ""` in `butane.custom_mise_tools`.
+The upstream renderer omits empty tool entries. Fedora supplies the CLI used
+by the interactive shell; this avoids a failed Mise lookup for `v2.71.0`
+when the published GitHub tag is `2.71.0`.
+
 The k0s custom copy reads the tracked configuration directly, relative to the
 runtime directory used by Task:
 
