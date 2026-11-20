@@ -9,7 +9,7 @@
 - Hugging Face Python downloads with revision/hash locks and a shared models-bucket account.
 - The environment selects installed models, imports and zero or one inference replica.
 - Native ttyd/Zellij CLI and code-server share one PVC and one browser login.
-- Bastion and provision image distribution remains local pending registry authorization.
+- The bastion and provision images are distributed through public GHCR packages pinned by digest.
 
 ## Historical umbrella layout (superseded)
 

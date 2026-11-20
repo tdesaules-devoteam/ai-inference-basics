@@ -35,7 +35,7 @@
 - [x] Qualify the admin browser journey, terminal, editor, Headlamp and anonymous/header-spoof rejection.
 - [x] Run vLLM bench from the bastion through the internal TLS/Bearer Gateway.
 - [x] Distribute credential ownership to domain-local hooks; keep CA/TLS in gateway.
-- [ ] Publish the tested bastion and provision images to GHCR, verify anonymous pulls, then update environment pins.
+- [x] Publish the tested bastion and provision images to GHCR, verify anonymous pulls, then update environment pins.
 - [x] Deploy Grafana, Loki, Tempo and Mimir separately with RustFS storage.
 - [x] Deploy node and cluster OpenTelemetry Collector pipelines.
 - [x] Configure HAMi/DCGM for eligible GPU nodes only; CPU qualification confirms zero GPU DaemonSet Pods.
@@ -52,7 +52,7 @@
 - [ ] Resolve the separate native Topgrade OS update failure: the attempted FCOS 44 to 45 upgrade cannot resolve the layered Cockpit and SELinux policy packages.
 - [x] Add the observability stack without dashboards; dashboard design will be supplied later.
 - [x] Verify a real chat request through the authenticated Grafana proxies: generation counter in Mimir, matching token total in Loki, and a correlated Gateway trace in Tempo.
-- [ ] Activate the replacement CI and publish tested lab OCI artifacts with authorized registry credentials.
+- [x] Activate the replacement CI and publish tested lab OCI artifacts with authorized registry credentials.
 
 Performance benchmarking is not requested. Scaleway infrastructure and public
 ACME integration are deferred until these follow-ups are complete.

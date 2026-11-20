@@ -12,8 +12,8 @@
     "apiBearerToken": "REPLACE_ME"
   },
   "images": {
-    "bastion": "localhost/ai-inference-basics-bastion@sha256:c28f75268ffaddef52bfe72c8c03b9f3d4f7b12b5d17a92dea0dbc1fb1b47bf3",
-    "provision": "localhost/ai-inference-basics-provision@sha256:5b01e56aeaa5280cacd5c33f64d67120f3670d9042aac341c6298b366f33036e",
+    "bastion": "ghcr.io/tdesaules-devoteam/ai-inference-basics/bastion@sha256:10f412d3b0b8bc777185e4bf51e5097f463d1b48894db0d5d9c474dfb8a8dde2",
+    "provision": "ghcr.io/tdesaules-devoteam/ai-inference-basics/provision@sha256:384a63f6c9b77585cc406c960dc6801fe24ce6765158985925045822ab55d7bd",
     "pullPolicy": "IfNotPresent"
   },
   "storage": {"modelsGiB": 20},

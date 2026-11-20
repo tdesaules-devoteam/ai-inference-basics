@@ -15,7 +15,7 @@ task devenv:down   # destroy the VM
 ```
 
 See [local setup](docs/devenv.md) before the first run. The root Taskfile exposes
-the upstream devenv tasks directly. Own images require explicit local imports;
+the upstream devenv tasks directly. The lab pulls its images from public GHCR packages;
 see [lab access and qualification](docs/lab.md).
 
 ## Structure
@@ -38,8 +38,8 @@ See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image 
 administration from the bastion and Headlamp, separate Bearer model APIs and
 one shared RustFS account restricted to the models bucket. The CPU environment
 sample specifies 12 vCPU, 48 GiB RAM and 64 GiB disk; the private environment JSON
-is the sizing source for `.devenv/config.k`. Registry publication remains unavailable;
-a fresh VM requires explicit image imports. See [qualification](docs/lab.md#validation).
+is the sizing source for `.devenv/config.k`. The bootstrap fetches the pinned
+bastion and provision manifests before Helmfile runs. See [qualification](docs/lab.md#validation).
 
 **Foundation history:** a temporary
 Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations

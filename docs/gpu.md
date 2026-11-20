@@ -2,7 +2,8 @@
 
 ## Images and workspace
 
-Own images use digest-pinned Fedora Minimal 45 (glibc). Build and export them
+The environment samples pull the public images by digest. Both use Fedora Minimal
+45 (glibc). For local builds, build and export them
 with `oci/prepare.sh all`, or select `bastion` or `provision`. Import the resulting OCI archives into the VM’s
 native k0s containerd and align the digest references before Helmfile sync.
 

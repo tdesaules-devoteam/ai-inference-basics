@@ -42,14 +42,15 @@ charts directly. There is no custom plugin or post-renderer. See
 [infrastructure definitions](infrastructure-definition.md) for configuration,
 ordering and the existing-installation migration boundary.
 
-## Local image prerequisite
+## Application images
 
-GHCR publication remains unavailable. Bastion and provision are
-separate images; see [GPU setup](gpu.md). Domain hooks
+The CPU and GPU samples select separate public GHCR images for bastion and
+provision by tested manifest digest. The VM pulls them before Helmfile starts.
+See [GPU setup](gpu.md). Domain hooks
 use provision, including its locked huggingface_hub, boto3, bcrypt and RustFS rc.
 
-Build with `bash oci/prepare.sh` or reuse a qualified OCI archive. A fresh VM must
-receive the images before these domain hooks can run:
+For an offline installation using `localhost/` overrides, build with
+`bash oci/prepare.sh` or reuse a qualified OCI archive, then import it:
 
 ```sh
 VM="$(id -un)@$(cat .devenv/.uuid).local"
