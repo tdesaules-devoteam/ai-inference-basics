@@ -26,6 +26,7 @@ jobs:
           token: ${{ steps.bot.outputs.token }}
           dry-run: ${{ inputs.dry-run || false }}
       - uses: tdesaules/github-actions/lint/lychee@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !cancelled() && steps.plan.outcome == 'success' }}
         with:
           files: ${{ steps.plan.outputs.markdown_files }}
       - name: Generate published bastion SBOM
