@@ -16,8 +16,9 @@ tag jobs qualify them again without a rebuild before creating the GitHub release
 Syft and Grype reports are advisory. The application images currently contain
 x86-64-only pinned tools; this pipeline does not advertise ARM64 support.
 
-Local Go actions use their sibling Dockerfile until dedicated images are
-published. To run the release workflow configure `BOT_APP_ID` and
+The six Go actions use their published `ci-helpers` manifests pinned by digest.
+After changing a helper, publish and qualify its recipe with the `helpers` dispatch,
+then update its action metadata to the verified public digest. To run the release workflow configure `BOT_APP_ID` and
 `BOT_APP_PRIVATE_KEY` for a repository-scoped App installation with contents
 write access, enable GHCR package publication for the workflow, and permit
 anonymous pulls of both packages. Maintenance uses a separate installation token.

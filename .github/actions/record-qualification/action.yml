@@ -5,7 +5,7 @@ inputs:
   digest: {description: Tested manifest digest, required: true}
 runs:
   using: docker
-  image: Dockerfile
+  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:ed89e89c7ac0ac5f1cb5190cd5eeaf03cb04edde1dae13403c33f286c3427c0c
   env:
     COMPONENT: ${{ inputs.image }}
     CANDIDATE_DIGEST: ${{ inputs.digest }}

@@ -15,4 +15,4 @@ outputs:
   container_files: {description: JSON Containerfile list}
 runs:
   using: docker
-  image: Dockerfile
+  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:57739a61c7edd8b28f4838c127381e53fb5216d951d3f6f72c6df315dc803a96

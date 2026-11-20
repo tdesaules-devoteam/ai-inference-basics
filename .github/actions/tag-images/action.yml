@@ -7,7 +7,7 @@ inputs:
   provision: {description: Verified published provision digest, required: true}
 runs:
   using: docker
-  image: Dockerfile
+  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:59519cb48e8fd6d95705bc0f7682a08bf1b7fa18336625df40df183a74f40102
   env:
     REUSED_DIGESTS: ${{ inputs.reused }}
     VERSION: ${{ inputs.version }}

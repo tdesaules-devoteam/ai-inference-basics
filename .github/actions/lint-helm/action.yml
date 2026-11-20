@@ -2,4 +2,4 @@ name: Validate Helmfile platform
 description: Render CPU, GPU and disabled selections and verify upstream artifacts and platform contracts
 runs:
   using: docker
-  image: Dockerfile
+  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:cbb6a8e24b6b4cbac768f71771d0c76c642d7636a84859a13255a22a34bff6d7

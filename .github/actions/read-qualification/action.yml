@@ -6,6 +6,6 @@ outputs:
   digest: {description: Exact tested manifest digest}
 runs:
   using: docker
-  image: Dockerfile
+  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:3d827e7036015170512cd1fcdd36c041312e49eee0809d6da0c231f88556ccba
   env:
     COMPONENT: ${{ inputs.image }}
