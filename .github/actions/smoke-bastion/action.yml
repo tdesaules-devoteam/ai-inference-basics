@@ -1,8 +1,0 @@
-name: Exercise bastion runtime
-description: Run fixed application checks inside the exact bastion candidate
-runs:
-  using: docker
-  image: Dockerfile
-  entrypoint: /opt/venv/bin/python
-  args:
-    - /github/workspace/.github/scripts/smoke-bastion.py

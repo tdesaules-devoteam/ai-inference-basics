@@ -1,5 +1,0 @@
-name: Test lab CI contracts
-description: Exercise source selection, archive receipts, promotion and release tags in disposable repositories
-runs:
-  using: docker
-  image: docker://ghcr.io/tdesaules-devoteam/ai-inference-basics/ci-helpers@sha256:b217f5d778862c0761d26f075258f4dcf5a8e4c5edc4ebfd69c7d937e9656f38

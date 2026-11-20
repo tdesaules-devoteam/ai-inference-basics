@@ -8,9 +8,24 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - name: Validate event policy
-        uses: ./.github/actions/check
+      - name: Validate maintenance event
+        uses: tdesaules/github-actions/check/test-maintenance-event@be037a8ee89b4431dde66fe72c482b5e9c66d137
+      - name: Classify changed source files
+        id: files
+        uses: tdesaules/github-actions/workflow/get-changed-files@be037a8ee89b4431dde66fe72c482b5e9c66d137
+        with:
+          before: ${{ github.event.before }}
+          after: ${{ github.sha }}
+          full: 'true'
+      - name: Select application images and published digests
         id: plan
+        uses: tdesaules/github-actions/workflow/get-image-matrix@be037a8ee89b4431dde66fe72c482b5e9c66d137
+        with:
+          application-definition: infra/infra-definition.sample.json
+          event: maintenance
+          ref: ${{ github.ref }}
+          files: ${{ steps.files.outputs.files }}
+          full: ${{ steps.files.outputs.full }}
       - name: Create repository-scoped bot token
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
         id: bot
@@ -20,24 +35,24 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ai-inference-basics
       - name: Update dependencies
-        uses: tdesaules/github-actions/maintenance/update-dependencies@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/maintenance/update-dependencies@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           repository: ${{ github.repository }}
           token: ${{ steps.bot.outputs.token }}
           dry-run: ${{ inputs.dry-run || false }}
-      - uses: tdesaules/github-actions/lint/lychee@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/lint/lychee@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outcome == 'success' }}
         with:
-          files: ${{ steps.plan.outputs.markdown_files }}
+          files: ${{ steps.files.outputs.lychee-files }}
       - name: Generate published bastion SBOM
-        uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/oci/new-sbom@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
         continue-on-error: true
         with:
           source: registry:ghcr.io/${{ github.repository }}/bastion@${{ fromJSON(steps.plan.outputs.digests).bastion }}
           output: bastion.spdx.json
       - name: Rescan bastion
-        uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/oci/test-vulnerabilities@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
         continue-on-error: true
         with:
@@ -45,14 +60,14 @@ jobs:
           output: bastion.grype.json
           fail-on: none
       - name: Generate published provision SBOM
-        uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/oci/new-sbom@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
         continue-on-error: true
         with:
           source: registry:ghcr.io/${{ github.repository }}/provision@${{ fromJSON(steps.plan.outputs.digests).provision }}
           output: provision.spdx.json
       - name: Rescan provision
-        uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/oci/test-vulnerabilities@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
         continue-on-error: true
         with:

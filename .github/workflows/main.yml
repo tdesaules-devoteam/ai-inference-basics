@@ -17,10 +17,10 @@ jobs:
       has_tests: ${{ steps.plan.outputs.has_tests }}
       images: ${{ steps.plan.outputs.images }}
       digests: ${{ steps.plan.outputs.digests }}
-      shell_files: ${{ steps.plan.outputs.shell_files }}
-      markdown_files: ${{ steps.plan.outputs.markdown_files }}
-      yaml_files: ${{ steps.plan.outputs.yaml_files }}
-      container_files: ${{ steps.plan.outputs.container_files }}
+      shell_files: ${{ steps.files.outputs.shellcheck-files }}
+      markdown_files: ${{ steps.files.outputs.markdownlint-files }}
+      yaml_files: ${{ steps.files.outputs.yaml-files }}
+      container_files: ${{ steps.files.outputs.hadolint-files }}
       build_images: ${{ steps.plan.outputs.build_images }}
       scan_only: ${{ steps.plan.outputs.scan_only }}
       reused: ${{ steps.plan.outputs.reused }}
@@ -29,8 +29,22 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/check
+      - name: Classify changed source files
+        id: files
+        uses: tdesaules/github-actions/workflow/get-changed-files@be037a8ee89b4431dde66fe72c482b5e9c66d137
+        with:
+          before: ${{ github.event.before }}
+          after: ${{ github.sha }}
+          full: 'false'
+      - name: Select application images and published digests
         id: plan
+        uses: tdesaules/github-actions/workflow/get-image-matrix@be037a8ee89b4431dde66fe72c482b5e9c66d137
+        with:
+          application-definition: infra/infra-definition.sample.json
+          event: ${{ github.event_name }}
+          ref: ${{ github.ref }}
+          files: ${{ steps.files.outputs.files }}
+          full: ${{ steps.files.outputs.full }}
   lint:
     needs:
       - check
@@ -39,33 +53,31 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Validate shell
         if: needs.check.outputs.shell_files != '[]'
-        uses: tdesaules/github-actions/lint/shellcheck@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/lint/shellcheck@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           files: ${{ needs.check.outputs.shell_files }}
       - name: Validate YAML
         if: needs.check.outputs.yaml_files != '[]'
-        uses: tdesaules/github-actions/lint/yaml@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/lint/yaml@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           files: ${{ needs.check.outputs.yaml_files }}
       - name: Validate documentation
         if: needs.check.outputs.markdown_files != '[]'
-        uses: tdesaules/github-actions/lint/markdownlint@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/lint/markdownlint@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           files: ${{ needs.check.outputs.markdown_files }}
       - name: Validate workflows
-        uses: tdesaules/github-actions/lint/actionlint@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/lint/actionlint@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           files: '[".github/workflows/main.yml", ".github/workflows/release.yml", ".github/workflows/maintenance.yml"]'
       - name: Validate Helm
         if: needs.check.outputs.platform == 'true'
-        uses: ./.github/actions/lint-helm
+        uses: tdesaules/github-actions/check/test-helmfile@be037a8ee89b4431dde66fe72c482b5e9c66d137
       - name: Validate Containerfiles
         if: needs.check.outputs.container_files != '[]'
-        uses: tdesaules/github-actions/lint/hadolint@e00720678192c53c13a0ba37fccd5349ea755068
+        uses: tdesaules/github-actions/lint/hadolint@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           files: ${{ needs.check.outputs.container_files }}
-      - name: Exercise CI contracts
-        uses: ./.github/actions/test-ci
   build:
     runs-on: ubuntu-24.04
     strategy:
@@ -81,7 +93,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: tdesaules/github-actions/oci/build-image@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/oci/build-image@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           containerfile: oci/${{ matrix.image }}/Containerfile
           image: localhost/${{ matrix.image }}
@@ -89,7 +101,7 @@ jobs:
           platform: linux/amd64
           output: dist/image.oci.tar
         id: build
-      - uses: tdesaules/github-actions/workflow/new-build-receipt@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/workflow/new-build-receipt@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           archive: dist/image.oci.tar
           output: dist/build.json
@@ -131,7 +143,7 @@ jobs:
           name: build-${{ matrix.image }}
           path: dist
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
-      - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/workflow/test-build-artifact@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           archive: dist/image.oci.tar
           receipt: dist/build.json
@@ -140,31 +152,37 @@ jobs:
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
-      - uses: tdesaules/github-actions/workflow/import-candidate-image@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/workflow/import-candidate-image@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           archive: dist/image.oci.tar
           repository: ${{ matrix.image }}
           host-port: ${{ job.services.candidate-registry.ports['5000'] }}
         id: candidate
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
-      - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/oci/get-image-digest@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !contains(fromJSON(needs.check.outputs.build_images), matrix.image) }}
         id: published
         with:
           image: ghcr.io/${{ github.repository }}/${{ matrix.image }}@${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
           expected-digest: ${{ fromJSON(needs.check.outputs.digests)[matrix.image] }}
-      - uses: tdesaules/github-actions/workflow/new-candidate-action@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/workflow/new-candidate-action@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
-          directory: .github/actions/smoke-${{ matrix.image }}
           image: ${{ steps.candidate.outputs.image || steps.published.outputs.reference }}
           destination: .candidate
+          application-smoke: ${{ matrix.image }}
         if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
       - uses: ./.candidate
         if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
-      - uses: ./.github/actions/record-qualification
+      - uses: tdesaules/github-actions/workflow/test-build-artifact@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
+          archive: dist/image.oci.tar
+          receipt: dist/build.json
           image: ${{ matrix.image }}
-          digest: ${{ steps.candidate.outputs.digest }}
+          architecture: amd64
+          revision: ${{ github.sha }}
+          version: ${{ github.sha }}
+          qualification: dist/qualified.json
+          tested-digest: ${{ steps.candidate.outputs.digest }}
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -173,19 +191,19 @@ jobs:
           if-no-files-found: error
           compression-level: 0
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
-      - uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/oci/new-sbom@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           source: ${{ steps.published.outputs.reference && format('registry:{0}', steps.published.outputs.reference) || 'oci-archive:dist/image.oci.tar'
             }}
         continue-on-error: true
         id: sbom
-      - uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/oci/test-vulnerabilities@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
           sbom: sbom.spdx.json
           fail-on: none
         continue-on-error: true
         id: scan
-      - uses: tdesaules/github-actions/workflow/summarize-security@e00720678192c53c13a0ba37fccd5349ea755068
+      - uses: tdesaules/github-actions/workflow/summarize-security@be037a8ee89b4431dde66fe72c482b5e9c66d137
         continue-on-error: true
         with:
           subject: git:${{ github.sha }}

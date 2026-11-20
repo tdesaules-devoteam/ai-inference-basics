@@ -2,7 +2,7 @@
 
 Branch pushes run `main`; manual release preparation on `main` and stable SemVer
 tags run `release`; scheduled or manual maintenance runs `maintenance`. No VM or
-private environment definition is used. See [action contracts](../.github/actions/README.md).
+private environment definition is used. All action sources are owned by the [shared catalog](https://github.com/tdesaules/github-actions).
 
 The Helmfile checks render both environments plus an empty model selection and
 check the bytes of pinned HTTP charts. Images are built separately for native
@@ -24,8 +24,9 @@ or source ref mutation is needed in this mode.
 
 Here `x86_64` (Linux) and `amd64` (OCI) mean the same thing. The current lab
 ships AMD64 binaries and Python wheels. ARM64 is a distinct target and is not
-advertised. Both development and release run CI-operation fixtures. Developers
-can run the same suite with `python3 .github/scripts/test-actions.py`.
+advertised. Selection, qualification receipts and release-operation tests live
+with their implementations in the catalog. The lab owns the render and
+application assertions, including `.github/scripts/smoke-{bastion,provision}.py`.
 
 The selector discovers application Containerfiles under `oci/`. Application
 source changes rebuild the affected archives; smoke changes retest published
@@ -33,5 +34,6 @@ digests; Grype/Syft policy changes scan published digests without issuing a
 functional receipt. Release preparation requalifies the full application set and
 reuses unchanged manifests from the last annotated release. Before the first
 source tag, maintenance takes its subjects from the public environment sample.
-The `helpers` dispatch on main builds and exercises the repository's CI actions
-and publishes them by digest without creating a Git tag or publishing lab images.
+The shared `new-candidate-action` writes `./.candidate` only in the runner workspace
+to execute those assertions inside the exact tested Docker image. No action metadata
+or CI helper image is maintained or published by this repository.
