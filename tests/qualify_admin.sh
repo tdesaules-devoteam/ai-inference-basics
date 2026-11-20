@@ -7,6 +7,8 @@ done
 kubectl -n bastion exec deployment/bastion -c terminal -- kubectl auth can-i '*' '*' --all-namespaces | grep -Fx yes
 marker="qualification-$(openssl rand -hex 8)"
 trap 'kubectl -n bastion exec deployment/bastion -c terminal -- rm -f "/workspace/$marker" >/dev/null' EXIT
+# The positional argument is expanded by bash inside the terminal container.
+# shellcheck disable=SC2016
 kubectl -n bastion exec deployment/bastion -c terminal -- bash -ec 'echo shared-admin > "$1"' _ "/workspace/$marker"
 test "$(kubectl -n bastion exec deployment/bastion -c editor -- cat "/workspace/$marker")" = shared-admin
 test "$(kubectl -n bastion get deployment -o json | jq '.items | length')" = 1

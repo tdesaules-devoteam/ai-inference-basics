@@ -205,8 +205,12 @@ The automatic-start default was qualified without `LAB_MODEL_REPLICAS`: all thre
 InferenceServices reached Ready=True, and TLS/Bearer, chat/SSE, embeddings and
 reranking checks passed.
 
-Those results predate the JSON/Kyverno/native-extension migration and are not
-runtime evidence for it. This migration has only offline qualification so far.
+Those earlier results predate the JSON/Kyverno/native-extension migration. The
+three-Qwen configuration was separately qualified on the retained 48-GiB VM
+disk: a native stop/start, successful platform bootstrap, three ready services,
+actual model requests, workspace/PVC and credential preservation, S3 isolation
+and authenticated Grafana telemetry. The native OS update still has a separate
+FCOS 44/45 Cockpit dependency conflict. See the [tracker](implementation-tracker.md).
 
 ## Existing installations of the previous layout
 

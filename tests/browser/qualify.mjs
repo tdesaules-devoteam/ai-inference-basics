@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
+import { qualifyTelemetry } from './telemetry.mjs';
 
 const base = process.env.LAB_ORIGIN;
 const state = JSON.parse(fs.readFileSync(process.env.LAB_CREDENTIALS_FILE, 'utf8'));
@@ -13,7 +14,7 @@ let phase = 'startup';
 try {
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   phase = 'anonymous-access';
-  for (const path of ['/terminal/', '/code/', '/headlamp/']) {
+  for (const path of ['/terminal/', '/code/', '/headlamp/', '/grafana/']) {
     const response = await context.request.get(base + path, {
       maxRedirects: 0, headers: { 'X-Forwarded-Email': state.email },
     });
@@ -84,6 +85,8 @@ try {
   phase = 'headlamp';
   await page.goto(`${base}/headlamp/`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Namespaces', { exact: true }).first().waitFor({ timeout: 60000 });
+  phase = 'grafana-telemetry';
+  await qualifyTelemetry(context.request, base, state);
   phase = 'api-cookie-rejection';
   const api = await context.request.post(`${base}/v1/chat/completions`, {
     data: { model: 'qwen3-0-6b', messages: [{ role: 'user', content: 'hello' }], max_tokens: 1 },

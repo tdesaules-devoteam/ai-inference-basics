@@ -6,12 +6,15 @@
   persisted VM identity without evaluating KCL.
 - **VM startup fails:** use the original devenv dependency/network diagnostics.
   The host must already provide KVM, br-qemu, bridge-helper permissions and mDNS.
-- **Provisioning fails:** `task ssh`, then inspect the journals for
-  install-system-pkgs, run-topgrade and ai-inference-basics-bootstrap.
+- **Provisioning fails:** use `task devenv:ssh` and inspect the journals for
+  `install-system-pkgs`, `run-topgrade` and `platform-k0s-bootstrap`. The retained
+  FCOS 44 guest can boot and serve requests while `task devenv:up` returns an error:
+  its normal rpm-ostree upgrade to 45 could not resolve `cockpit-ws-selinux`
+  against the base SELinux policy. Check both systemd results separately.
 - **Wrong workspace:** config.k overrides only the workspace fsdev path so the
   shared directory is the repository root despite the include running in .devenv.
-- **Charts do not converge:** inspect `kubectl get charts -n kube-system -o yaml`,
-  controller readiness and webhook certificates. k0s owns Helm reconciliation.
+- **Charts do not converge:** inspect `helm list -A --all`, the bootstrap journal,
+  controller readiness and webhook endpoints. Helmfile owns the releases.
 - **Browser fails:** use the VM hostname printed by up, check bridge/mDNS and trust
   the guest's self-signed certificate. Do not add a host tunnel as a workaround.
 - **Preview 502:** start the canonical port-forward in the matching bastion.
