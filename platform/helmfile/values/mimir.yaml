@@ -1,0 +1,164 @@
+fullnameOverride: mimir
+image:
+  repository: docker.io/grafana/mimir
+  tag: 3.2.3@sha256:0ed56db7d7713707eff00224ddd4c3096afa6cf1cbe43a6f9391c537f1416099
+global:
+  extraEnvFrom:
+    - secretRef:
+        name: s3-observability
+minio:
+  enabled: false
+kafka:
+  enabled: false
+rollout_operator:
+  enabled: false
+mimir:
+  structuredConfig:
+    multitenancy_enabled: false
+    usage_stats:
+      enabled: false
+    ingest_storage:
+      enabled: false
+    ingester:
+      push_grpc_method_enabled: true
+      ring:
+        replication_factor: 1
+    blocks_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-blocks
+        endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+        region: us-east-1
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+        insecure: true
+    ruler_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-ruler
+        endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+        region: us-east-1
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+        insecure: true
+    alertmanager_storage:
+      backend: s3
+      s3:
+        bucket_name: mimir-alertmanager
+        endpoint: rustfs-svc.rustfs.svc.cluster.local:9000
+        region: us-east-1
+        access_key_id: ${AWS_ACCESS_KEY_ID}
+        secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+        insecure: true
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+    limits:
+      compactor_blocks_retention_period: 24h
+      max_query_parallelism: 4
+    querier:
+      max_concurrent: 2
+ingester:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  persistentVolume:
+    storageClass: local-path-provisioner
+    size: 2Gi
+distributor:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 384Mi
+querier:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 384Mi
+query_frontend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 384Mi
+query_scheduler:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 384Mi
+store_gateway:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  persistentVolume:
+    storageClass: local-path-provisioner
+    size: 1Gi
+compactor:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  persistentVolume:
+    storageClass: local-path-provisioner
+    size: 1Gi
+ruler:
+  enabled: false
+alertmanager:
+  enabled: false
+overrides_exporter:
+  enabled: false
+chunks-cache:
+  enabled: false
+index-cache:
+  enabled: false
+metadata-cache:
+  enabled: false
+results-cache:
+  enabled: false
+gateway:
+  replicas: 1
+  nginx:
+    image:
+      registry: docker.io
+      repository: nginxinc/nginx-unprivileged
+      tag: 1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+metaMonitoring:
+  dashboards:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+  grafanaAgent:
+    enabled: false
+    installOperator: false

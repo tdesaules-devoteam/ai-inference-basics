@@ -1,13 +1,26 @@
 # Observability
 
-The umbrella includes digest-pinned otel-lgtm with an OpenTelemetry Collector,
-Prometheus, Loki, Tempo and Grafana. The Collector scrapes Envoy Gateway/vLLM,
-collects Pod logs and accepts OTLP traces. Grafana is behind Dex/oauth2-proxy.
+Open `/grafana/` on the lab HTTPS origin and sign in with the shared Dex account.
+In Explore select Mimir (Prometheus), Loki (logs) or Tempo (traces). Helmfile
+provisions these three data sources; no dashboards are installed.
 
-Chat explicitly enables vLLM prefix caching. Verify repeated-prefix cache counters
-and first-content latency during runtime qualification; caches are per replica,
-not shared response caches. No cache-aware llm-d routing is installed.
+`otel-node` collects container logs, host and kubelet metrics. `otel-cluster`
+collects Kubernetes events, cluster metrics, vLLM and Envoy scrapes and the
+Gateway's OTLP spans. Only eligible GPU nodes supply DCGM metrics. Envoy logs
+contain the request ID, model and token counts; these fields are not Loki
+index labels. A sampling rate of 100 is intentional for this local lab.
 
-The local telemetry Pod has bounded memory and an ephemeral data volume. Its data
-is disposable. The optional upstream GPU dependencies are disabled in this CPU lab;
-no DCGM hardware results are claimed without NVIDIA hardware.
+- Mimir: query `vllm:generation_tokens_total{model="qwen3-0-6b"}`.
+- Loki: query `{k8s_namespace_name="gateway"} | json` and filter by request ID.
+- Tempo: search `{ resource.service.name = "lab-gateway" }` or a trace ID.
+
+RustFS stores logs in `loki`, traces in `tempo`, and Mimir data in `mimir-blocks`,
+`mimir-ruler` and `mimir-alertmanager`. Kyverno distributes a dedicated account
+for these five buckets. The models account has no access to them. Grafana uses
+a PVC for its configuration and database. Keep model prompts and credentials out
+of telemetry.
+
+`node tests/browser/qualify.mjs` exercises the authenticated browser and datasource
+path. It submits a uniquely marked chat request, checks Mimir's generation token
+counter, matches the reported token total in Loki and searches Tempo for the
+corresponding span. See [lab access](lab.md) for qualification credentials.

@@ -5,6 +5,20 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   telemetry:
+    metrics:
+      prometheus: {}
+    tracing:
+      samplingRate: 100
+      provider:
+        type: OpenTelemetry
+        serviceName: lab-gateway
+        backendRefs:
+          - name: otel-cluster
+            namespace: opentelemetry-collector
+            port: 4317
+      tags:
+        request_id: "%REQ(X-REQUEST-ID)%"
+        model: "%REQ(X-AI-EG-MODEL)%"
     accessLog:
       settings:
         - sinks:

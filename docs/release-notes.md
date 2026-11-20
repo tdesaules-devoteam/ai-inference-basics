@@ -2,14 +2,14 @@
 
 ## Unreleased: domain-oriented CPU lab
 
-- Five application charts: one gateway/TLS domain, one shared admin bastion and
-  one chart/namespace per Qwen3 model.
-- Sixteen Helmfile releases, direct pinned upstream charts and domain-owned Jobs.
+- Three active Qwen models per environment, with separate charts and namespaces.
+- Thirty declared Helmfile releases, direct pinned upstream charts and domain-owned Jobs.
+- Authenticated Grafana, Loki, Tempo, Mimir and two OpenTelemetry Collectors.
 - One Dex admin identity; bastion and Headlamp have cluster-admin privileges.
-- Hugging Face Python downloads with revision/hash locks and prefix-scoped S3 access.
-- Models start automatically with one replica; an explicit override can stop selected models.
+- Hugging Face Python downloads with revision/hash locks and a shared models-bucket account.
+- The environment selects installed models, imports and zero or one inference replica.
 - Native ttyd/Zellij CLI and code-server share one PVC and one browser login.
-- Bastion image distribution remains local pending registry authorization.
+- Bastion and provision image distribution remains local pending registry authorization.
 
 ## Historical umbrella layout (superseded)
 

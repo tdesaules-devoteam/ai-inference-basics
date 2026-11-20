@@ -1,0 +1,158 @@
+fullnameOverride: otel-cluster
+mode: deployment
+replicaCount: 1
+image:
+  repository: docker.io/otel/opentelemetry-collector-contrib
+  tag: 0.163.2
+  digest: sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849
+command:
+  name: otelcol-contrib
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
+presets:
+  clusterMetrics:
+    enabled: true
+  kubernetesEvents:
+    enabled: true
+    useK8sEventsReceiver: true
+  kubernetesAttributes:
+    enabled: true
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    prometheus:
+      config:
+        scrape_configs:
+          - job_name: vllm
+            scrape_interval: 30s
+            kubernetes_sd_configs:
+              - role: pod
+            relabel_configs:
+              - source_labels:
+                  - __meta_kubernetes_pod_label_serving_kserve_io_inferenceservice
+                  - __meta_kubernetes_pod_container_name
+                regex: qwen3-.+;kserve-container
+                action: keep
+              - source_labels:
+                  - __meta_kubernetes_pod_ip
+                target_label: __address__
+                replacement: $$1:8080
+              - source_labels:
+                  - __meta_kubernetes_pod_label_serving_kserve_io_inferenceservice
+                target_label: model
+          - job_name: envoy
+            scrape_interval: 30s
+            metrics_path: /stats/prometheus
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                    - gateway
+            relabel_configs:
+              - source_labels:
+                  - __meta_kubernetes_pod_container_name
+                regex: envoy
+                action: keep
+              - source_labels:
+                  - __meta_kubernetes_pod_ip
+                target_label: __address__
+                replacement: $$1:19001
+          - job_name: dcgm
+            scrape_interval: 30s
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                    - dcgm-exporter
+            relabel_configs:
+              - source_labels:
+                  - __meta_kubernetes_pod_container_port_number
+                regex: "9400"
+                action: keep
+  processors:
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+      send_batch_max_size: 1024
+    resource/lab:
+      attributes:
+        - key: k8s.cluster.name
+          value: ai-inference-basics
+          action: upsert
+  exporters:
+    debug: null
+    otlphttp/loki:
+      endpoint: http://loki.loki.svc.cluster.local:3100/otlp
+    otlp/tempo:
+      endpoint: tempo.tempo.svc.cluster.local:4317
+      tls:
+        insecure: true
+    prometheusremotewrite:
+      endpoint: http://mimir-gateway.mimir.svc.cluster.local/api/v1/push
+      external_labels:
+        collector: otel-cluster
+      target_info:
+        enabled: false
+      resource_to_telemetry_conversion:
+        enabled: true
+      remote_write_queue:
+        num_consumers: 1
+  service:
+    pipelines:
+      logs:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - resource/lab
+          - batch
+        exporters:
+          - otlphttp/loki
+      metrics:
+        receivers:
+          - otlp
+          - prometheus
+        processors:
+          - memory_limiter
+          - resource/lab
+          - batch
+        exporters:
+          - prometheusremotewrite
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - resource/lab
+          - batch
+        exporters:
+          - otlp/tempo
+extraManifests:
+  - apiVersion: gateway.networking.k8s.io/v1beta1
+    kind: ReferenceGrant
+    metadata:
+      name: gateway-tracing
+      namespace: opentelemetry-collector
+    spec:
+      from:
+        - group: gateway.envoyproxy.io
+          kind: EnvoyProxy
+          namespace: gateway
+      to:
+        - group: ""
+          kind: Service
+          name: otel-cluster

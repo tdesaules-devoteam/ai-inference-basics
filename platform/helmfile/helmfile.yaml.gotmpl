@@ -152,6 +152,63 @@ releases:
           adminEmail: {{ $infra.access.adminEmail | quote }}
           adminPassword: {{ $infra.access.adminPassword | quote }}
 
+  - name: loki
+    namespace: loki
+    chart: oci://ghcr.io/grafana/helm-charts/loki@sha256:ff9d8a3a4b01fdacd1ccc1132bf8f1ed79b255612b526b9abce4a68b7349080a
+    needs:
+      - rustfs/rustfs
+    values:
+      - values/loki.yaml
+
+  - name: tempo
+    namespace: tempo
+    chart: oci://ghcr.io/grafana-community/helm-charts/tempo@sha256:7cf66b47c9b6693900b8886d9accf296d57e5a226164d236f043ada17ff54844
+    needs:
+      - rustfs/rustfs
+    values:
+      - values/tempo.yaml
+
+  - name: mimir
+    namespace: mimir
+    chart: oci://ghcr.io/grafana/helm-charts/mimir-distributed@sha256:45107a5f1a17f080791834fb1e90d9d5d6b32802506ca9960e6103001bcacf4b
+    needs:
+      - rustfs/rustfs
+    values:
+      - values/mimir.yaml
+
+  - name: otel-node
+    namespace: opentelemetry-collector
+    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:707c0f9dddaeeb368ce84fd20778acca2860820dae0a045e75c79bcbce91f346
+    needs:
+      - loki/loki
+      - mimir/mimir
+    values:
+      - values/otel-node.yaml
+
+  - name: otel-cluster
+    namespace: opentelemetry-collector
+    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:707c0f9dddaeeb368ce84fd20778acca2860820dae0a045e75c79bcbce91f346
+    needs:
+      - loki/loki
+      - mimir/mimir
+      - tempo/tempo
+      - envoy-gateway/envoy-gateway
+    values:
+      - values/otel-cluster.yaml
+
+  - name: grafana
+    namespace: grafana
+    chart: oci://ghcr.io/grafana-community/helm-charts/grafana@sha256:ca3feec1043924488cbac6e6b0545bc148b3457c9edca110b303a917359d315f
+    needs:
+      - dex/dex
+      - loki/loki
+      - tempo/tempo
+      - mimir/mimir
+    values:
+      - values/grafana.yaml
+      - ../../infra/helmfile/lab.yaml.gotmpl
+      - adminEmail: {{ $infra.access.adminEmail | quote }}
+
   - name: dex
     namespace: dex
     chart: dex/dex
@@ -189,6 +246,7 @@ releases:
       - dex/dex
       - bastion/bastion
       - headlamp/headlamp
+      - grafana/grafana
     values:
       - values/oauth2-proxy.yaml
       - ../../infra/helmfile/lab.yaml.gotmpl
@@ -202,6 +260,7 @@ releases:
     needs:
       - agent-router/agent-router
       - kyverno/kyverno
+      - opentelemetry-collector/otel-cluster
     values:
       - ../../infra/helmfile/lab.yaml.gotmpl
       - apiBearerToken: {{ $infra.access.apiBearerToken | quote }}

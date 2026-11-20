@@ -2,6 +2,7 @@
 
 The desired environment is a JSON document validated against
 `infra/infra-definition.schema.json`. Start from `infra/infra-definition.sample.json`.
+For CUDA-backed Scaleway inference, use `infra/infra-definition.scaleway.sample.json`.
 Real `infra/infra-definition.<environment>.json` files are ignored by Git because
 they contain the administrator password and API Bearer key. Create them with
 mode 0600. The sample contains placeholders, not deployment credentials.
@@ -16,6 +17,14 @@ The current ignored `.devenv/config.k` reads the local JSON using KCL's
 `machines[0].cpu`, `memoryGiB` and `diskGiB` into the native hardware schema.
 Keep the existing VM UUID and other local settings when reproducing that mapping.
 The JSON does not introduce a second VM lifecycle or override the native Taskfile.
+
+Before Helmfile starts, `platform-images-ready.service` waits for configured
+localhost application images to be explicitly imported into k0s, or pulls
+digest-pinned registry images. This prevents initialization Jobs from failing
+their short deadlines while application images are still unavailable. The native
+devenv lifecycle remains unchanged. The gate has a bounded 30-minute timeout.
+For context settings, see
+[native context windows](token-budgets.md).
 
 ## Commands
 

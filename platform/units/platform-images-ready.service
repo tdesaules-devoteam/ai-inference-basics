@@ -1,0 +1,23 @@
+[Unit]
+Description=Make configured application images available before Helmfile bootstrap
+ConditionVirtualization=vm
+Requires=platform-k0s-ready.service
+After=platform-k0s-ready.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=1800
+Environment=PATH=/usr/local/bin:/usr/bin:/usr/sbin
+Environment=INFRA_DEFINITION=/etc/ai-inference-basics/infra/infra-definition.devenv.json
+ExecStart=/usr/bin/bash -ec '\
+  images=$$(jq -er ".images.bastion, .images.provision" "$${INFRA_DEFINITION}"); \
+  while IFS= read -r image; do \
+    case "$$image" in \
+      localhost/*) \
+        echo "Waiting for imported application image: $$image"; \
+        until k0s ctr images ls -q | grep -Fxq -- "$$image"; do sleep 5; done ;; \
+      *) k0s ctr images pull "$$image" ;; \
+    esac; \
+  done <<< "$$images"; \
+  echo "Configured application images are available."'

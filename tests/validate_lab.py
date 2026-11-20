@@ -19,7 +19,7 @@ keys = set()
 images = []
 for obj in objects:
     metadata = obj['metadata']
-    if 'test' in metadata.get('annotations', {}).get('helm.sh/hook', ''):
+    if 'test' in (metadata.get('annotations') or {}).get('helm.sh/hook', ''):
         continue
     key = (obj['apiVersion'].split('/')[0], obj['kind'], metadata.get('namespace', ''), metadata['name'])
     assert key not in keys, key
@@ -49,6 +49,14 @@ assert len([o for o in objects if o['kind'] == 'InferenceService']) == len(names
 assert not any(o['kind'].startswith('LLMInference') for o in objects)
 for name in names:
     model = find('InferenceService', name, name)
+    native = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())['nativeContextTokens']
+    container = find('ServingRuntime', name, name)['spec']['containers'][0]
+    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native
+    config = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())
+    # All pinned Qwen 0.6B configurations have 28 layers, 8 KV heads and
+    # head_dim=128. CPU pooling also reserves BF16 KV in this vLLM version.
+    assert config['kvCacheGiB'] * 1024**3 >= native * 28 * 8 * 128 * 2 * 2
+    assert {'name': 'VLLM_CPU_KVCACHE_SPACE', 'value': str(config['kvCacheGiB'])} in container['env']
     assert model['metadata']['annotations']['serving.kserve.io/stop'] == str(definition['models'][name]['replicas'] == 0).lower()
     assert model['spec']['predictor']['serviceAccountName'] == 'model-reader'
     assert model['spec']['predictor']['model']['runtime'] == name
@@ -68,9 +76,17 @@ headlamp_binding = next(o for o in objects if o['kind'] == 'ClusterRoleBinding'
 assert headlamp_binding['roleRef']['name'] == 'cluster-admin'
 find('Job', 'dex-config', 'dex')
 find('Job', 'oauth2-proxy-session', 'oauth2-proxy')
-find('Job', 'rustfs-models-account', 'rustfs')
-for policy in ('model-bucket-access', 'oauth2-proxy-oidc-client', 'oauth2-proxy-config', 'gateway-public-ca', 'bastion-api-key', 'bastion-public-ca'):
+find('Job', 'rustfs-accounts', 'rustfs')
+for policy in ('model-bucket-sources', 'model-bucket-access', 'oauth2-proxy-oidc-client', 'oauth2-proxy-config', 'gateway-public-ca', 'bastion-api-key', 'bastion-public-ca'):
     find('GeneratingPolicy', policy, '')
+for namespace in ('bastion', 'dex', 'oauth2-proxy'):
+    policy = find('MutatingPolicy', namespace + '-reload-credentials', '')['spec']
+    assert policy['evaluation']['mutateExisting']['enabled']
+    assert policy['matchConditions'][0]['expression'] == 'request.object.data != request.oldObject.data'
+    role = find('Role', 'credential-reload', namespace)['rules'][0]
+    assert role['resourceNames'] == [namespace] and role['verbs'] == ['get', 'update', 'patch']
+    subject = find('RoleBinding', 'credential-reload', namespace)['subjects'][0]
+    find('ServiceAccount', subject['name'], subject['namespace'])
 find('Certificate', 'lab-root-ca', 'gateway')
 find('Certificate', 'lab-tls', 'gateway')
 assert find('Role', 'gateway-credentials', 'gateway')['rules'] == [
@@ -81,8 +97,12 @@ assert find('SecurityPolicy', 'model-api-key', 'gateway')['spec']['apiKeyAuth'][
 assert not any(o['metadata'].get('namespace') in ('inference-service', 'lab-a', 'lab-b') for o in objects)
 state = yaml.safe_load(subprocess.check_output(helmfile + ['build'], text=True))
 releases = {r['name']: r for r in state['releases']}
-assert len(releases) == 25
-assert len([r for r in releases.values() if r.get('installed', True)]) == 22
+platform_releases = {'kyverno', 'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway',
+                     'agent-router-crds', 'agent-router', 'kserve-crds', 'kserve', 'dex-config', 'dex',
+                     'headlamp', 'bastion', 'oauth2-proxy', 'gateway', 'gpu-operator', 'hami', 'dcgm-exporter',
+                     'grafana', 'loki', 'tempo', 'mimir', 'otel-node', 'otel-cluster'}
+assert set(releases) == platform_releases | set(definition['models'])
+assert {n for n, r in releases.items() if r.get('installed', True)} == platform_releases | set(names)
 assert all('postRenderer' not in r for r in releases.values())
 assert releases['dex']['needs'] == ['dex/dex-config']
 assert 'lab-bootstrap' not in releases and 'models' not in releases
@@ -108,13 +128,19 @@ policy = next(o for o in objects if o['kind'] == 'ClusterPolicy')['spec']
 for component in ('driver', 'devicePlugin', 'migManager', 'dcgmExporter'):
     assert policy[component]['enabled'] is False
 assert policy['toolkit']['enabled'] is True
-for route in ('root', 'terminal', 'code', 'headlamp', 'oauth2', 'dex'):
+for route in ('root', 'terminal', 'code', 'headlamp', 'grafana', 'oauth2', 'dex'):
     find('HTTPRoute', 'browser-' + route, 'gateway')
-gpu_names = ['qwen3-8b-fp8', 'qwen3-embedding-4b', 'qwen3-reranker-4b']
-definition['environment'] = 'scaleway'
-definition['storage']['modelsGiB'] = 100
-for name, config in definition['models'].items():
-    config.update(enabled=name in gpu_names, replicas=int(name in gpu_names), **{'import': name in gpu_names})
+for kind, name, namespace in [('Deployment', 'grafana', 'grafana'), ('StatefulSet', 'loki', 'loki'),
+                              ('StatefulSet', 'tempo', 'tempo'), ('StatefulSet', 'mimir-ingester', 'mimir'),
+                              ('DaemonSet', 'otel-node-agent', 'opentelemetry-collector'),
+                              ('Deployment', 'otel-cluster', 'opentelemetry-collector')]:
+    find(kind, name, namespace)
+assert not any(o['kind'] == 'ConfigMap' and 'grafana_dashboard' in (o['metadata'].get('labels') or {}) for o in objects)
+assert not any(o['metadata'].get('namespace') == 'mimir' and 'kafka' in o['metadata']['name'] for o in objects)
+find('GeneratingPolicy', 'observability-bucket-access', '')
+find('GeneratingPolicy', 'grafana-admin-access', '')
+definition = json.loads((root / 'infra/infra-definition.scaleway.sample.json').read_text())
+gpu_names = [name for name, config in definition['models'].items() if config['enabled']]
 with tempfile.TemporaryDirectory() as directory:
     path = Path(directory) / 'infra.json'
     path.write_text(json.dumps(definition))
@@ -123,11 +149,24 @@ with tempfile.TemporaryDirectory() as directory:
 assert {o['metadata']['name'] for o in objects if o['kind'] == 'InferenceService'} == set(gpu_names)
 for name in gpu_names:
     model = find('InferenceService', name, name)['spec']['predictor']['model']
-    if name.startswith('qwen3'):
-        limits = model['resources']['limits']
-        assert limits['nvidia.com/gpu'] == '1'
-        assert int(limits['nvidia.com/gpumem']) > 0
-        assert 0 < int(limits['nvidia.com/gpucores']) <= 100
-        assert not any(e['name'].startswith('VLLM_CPU') for e in find('ServingRuntime', name, name)['spec']['containers'][0]['env'])
+    limits = model['resources']['limits']
+    assert limits['nvidia.com/gpu'] == '1'
+    assert int(limits['nvidia.com/gpumem']) > 0
+    assert 0 < int(limits['nvidia.com/gpucores']) <= 100
+    env = find('ServingRuntime', name, name)['spec']['containers'][0]['env']
+    native = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())['nativeContextTokens']
+    container = find('ServingRuntime', name, name)['spec']['containers'][0]
+    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native
+    assert not any(e['name'].startswith('VLLM_CPU') for e in env)
+# An infrastructure-only environment must neither import models nor publish API routes.
+for config in definition['models'].values():
+    config.update(enabled=False, replicas=0, **{'import': False})
+with tempfile.TemporaryDirectory() as directory:
+    path = Path(directory) / 'infra.json'
+    path.write_text(json.dumps(definition))
+    os.environ['INFRA_DEFINITION'] = str(path)
+    disabled = list(filter(None, yaml.safe_load_all(subprocess.check_output(helmfile + ['template'], text=True))))
+assert not any(o['kind'] in ('InferenceService', 'AIGatewayRoute', 'AIServiceBackend') for o in disabled)
+assert not any(o['kind'] == 'Job' and o['metadata']['name'] == 'model-import' for o in disabled)
 print(json.dumps({'releases': len(releases), 'models_installed_in_cpu_sample': len(names), 'shared_admin_workspace': True,
                   'pinned_workload_images': len(images), 'runtime_tested': False}))

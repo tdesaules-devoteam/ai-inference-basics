@@ -1,0 +1,105 @@
+fullnameOverride: otel-node
+mode: daemonset
+image:
+  repository: docker.io/otel/opentelemetry-collector-contrib
+  tag: 0.163.2
+  digest: sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849
+command:
+  name: otelcol-contrib
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    storeCheckpoints: true
+  hostMetrics:
+    enabled: true
+  kubeletMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+extraEnvs:
+  - name: LAB_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: false
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    otlp: null
+    prometheus: null
+    filelog:
+      exclude:
+        - /var/log/pods/opentelemetry-collector_*/*/*.log
+  processors:
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+      send_batch_max_size: 1024
+    resource/lab:
+      attributes:
+        - key: k8s.cluster.name
+          value: ai-inference-basics
+          action: upsert
+        - key: k8s.node.name
+          value: ${env:LAB_NODE_NAME}
+          action: upsert
+    transform/log-service:
+      log_statements:
+        - context: resource
+          statements:
+            - set(attributes["service.name"], attributes["k8s.container.name"]) where attributes["service.name"] == nil and attributes["k8s.container.name"] != nil
+            - set(attributes["service.namespace"], attributes["k8s.namespace.name"]) where attributes["k8s.namespace.name"] != nil
+  exporters:
+    debug: null
+    otlphttp/loki:
+      endpoint: http://loki.loki.svc.cluster.local:3100/otlp
+    prometheusremotewrite:
+      endpoint: http://mimir-gateway.mimir.svc.cluster.local/api/v1/push
+      external_labels:
+        collector: otel-node
+      target_info:
+        enabled: false
+      resource_to_telemetry_conversion:
+        enabled: true
+      remote_write_queue:
+        num_consumers: 1
+  service:
+    pipelines:
+      logs:
+        receivers: []
+        processors:
+          - memory_limiter
+          - resource/lab
+          - transform/log-service
+          - batch
+        exporters:
+          - otlphttp/loki
+      metrics:
+        receivers: []
+        processors:
+          - memory_limiter
+          - resource/lab
+          - batch
+        exporters:
+          - prometheusremotewrite
+      traces: null

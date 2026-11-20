@@ -59,7 +59,10 @@ extraManifests:
     rules:
       - apiGroups: [""]
         resources: [secrets]
-        resourceNames: [rustfs-root, s3-models]
+        resourceNames:
+          - rustfs-root
+          - s3-models
+          - s3-observability
         verbs: [get]
       # Kubernetes RBAC cannot restrict create by resourceNames. The script creates
       # only rustfs-root and s3-models, confined to the release namespace.
@@ -173,12 +176,13 @@ extraManifests:
                               with urlopen(request, context=context, timeout=10) as response:
                                   return json.load(response)
                           created = ensure_secret(api, os.environ["POD_NAMESPACE"])
-                          raw = subprocess.check_output(['kubectl', '-n', os.environ['POD_NAMESPACE'], 'get', 'secret', 's3-models', '--ignore-not-found', '-o', 'json'], text=True)
-                          if not raw.strip():
-                              document = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
-                                          'metadata': {'name': 's3-models', 'namespace': os.environ['POD_NAMESPACE']},
-                                          'stringData': {'AWS_ACCESS_KEY_ID': 'lab-models', 'AWS_SECRET_ACCESS_KEY': secrets.token_urlsafe(32)}}
-                              subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(document), text=True, check=True)
+                          for name, access in (('s3-models', 'lab-models'), ('s3-observability', 'lab-observability')):
+                              raw = subprocess.check_output(['kubectl', '-n', os.environ['POD_NAMESPACE'], 'get', 'secret', name, '--ignore-not-found', '-o', 'json'], text=True)
+                              if not raw.strip():
+                                  document = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
+                                              'metadata': {'name': name, 'namespace': os.environ['POD_NAMESPACE']},
+                                              'stringData': {'AWS_ACCESS_KEY_ID': access, 'AWS_SECRET_ACCESS_KEY': secrets.token_urlsafe(32)}}
+                                  subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(document), text=True, check=True)
                           print("RustFS credentials created." if created else "Existing RustFS credentials preserved.")
                       except HTTPError as error:
                           error.close()
@@ -263,7 +267,7 @@ extraManifests:
   - apiVersion: batch/v1
     kind: Job
     metadata:
-      name: rustfs-models-account
+      name: rustfs-accounts
       namespace: '{{ .Release.Namespace }}'
       annotations:
         helm.sh/hook: post-install,post-upgrade
@@ -292,14 +296,23 @@ extraManifests:
                       if result.returncode:
                           raise RuntimeError('RustFS IAM operation failed: ' + '/'.join(args[:2]))
                   rc('alias', 'set', 'lab', os.environ['S3_ENDPOINT'], os.environ['RUSTFS_ACCESS_KEY'], os.environ['RUSTFS_SECRET_KEY'], '--bucket-lookup', 'path')
-                  policy = {'Version': '2012-10-17', 'Statement': [
-                      {'Effect': 'Allow', 'Action': ['s3:GetBucketLocation', 's3:ListBucket'], 'Resource': ['arn:aws:s3:::models']},
-                      {'Effect': 'Allow', 'Action': ['s3:GetObject', 's3:PutObject', 's3:AbortMultipartUpload', 's3:ListMultipartUploadParts'], 'Resource': ['arn:aws:s3:::models/*']}]}
-                  Path('/tmp/policy.json').write_text(json.dumps(policy))
-                  rc('admin', 'user', 'add', '--', 'lab', os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY'])
-                  rc('admin', 'policy', 'create', 'lab', 'lab-models', '/tmp/policy.json')
-                  rc('admin', 'policy', 'attach', 'lab', 'lab-models', '--user', os.environ['AWS_ACCESS_KEY_ID'])
-                  print('Shared models bucket account ready.')
+                  accounts = [
+                      ('lab-models', ['models'], os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY'], False),
+                      ('lab-observability', ['loki', 'tempo', 'mimir-blocks', 'mimir-ruler', 'mimir-alertmanager'],
+                       os.environ['OBS_ACCESS_KEY_ID'], os.environ['OBS_SECRET_ACCESS_KEY'], True)]
+                  for name, buckets, access, secret, allow_delete in accounts:
+                      objects = ['s3:GetObject', 's3:PutObject', 's3:AbortMultipartUpload', 's3:ListMultipartUploadParts']
+                      if allow_delete:
+                          objects.append('s3:DeleteObject')
+                      policy = {'Version': '2012-10-17', 'Statement': [
+                          {'Effect': 'Allow', 'Action': ['s3:GetBucketLocation', 's3:ListBucket', 's3:ListBucketMultipartUploads'],
+                           'Resource': ['arn:aws:s3:::' + bucket for bucket in buckets]},
+                          {'Effect': 'Allow', 'Action': objects, 'Resource': ['arn:aws:s3:::' + bucket + '/*' for bucket in buckets]}]}
+                      Path('/tmp/policy.json').write_text(json.dumps(policy))
+                      rc('admin', 'user', 'add', '--', 'lab', access, secret)
+                      rc('admin', 'policy', 'create', 'lab', name, '/tmp/policy.json')
+                      rc('admin', 'policy', 'attach', 'lab', name, '--user', access)
+                  print('Models and observability accounts are ready with disjoint bucket permissions.')
               envFrom:
                 - secretRef:
                     name: rustfs-root
@@ -308,6 +321,16 @@ extraManifests:
               env:
                 - name: S3_ENDPOINT
                   value: 'http://rustfs-svc.{{ .Release.Namespace }}.svc.cluster.local:9000'
+                - name: OBS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: s3-observability
+                      key: AWS_ACCESS_KEY_ID
+                - name: OBS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: s3-observability
+                      key: AWS_SECRET_ACCESS_KEY
               volumeMounts:
                 - name: workspace
                   mountPath: /workspace
@@ -320,6 +343,38 @@ extraManifests:
           volumes:
             - name: workspace
               emptyDir: {}
+  - apiVersion: policies.kyverno.io/v1
+    kind: GeneratingPolicy
+    metadata:
+      name: observability-bucket-access
+    spec:
+      evaluation:
+        generateExisting:
+          enabled: true
+        synchronize:
+          enabled: true
+        orphanDownstreamOnPolicyDelete:
+          enabled: true
+      matchConstraints:
+        resourceRules:
+          - apiGroups:
+              - ""
+            apiVersions:
+              - v1
+            operations:
+              - CREATE
+              - UPDATE
+            resources:
+              - namespaces
+            resourceNames:
+              - loki
+              - tempo
+              - mimir
+      variables:
+        - name: source
+          expression: resource.Get("v1", "secrets", "rustfs", "s3-observability")
+      generate:
+        - expression: generator.Apply(object.metadata.name, [variables.source])
   - apiVersion: policies.kyverno.io/v1
     kind: GeneratingPolicy
     metadata:

@@ -1,6 +1,6 @@
 # Domain-oriented CPU lab
 
-Helmfile declares environment-selected releases. Each model has a dedicated chart, release, namespace
+Helmfile declares 30 releases, with 27 enabled by the sample definition. Each model has a dedicated chart, release, namespace
 and S3 prefix. The shared pair-training workstation uses one Dex account named
 `cluster-admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
 
@@ -90,13 +90,14 @@ s3://models/qwen3-reranker-0-6b/<revision>/...
 ```
 
 Existing objects are reused when size and SHA metadata agree; their contents are
-not downloaded again for hashing. A mismatch fails the immutable import.
+not downloaded again for hashing. A mismatch fails the snapshot consistency check.
+The shared account can overwrite objects; this check is not an S3 immutability policy.
 
 Models default to `serving.replicas: 1` in each chart and start automatically.
 Helmfile overrides it with each model's `replicas` field from the environment JSON.
 Setting zero uses KServe's supported `serving.kserve.io/stop: "true"` annotation;
 the readiness check then expects `Stopped=True` and zero inference Pods.
-Imports still run by default even when serving is stopped.
+The independent `import` field controls imports, including when serving is stopped.
 
 Inside the VM, explicitly start or restart the chat model:
 
@@ -125,15 +126,16 @@ Dex and oauth2-proxy's internal Services still use HTTP.
 | `/terminal/` | Shared ttyd/Zellij CLI session |
 | `/code/` | Shared code-server and workspace files |
 | `/headlamp/` | Full Kubernetes administration |
-| `/v1/chat/completions` | Bearer API, model `qwen3-0-6b` |
+| `/grafana/` | Authenticated metrics, logs and traces in Explore |
+| `/v1/chat/completions` | Bearer API, selected chat model |
 | `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
 | `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
 
 Dex has one account named `cluster-admin`. The environment JSON supplies its email
 and password. The dex-config Job preserves its identity and OIDC client secret,
 and recomputes bcrypt only when required. Kyverno distributes the published OIDC
-client. After credential changes, synchronize the releases and roll out consumers
-that read credential environment variables.
+client. After credential changes, synchronize the releases and verify the
+Kyverno-triggered consumer rollouts described in [security and access](security-and-access.md).
 Retrieve the qualification file privately inside the VM:
 
 ```sh
@@ -169,6 +171,7 @@ python tests/validate_storage.py
 python tests/validate_lab.py
 python tests/test_platform_units.py
 python tests/test_rustfs_credentials.py
+python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 Runtime checks require the deployed lab and explicit authorization:

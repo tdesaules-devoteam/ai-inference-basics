@@ -345,6 +345,7 @@ extraObjects:
             redir /terminal /terminal/ 308
             redir /code /code/ 308
             redir /headlamp /headlamp/ 308
+            redir /grafana /grafana/ 308
             handle /terminal/* {
               reverse_proxy bastion.bastion.svc.cluster.local:7681
             }
@@ -353,6 +354,9 @@ extraObjects:
             }
             handle /headlamp/* {
               reverse_proxy headlamp.headlamp.svc.cluster.local:80
+            }
+            handle /grafana/* {
+              reverse_proxy grafana.grafana.svc.cluster.local:80
             }
             respond 404
           }

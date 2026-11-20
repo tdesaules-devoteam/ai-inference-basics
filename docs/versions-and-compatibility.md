@@ -2,7 +2,7 @@
 
 | Component | Selection |
 | --- | --- |
-| devenv runtime | 895792e5980cb7fee1354bec5442fb42b483df93, unmodified |
+| devenv runtime | 37369bd7590dd31a0b175115441984c19a50c770, unmodified |
 | KCL | Operator-managed 0.13.3; rendering verified with the upstream correction |
 | Fedora CoreOS | Default from the pinned runtime: 44.20261023.3.1 stable |
 | Native k0s | v1.37.2+k0s.1, binary checksum pinned; native addon defaults |
@@ -14,15 +14,17 @@
 | Envoy Gateway | v1.10.0, official OCI chart pinned by manifest digest |
 | Agent Router | v1.2.1 controller and CRD charts, official OCI digests |
 | Guest kubectl / k9s / Task | 1.37.2 / 0.51.0 / 3.54.0 |
-| Bastion (legacy build, not deployed) | Fedora Minimal 45, Zellij 0.46.0 |
+| Bastion | Fedora Minimal 45; tool versions and hashes in `oci/bastion/tools.lock` |
 
 `platform/helmfile/helmfile.yaml.gotmpl` is the active dependency contract; Helmfile
 retrieves upstream charts directly. OCI manifest digests and the RustFS HTTP version
 are fixed there. The qualified RustFS archive checksum is checked in tests, and
 values pin workload images. There is no deployment-time custom chart downloader.
 
-Current render checks cover six Helmfile releases, image pins, namespace boundaries
-and resource ownership. The foundation update was installed in the authorized
+Current render checks cover the full Helmfile platform, CPU/GPU selection, disabled
+models, image pins, namespace boundaries and resource ownership. Unit checks cover
+request limits, credential handling, reload patches and model convergence.
+The earlier six-release foundation update was installed in the authorized
 existing VM and then qualified from scratch during a user-initiated down/up, with
 all six releases at revision 1 and both RustFS hooks completing without intervention.
 The earlier authorized clean rebuild qualified the storage-only flow. Earlier full-lab
@@ -35,7 +37,7 @@ Official references:
 - [devenv](https://github.com/tdesaules/qemu-dev-env)
 - [KServe](https://kserve.github.io/website/)
 - [Agent Router](https://github.com/theagentrouter/agent-router)
-- [Zellij web client](https://zellij.dev/documentation/web-client.html)
+- [Zellij](https://zellij.dev/documentation/)
 
 The user approved official upstream images outside the project's build-base
 allowlist. Project-owned bastion and CI builds still use allowed, pinned bases.

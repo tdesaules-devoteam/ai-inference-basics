@@ -2,10 +2,11 @@
 
 <img src="docs/logo.png" alt="Devoteam AI Inference Basics" width="280">
 
-A disposable QEMU CPU lab with native single-node k0s and 16 Helmfile releases:
-storage, TLS and gateway foundations, three KServe inference services, Dex browser
+A disposable QEMU CPU lab with native single-node k0s and environment-selected Helmfile releases:
+storage, TLS and gateway foundations, KServe inference services, Dex browser
 authentication and one shared cluster-admin ttyd/Zellij and code-server workspace.
-Each model has its own chart and namespace and starts with one replica by default.
+Each model has its own chart and namespace. The environment JSON selects installed
+models, imports and zero or one inference replica. The CPU sample enables the three Qwen models.
 
 ```sh
 task devenv:up     # create/provision the VM
@@ -14,8 +15,8 @@ task devenv:down   # destroy the VM
 ```
 
 See [local setup](docs/devenv.md) before the first run. The root Taskfile exposes
-the upstream devenv tasks directly. The bastion currently requires an explicit
-local image import; see [lab access and qualification](docs/lab.md).
+the upstream devenv tasks directly. Own images require explicit local imports;
+see [lab access and qualification](docs/lab.md).
 
 ## Structure
 
@@ -26,18 +27,19 @@ local image import; see [lab access and qualification](docs/lab.md).
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
-- `charts/`: six model charts, one shared bastion chart and one gateway/TLS chart.
+- `charts/`: six model charts, shared bastion, gateway/TLS and Dex configuration.
 - `tests/`: render checks and opt-in runtime qualification; `reports/` stays local and ignored.
 
 See [the platform](docs/platform.md) for upstream chart references, namespace
 boundaries, deployment and test commands.
 See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image import.
 
-**Current layout:** one Dex account named `admin` for pair training, full Kubernetes
+**Current layout:** one Dex account named `cluster-admin` for pair training, full Kubernetes
 administration from the bastion and Headlamp, separate Bearer model APIs and
-prefix-scoped RustFS model credentials. The VM retains its 24-vCPU/48-GiB/64-GiB
-sizing. Registry publication remains unavailable; a fresh VM requires explicit
-bastion image import. See [qualification](docs/lab.md#validation).
+one shared RustFS account restricted to the models bucket. The CPU environment
+sample specifies 12 vCPU, 48 GiB RAM and 64 GiB disk; the private environment JSON
+is the sizing source for `.devenv/config.k`. Registry publication remains unavailable;
+a fresh VM requires explicit image imports. See [qualification](docs/lab.md#validation).
 
 **Foundation history:** a temporary
 Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations

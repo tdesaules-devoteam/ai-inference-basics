@@ -82,7 +82,7 @@ for kind, weight in [('ServiceAccount', '-30'), ('Role', '-20'), ('RoleBinding',
     assert obj['metadata']['annotations']['helm.sh/hook'] == 'pre-install,pre-upgrade'
     assert obj['metadata']['annotations']['helm.sh/hook-weight'] == weight
 rules = credential_objects['Role']['rules']
-assert rules == [{'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['rustfs-root', 's3-models'], 'verbs': ['get']},
+assert rules == [{'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['rustfs-root', 's3-models', 's3-observability'], 'verbs': ['get']},
                  {'apiGroups': [''], 'resources': ['secrets'], 'verbs': ['create']}]
 credential_job = credential_objects['Job']
 assert credential_job['spec']['ttlSecondsAfterFinished'] == 3600

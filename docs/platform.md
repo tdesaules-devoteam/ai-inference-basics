@@ -188,6 +188,6 @@ the Agent Router certificate/issuer were Ready and no systemd units were failed.
 That fresh-boot observation was read-only; the mock request and S3 PUT/GET/DELETE
 tests described above were qualified on the preceding VM.
 
-Later milestones cover KServe and three InferenceServices, model imports, browser
-authentication and bastion tools, then separate Grafana/Loki/Tempo/Mimir and OTel
-Collectors. These components are not installed by this foundation milestone.
+The current platform also includes KServe, three Qwen InferenceServices, browser
+administration and the [observability stack](observability.md). The foundation
+qualification above describes the earlier six-release milestone only.
