@@ -260,20 +260,6 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ github.token }}
         if: github.event_name == 'workflow_dispatch'
-      - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
-        with:
-          image: ghcr.io/${{ github.repository }}/bastion:sha-${{ github.sha }}
-          expected-digest: ${{ steps.verified-bastion.outputs.digest }}
-        id: bastion
-        if: github.event_name == 'workflow_dispatch'
-      - name: Sign bastion
-        uses: tdesaules/github-actions/oci/new-image-signature@e00720678192c53c13a0ba37fccd5349ea755068
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        with:
-          image: ${{ steps.bastion.outputs.reference }}
-          registry-username: ${{ github.actor }}
-          registry-password: ${{ github.token }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: qualified-provision
@@ -300,6 +286,20 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ github.token }}
         if: github.event_name == 'workflow_dispatch'
+      - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          image: ghcr.io/${{ github.repository }}/bastion:sha-${{ github.sha }}
+          expected-digest: ${{ steps.verified-bastion.outputs.digest }}
+        id: bastion
+        if: github.event_name == 'workflow_dispatch'
+      - name: Sign bastion
+        uses: tdesaules/github-actions/oci/new-image-signature@e00720678192c53c13a0ba37fccd5349ea755068
+        if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        with:
+          image: ${{ steps.bastion.outputs.reference }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ github.token }}
       - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           image: ghcr.io/${{ github.repository }}/provision:sha-${{ github.sha }}
