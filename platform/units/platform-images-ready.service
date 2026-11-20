@@ -10,6 +10,8 @@ RemainAfterExit=yes
 TimeoutStartSec=1800
 Environment=PATH=/usr/local/bin:/usr/bin:/usr/sbin
 Environment=INFRA_DEFINITION=/etc/ai-inference-basics/infra/infra-definition.devenv.json
+# A retained Ready node condition can precede the new containerd process.
+ExecStartPre=/usr/bin/timeout 180 /usr/bin/bash -ec 'until k0s ctr version >/dev/null 2>&1; do sleep 2; done'
 ExecStart=/usr/bin/bash -ec '\
   images=$$(jq -er ".images.bastion, .images.provision" "$${INFRA_DEFINITION}"); \
   while IFS= read -r image; do \
