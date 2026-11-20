@@ -7,10 +7,12 @@
 - **VM startup fails:** use the original devenv dependency/network diagnostics.
   The host must already provide KVM, br-qemu, bridge-helper permissions and mDNS.
 - **Provisioning fails:** use `task devenv:ssh` and inspect the journals for
-  `install-system-pkgs`, `run-topgrade` and `platform-k0s-bootstrap`. The retained
-  FCOS 44 guest can boot and serve requests while `task devenv:up` returns an error:
-  its normal rpm-ostree upgrade to 45 could not resolve `cockpit-ws-selinux`
-  against the base SELinux policy. Check both systemd results separately.
+  `platform-fcos45-cockpit-policy`, `install-system-pkgs`, `run-topgrade` and
+  `platform-k0s-bootstrap`. On FCOS 45.20261030.3.1, an FC44 SELinux policy
+  prevents the entire Cockpit installation transaction; a missing Topgrade
+  executable is a consequence. Check `rpm -q selinux-policy-targeted cockpit-ws`
+  and `rpm-ostree status`, including the booted versus staged deployments.
+  Configure the policy unit as described in [local setup](devenv.md).
 - **Wrong workspace:** config.k overrides only the workspace fsdev path so the
   shared directory is the repository root despite the include running in .devenv.
 - **Charts do not converge:** inspect `helm list -A --all`, the bootstrap journal,

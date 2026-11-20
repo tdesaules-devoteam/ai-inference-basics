@@ -210,8 +210,8 @@ Those earlier results predate the JSON/Kyverno/native-extension migration. The
 three-Qwen configuration was separately qualified on the retained 48-GiB VM
 disk: a native stop/start, successful platform bootstrap, three ready services,
 actual model requests, workspace/PVC and credential preservation, S3 isolation
-and authenticated Grafana telemetry. The native OS update still has a separate
-FCOS 44/45 Cockpit dependency conflict. See the [tracker](implementation-tracker.md).
+and authenticated Grafana telemetry. For the FCOS 45 first-boot policy correction,
+see [local setup](devenv.md) and the [tracker](implementation-tracker.md).
 
 ## Existing installations of the previous layout
 

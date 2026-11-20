@@ -1,0 +1,18 @@
+[Unit]
+Description=Align the FCOS 45 initial stable image with the Cockpit SELinux policy
+ConditionVirtualization=vm
+Wants=network-online.target
+After=network-online.target
+Before=install-system-pkgs.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=180
+# Only this image shipped the FC44 policy tested here. A corrected deployment
+# skips this transaction, including on the boot immediately after the reboot.
+ExecCondition=/usr/bin/bash -ec '. /etc/os-release; [[ "$${OSTREE_VERSION:-}" == 45.20261030.3.1 ]] && rpm -q --quiet selinux-policy-targeted-44.6-1.fc44'
+ExecStart=/usr/bin/rpm-ostree override replace --experimental --from repo=updates selinux-policy selinux-policy-targeted
+ExecStart=/usr/bin/systemctl --no-block reboot
+
+[Install]
+RequiredBy=install-system-pkgs.service

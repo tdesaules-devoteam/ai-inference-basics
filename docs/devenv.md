@@ -10,7 +10,8 @@ There is no preparation or runtime dependency on the repository's `.local/` dire
 Initialize the pinned submodule with `git submodule update --init --recursive`.
 Use the operator's existing Task, KCL, Butane, QEMU/KVM and native bridge/mDNS setup.
 The runtime revision is `37369bd7590dd31a0b175115441984c19a50c770`.
-It supplies Fedora CoreOS 44.20261023.3.1 stable and normal provisioning units.
+Its default QCOW2 is Fedora CoreOS 44; the lab selects the 45 stable image below
+in the user-owned config and retains the upstream provisioning units.
 Its Task metadata view excludes provisioning payloads, avoiding Linux environment
 size limits with the lab's embedded charts and scripts.
 
@@ -31,6 +32,30 @@ private environment JSON. The CPU sample specifies 12 vCPU, 48 GiB RAM and
 Beszel uses `http://10.10.10.1:8090`.
 The native workspace share is unchanged; installation does not use it.
 
+Inside `config = schema.Qemu { ... }`, select the verified FCOS image:
+
+```kcl
+os.version = "45.20261030.3.1"
+checksum.x86_64 = "b104cbf4283a493b92ed82443f49ac4d998bcf5190c1523fb6568269803bbecf"
+checksum.aarch64 = "a8719d75a3d8e83ae13137899de3167f545ea68c1af009e0614e2a019800d250"
+```
+
+Append this entry to the existing `butane.units` list:
+
+```kcl
+{
+    name = "platform-fcos45-cockpit-policy.service"
+    enabled = True
+    contents = file.read("../platform/units/platform-fcos45-cockpit-policy.service")
+}
+```
+
+This specific image shipped the FC44 SELinux policy, which cannot satisfy the
+FC45 Cockpit RPMs. Before package installation, the unit stages the two policy
+RPMs from the Fedora `updates` repository using rpm-ostree and reboots. It
+skips subsequent boots with the corrected policy. The remote override persists
+in the OSTree deployment; reassess it when moving to another base image.
+
 The k0s custom copy reads the tracked configuration directly, relative to the
 runtime directory used by Task:
 
@@ -49,9 +74,8 @@ custom_copies = [
 Additional custom copies place the Helmfile and per-component values
 from `platform/helmfile/` under `/etc/ai-inference-basics/platform/helmfile`.
 The authored charts are copied to `/etc/ai-inference-basics/charts`, including
-their templates, Python hook programs and model lock. The local bastion image must
-be imported into k0s explicitly after VM recreation while registry publication is
-unavailable; bootstrap can then be retried without recreating the VM.
+their templates, Python hook programs and model lock. Bootstrap pulls bastion
+and provision by public GHCR manifest digest.
 Local custom copies include the JSON schema, private environment definition
 (mode 0600), shared `infra/helmfile/lab.yaml.gotmpl` adapter and readiness checks.
 The local config reads machine sizing from `infra/infra-definition.devenv.json`;

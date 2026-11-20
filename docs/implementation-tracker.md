@@ -49,7 +49,7 @@
 - [x] Define native maximum context windows from pinned model configurations.
 - [x] Qualify the 48-GiB platform bootstrap on the retained disk: after a native stop/start all three Qwen services became Ready at 40960/32768/40960 tokens, and TLS/Bearer, SSE, embeddings and reranking passed.
 - [x] Verify the eight source credential fingerprints, bastion PVC identity and workspace access across the restart. All three locked snapshots passed the shared S3 access tests.
-- [ ] Resolve the separate native Topgrade OS update failure: the attempted FCOS 44 to 45 upgrade cannot resolve the layered Cockpit and SELinux policy packages.
+- [x] Boot the recreated FCOS 45 guest with the Fedora 45 SELinux policy; the native package installation and Topgrade now succeed with Cockpit installed.
 - [x] Add the observability stack without dashboards; dashboard design will be supplied later.
 - [x] Verify a real chat request through the authenticated Grafana proxies: generation counter in Mimir, matching token total in Loki, and a correlated Gateway trace in Tempo.
 - [x] Activate the replacement CI and publish tested lab OCI artifacts with authorized registry credentials.

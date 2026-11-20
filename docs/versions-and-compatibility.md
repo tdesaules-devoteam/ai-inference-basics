@@ -4,7 +4,7 @@
 | --- | --- |
 | devenv runtime | 37369bd7590dd31a0b175115441984c19a50c770, unmodified |
 | KCL | Operator-managed 0.13.3; rendering verified with the upstream correction |
-| Fedora CoreOS | Default from the pinned runtime: 44.20261023.3.1 stable |
+| Fedora CoreOS | Lab config: 45.20261030.3.1 stable, with Fedora 45 SELinux policy for Cockpit |
 | Native k0s | v1.37.2+k0s.1, binary checksum pinned; native addon defaults |
 | Host/guest Helm | 4.3.1 |
 | Helmfile | 1.8.3 |
