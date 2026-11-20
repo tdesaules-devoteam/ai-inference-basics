@@ -1,8 +1,9 @@
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS tools
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN microdnf install -y tar gzip && microdnf clean all
+RUN microdnf install -y tar-1.35-10.fc45 gzip-1.14-4.fc45 && microdnf clean all
 COPY oci/bastion/tools.lock /tmp/tools.lock
-RUN mkdir -p /tools /opt/code-server && cd /tmp && \
+WORKDIR /tmp
+RUN mkdir -p /tools /opt/code-server && \
     while read -r sha name url; do \
       [[ -z "$sha" || "$sha" == \#* ]] && continue; \
       curl -fLsS --retry 3 "$url" -o "$name" && echo "$sha  $name" | sha256sum -c - || exit 1; \
@@ -14,7 +15,7 @@ RUN mkdir -p /tools /opt/code-server && cd /tmp && \
     tar -xzf code-server.tar.gz --strip-components=1 -C /opt/code-server
 
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS python
-RUN microdnf install -y python3.12-3.12.16-2.fc45 libgomp numactl-libs && microdnf clean all
+RUN microdnf install -y python3.12-3.12.16-2.fc45 libgomp-16.2.1-3.fc45 numactl-libs-2.0.19-5.fc45 && microdnf clean all
 COPY --from=tools /tools/uv /usr/local/bin/uv
 COPY oci/bastion/requirements.lock /tmp/requirements.lock
 RUN uv venv --python /usr/bin/python3.12 /opt/venv && \
@@ -22,11 +23,12 @@ RUN uv venv --python /usr/bin/python3.12 /opt/venv && \
     uv cache clean
 
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS runtime
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 LABEL org.opencontainers.image.source="https://github.com/tdesaules-devoteam/ai-inference-basics" \
       org.opencontainers.image.title="AI Inference Basics participant bastion"
 RUN microdnf install -y --setopt=install_weak_deps=0 \
-      bash jq curl git-core ca-certificates libgcc libstdc++ openssl-libs ncurses-term \
-      python3.12-3.12.16-2.fc45 libgomp numactl-libs \
+      bash-5.3.15-2.fc45 jq-1.8.2-5.fc45 curl-8.21.0-9.fc45 git-core-2.56.1-1.fc45 ca-certificates-2026.2.92_v9.0.319-2.fc45 libgcc-16.2.1-3.fc45 libstdc++-16.2.1-3.fc45 openssl-libs-4.0.3-1.fc45 ncurses-term-6.6-3.fc45 \
+      python3.12-3.12.16-2.fc45 libgomp-16.2.1-3.fc45 numactl-libs-2.0.19-5.fc45 \
       ttyd-1.7.7-11.fc45 helix-25.07.1-13.fc45 && microdnf clean all && \
     mkdir -p /workspace /usr/share/ai-inference-basics && chown 1000:1000 /workspace && \
     echo 'lab:x:1000:1000:Lab participant:/workspace:/bin/bash' >> /etc/passwd && \

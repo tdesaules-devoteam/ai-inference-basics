@@ -1,5 +1,6 @@
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62 AS tools
-RUN microdnf install -y tar gzip && microdnf clean all
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN microdnf install -y tar-1.35-10.fc45 gzip-1.14-4.fc45 && microdnf clean all
 RUN curl -fLsS --retry 3 https://github.com/astral-sh/uv/releases/download/0.13.8/uv-x86_64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz && \
     echo '5acfd9177cfecf0bf87578f059728215ccc884388988f55f7a65041b57387d91  /tmp/uv.tar.gz' | sha256sum -c - && \
     tar -xzf /tmp/uv.tar.gz -C /tmp --strip-components=1 && \
@@ -20,7 +21,7 @@ RUN uv venv --python /usr/bin/python3.12 /opt/venv && \
 FROM quay.io/fedora/fedora-minimal@sha256:f58854409553b5bf2cb53c6f3b82349e0c9d55ed64943a6fb6b379f4a845de62
 LABEL org.opencontainers.image.source="https://github.com/tdesaules-devoteam/ai-inference-basics" \
       org.opencontainers.image.title="AI Inference Basics provisioning tools"
-RUN microdnf install -y python3.12-3.12.16-2.fc45 ca-certificates libgcc libstdc++ && microdnf clean all && \
+RUN microdnf install -y python3.12-3.12.16-2.fc45 ca-certificates-2026.2.92_v9.0.319-2.fc45 libgcc-16.2.1-3.fc45 libstdc++-16.2.1-3.fc45 && microdnf clean all && \
     mkdir -p /workspace && chown 1000:1000 /workspace
 COPY --from=tools /tmp/rc /usr/local/bin/rc
 COPY --from=tools /tmp/kubectl /usr/local/bin/kubectl
