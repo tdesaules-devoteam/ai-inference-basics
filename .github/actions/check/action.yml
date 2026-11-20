@@ -1,8 +1,11 @@
 name: Plan platform checks
-description: Select repository validation and chart qualification from the event and changed files
+description: Select platform checks and application image qualification from the event and changed files
 outputs:
-  has_build: {description: Whether a chart candidate is required}
-  has_tests: {description: Whether chart tests are required}
+  platform: {description: Whether to render and validate the platform}
+  images: {description: Ordered JSON list of selected native AMD64 images}
+  digests: {description: Qualified manifests from the annotated release tag}
+  has_build: {description: Whether new OCI archives are required}
+  has_tests: {description: Whether image runtime tests are required}
   shell_files: {description: JSON shell file list}
   yaml_files: {description: JSON YAML file list}
   markdown_files: {description: JSON Markdown file list}

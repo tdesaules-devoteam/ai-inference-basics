@@ -17,7 +17,6 @@ func command(dir, name string, args ...string) {
 	}
 }
 func main() {
-	const chart = "charts/ai-inference-basics"
-	command(chart, "sha256sum", "-c", "dependencies.sha256")
 	command("", "python3", "tests/validate.py")
+	command("", "python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py")
 }

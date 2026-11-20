@@ -1,20 +1,23 @@
-# Dedicated CI operations
+# Lab CI operations
 
-Each directory owns a fixed-operation Go executable, action metadata and multistage
-Containerfile. `Dockerfile` is a symlink for GitHub's local Docker-action builder.
-These are bootstrap sources; digest-pinned released action images are pending GHCR
-publication. They are not a general command dispatcher.
+`check` selects AMD64 images by changed paths and verifies manual and tag events.
+`lint-helm` exercises the actual Helmfile with the public fixtures only. The
+shared Buildah action exports a separate archive and untested receipt for each
+selected component. Each test job verifies the receipt, imports the manifest by
+digest into an isolated runner-local registry, and runs the corresponding smoke
+action inside the exact image. Smoke metadata is instantiated by the shared
+`new-candidate-action` operation; it is not a stand-alone tool image.
 
-| Action | Input | Output / failure contract |
-| --- | --- | --- |
-| check | Event/ref, Git history | Selected build/test flags and literal JSON file lists; rejects wrong manual ref/missing history |
-| lint-helm | Source chart and k0s YAML | Dependency integrity, ordered release schemas, image pins and ownership |
-| build-helm | Source chart | Exact `dist/*.tgz` plus SHA256SUMS |
-| test-helm | Candidate archive/checksum | Render-qualified receipt; corrupt or missing candidates fail |
-| fetch-helm | Tracked immutable publication receipt and tag | Original published bytes; never rebuilds |
-| publish-helm | Qualified archive, source SHA and token via environment | GHCR push/pull byte verification and OCI receipt; refuses version replacement |
+`record-qualification` rehashes the tested archive before emitting a tested
+receipt. The release workflow publishes these exact archives, reads the manifests
+back anonymously, and `tag-images` compares both returned digests to the tested
+receipts before tagging the source. The annotated tag contains the two digests;
+tag jobs qualify them again without a rebuild before creating the GitHub release.
+Syft and Grype reports are advisory. The application images currently contain
+x86-64-only pinned tools; this pipeline does not advertise ARM64 support.
 
-Build locally with `podman build --format docker -t localhost/ai-inference-basics-ci-<operation>:dev
-.github/actions/<operation>`. Run `.github/scripts/test-actions.py` after all images
-exist. The test covers exact artifact integrity, schema failures and refusal of
-unqualified publication; it does not publish or claim hosted execution.
+Local Go actions use their sibling Dockerfile until dedicated images are
+published. To run the release workflow configure `BOT_APP_ID` and
+`BOT_APP_PRIVATE_KEY` for a repository-scoped App installation with contents
+write access, enable GHCR package publication for the workflow, and permit
+anonymous pulls of both packages. Maintenance uses a separate installation token.

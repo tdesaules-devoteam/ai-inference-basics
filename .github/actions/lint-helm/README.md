@@ -1,4 +1,4 @@
-# Helm lint
+# Validate the platform
 
-Checks vendored dependency hashes, k0s deployment values and rendered workload
-image pins. No cluster access. See [fixtures](../../scripts/test-actions.py).
+Run the Helmfile render contracts and Python unit tests against the checked-out
+repository using pinned Helm and Helmfile. No cluster credentials are required.

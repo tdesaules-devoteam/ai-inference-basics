@@ -1,7 +1,8 @@
 name: main
-on:
+'on':
   push:
-    branches: ['**']
+    branches:
+      - '**'
 permissions:
   contents: read
 concurrency:
@@ -11,61 +12,175 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     outputs:
+      platform: ${{ steps.plan.outputs.platform }}
       has_build: ${{ steps.plan.outputs.has_build }}
       has_tests: ${{ steps.plan.outputs.has_tests }}
+      images: ${{ steps.plan.outputs.images }}
+      digests: ${{ steps.plan.outputs.digests }}
       shell_files: ${{ steps.plan.outputs.shell_files }}
-      yaml_files: ${{ steps.plan.outputs.yaml_files }}
       markdown_files: ${{ steps.plan.outputs.markdown_files }}
+      yaml_files: ${{ steps.plan.outputs.yaml_files }}
       container_files: ${{ steps.plan.outputs.container_files }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with: {fetch-depth: 0}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: ./.github/actions/check
         id: plan
   lint:
-    needs: [check]
+    needs:
+      - check
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Validate shell
-        uses: tdesaules/github-actions/lint/shellcheck@8c328a3be0545ba9ded0f1289f495bffa6103091
+        if: needs.check.outputs.shell_files != '[]'
+        uses: tdesaules/github-actions/lint/shellcheck@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.shell_files }}
       - name: Validate YAML
-        uses: tdesaules/github-actions/lint/yaml@8c328a3be0545ba9ded0f1289f495bffa6103091
+        if: needs.check.outputs.yaml_files != '[]'
+        uses: tdesaules/github-actions/lint/yaml@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.yaml_files }}
       - name: Validate documentation
-        uses: tdesaules/github-actions/lint/markdownlint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        if: needs.check.outputs.markdown_files != '[]'
+        uses: tdesaules/github-actions/lint/markdownlint@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.markdown_files }}
       - name: Validate workflows
-        uses: tdesaules/github-actions/lint/actionlint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        uses: tdesaules/github-actions/lint/actionlint@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: '[".github/workflows/main.yml", ".github/workflows/release.yml", ".github/workflows/maintenance.yml"]'
       - name: Validate Helm
+        if: needs.check.outputs.platform == 'true'
         uses: ./.github/actions/lint-helm
       - name: Validate Containerfiles
-        uses: tdesaules/github-actions/lint/hadolint@8c328a3be0545ba9ded0f1289f495bffa6103091
+        if: needs.check.outputs.container_files != '[]'
+        uses: tdesaules/github-actions/lint/hadolint@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           files: ${{ needs.check.outputs.container_files }}
   build:
-    needs: [check, lint]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.check.outputs.images) }}
+    needs:
+      - check
+      - lint
     if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' }}
-    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: ./.github/actions/build-helm
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: tdesaules/github-actions/oci/build-image@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          containerfile: oci/${{ matrix.image }}/Containerfile
+          image: localhost/${{ matrix.image }}
+          version: ${{ github.sha }}
+          platform: linux/amd64
+          output: dist/image.oci.tar
+        id: build
+      - uses: tdesaules/github-actions/workflow/new-build-receipt@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          archive: dist/image.oci.tar
+          output: dist/build.json
+          expected-sha256: ${{ steps.build.outputs.archive-sha256 }}
+          image: ${{ matrix.image }}
+          architecture: amd64
+          revision: ${{ github.sha }}
+          version: ${{ github.sha }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: chart-candidate, path: dist/, if-no-files-found: error}
+        with:
+          name: build-${{ matrix.image }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
   test:
-    needs: [check, lint, build]
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.build.result == 'success' && needs.check.outputs.has_tests == 'true' }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.check.outputs.images) }}
+    needs:
+      - check
+      - lint
+      - build
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_tests == 'true' && (needs.build.result
+      == 'success') }}
+    services:
+      candidate-registry:
+        image: ghcr.io/tdesaules/github-actions/workflow-start-test-registry@sha256:e428ed0f7c5a8d1f9062a041aeeeddbfeb86cf11dcaf8f24a83a4d55173bbb8a
+        ports:
+          - 5000/tcp
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with: {name: chart-candidate, path: dist/}
-      - uses: ./.github/actions/test-helm
+        with:
+          name: build-${{ matrix.image }}
+          path: dist
+      - uses: tdesaules/github-actions/workflow/test-build-artifact@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          archive: dist/image.oci.tar
+          receipt: dist/build.json
+          image: ${{ matrix.image }}
+          architecture: amd64
+          revision: ${{ github.sha }}
+          version: ${{ github.sha }}
+      - uses: tdesaules/github-actions/workflow/import-candidate-image@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          archive: dist/image.oci.tar
+          repository: ${{ matrix.image }}
+          host-port: ${{ job.services.candidate-registry.ports['5000'] }}
+        id: candidate
+      - uses: tdesaules/github-actions/workflow/new-candidate-action@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          directory: .github/actions/smoke-${{ matrix.image }}
+          image: ${{ steps.candidate.outputs.image }}
+          destination: .candidate
+      - uses: ./.candidate
+      - uses: ./.github/actions/record-qualification
+        with:
+          image: ${{ matrix.image }}
+          digest: ${{ steps.candidate.outputs.digest }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with: {name: chart-qualified, path: dist/, if-no-files-found: error}
+        with:
+          name: qualified-${{ matrix.image }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+      - uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          source: oci-archive:dist/image.oci.tar
+        continue-on-error: true
+        id: sbom
+      - uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          sbom: sbom.spdx.json
+          fail-on: none
+        continue-on-error: true
+        id: scan
+      - uses: tdesaules/github-actions/workflow/summarize-security@e00720678192c53c13a0ba37fccd5349ea755068
+        continue-on-error: true
+        with:
+          subject: git:${{ github.sha }}
+          sbom-outcome: ${{ steps.sbom.outcome }}
+          scan-outcome: ${{ steps.scan.outcome }}
+          sbom: sbom.spdx.json
+          report: grype.json
+          output: security.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: advisory-${{ matrix.image }}
+          path: |-
+            sbom.spdx.json
+            grype.json
+            security.json
+          if-no-files-found: warn
+        continue-on-error: true

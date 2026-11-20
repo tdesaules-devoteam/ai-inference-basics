@@ -1,8 +1,4 @@
 name: maintenance
-on:
-  schedule:
-    - cron: '17 5 * * 1'
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -10,8 +6,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
       - name: Validate event policy
         uses: ./.github/actions/check
+        id: plan
       - name: Create repository-scoped bot token
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
         id: bot
@@ -21,7 +20,53 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ai-inference-basics
       - name: Update dependencies
-        uses: tdesaules/github-actions/maintenance/update-dependencies@8c328a3be0545ba9ded0f1289f495bffa6103091
+        uses: tdesaules/github-actions/maintenance/update-dependencies@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           repository: ${{ github.repository }}
           token: ${{ steps.bot.outputs.token }}
+      - uses: tdesaules/github-actions/lint/lychee@e00720678192c53c13a0ba37fccd5349ea755068
+        with:
+          files: ${{ steps.plan.outputs.markdown_files }}
+      - name: Generate published bastion SBOM
+        uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
+        continue-on-error: true
+        with:
+          source: registry:ghcr.io/${{ github.repository }}/bastion@${{ fromJSON(steps.plan.outputs.digests).bastion }}
+          output: bastion.spdx.json
+      - name: Rescan bastion
+        uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
+        continue-on-error: true
+        with:
+          sbom: bastion.spdx.json
+          output: bastion.grype.json
+          fail-on: none
+      - name: Generate published provision SBOM
+        uses: tdesaules/github-actions/oci/new-sbom@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
+        continue-on-error: true
+        with:
+          source: registry:ghcr.io/${{ github.repository }}/provision@${{ fromJSON(steps.plan.outputs.digests).provision }}
+          output: provision.spdx.json
+      - name: Rescan provision
+        uses: tdesaules/github-actions/oci/test-vulnerabilities@e00720678192c53c13a0ba37fccd5349ea755068
+        if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
+        continue-on-error: true
+        with:
+          sbom: provision.spdx.json
+          output: provision.grype.json
+          fail-on: none
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
+        continue-on-error: true
+        with:
+          name: maintenance-advisory
+          path: |-
+            *.spdx.json
+            *.grype.json
+          if-no-files-found: warn
+'on':
+  schedule:
+    - cron: 17 5 * * 1
+  workflow_dispatch: null

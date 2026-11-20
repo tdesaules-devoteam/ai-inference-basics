@@ -1,0 +1,11 @@
+name: Record runtime qualification
+description: Rehash the archive and bind the tested manifest to its build receipt
+inputs:
+  image: {description: Tested component, required: true}
+  digest: {description: Tested manifest digest, required: true}
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    COMPONENT: ${{ inputs.image }}
+    CANDIDATE_DIGEST: ${{ inputs.digest }}
