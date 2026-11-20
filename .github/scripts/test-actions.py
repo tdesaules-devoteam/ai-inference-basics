@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert (result.returncode == 0) == ok, (cmd, result.stderr)
         return result.stdout.strip()
 
-    for name in ('check', 'record-qualification', 'tag-images'):
+    for name in ('check', 'record-qualification', 'read-qualification', 'tag-images'):
         run('go', 'build', '-o', str(root/name), str(ROOT/'.github/actions'/name/'main.go'))
     run('git', 'init', '-qb', 'main'); run('git', 'config', 'user.name', 'Fixture'); run('git', 'config', 'user.email', 'fixture@example.org')
     run('git', 'commit', '--allow-empty', '-qm', 'initial'); before = run('git', 'rev-parse', 'HEAD')
@@ -32,6 +32,7 @@ with tempfile.TemporaryDirectory() as tmp:
         env.update(COMPONENT=name,CANDIDATE_DIGEST=digest); archive=dist/'image.oci.tar'; archive.write_bytes(b'fixture')
         (dist/'build.json').write_text(json.dumps(dict(image=name,arch='amd64',version=rev,revision=rev,tested=False,archive_sha256=hashlib.sha256(archive.read_bytes()).hexdigest())))
         archive.write_bytes(b'corrupt'); run('./record-qualification', ok=False); archive.write_bytes(b'fixture'); run('./record-qualification'); (dist/name).mkdir(); (dist/'qualified.json').rename(dist/name/'qualified.json')
+    archive.rename(dist/'provision'/'image.oci.tar'); run('./read-qualification'); (dist/'provision'/'image.oci.tar').write_bytes(b'changed'); run('./read-qualification',ok=False)
     run('git','init','--bare','-q','remote');run('git','remote','add','origin',str(root/'remote'));run('git','push','origin','main');env.update(VERSION='1.0.0',BASTION_DIGEST=digest,PROVISION_DIGEST='wrong');run('./tag-images',ok=False)
     env['PROVISION_DIGEST']=digest;run('./tag-images');env.update(GITHUB_REF='refs/tags/1.0.0',GITHUB_EVENT_NAME='push');run('./check');assert f'"bastion":"{digest}"' in (root/'output').read_text()
 print('CI fixtures passed: changed-image plan, dispatch policy, corruption, digest mismatch and annotated tag round trip.')

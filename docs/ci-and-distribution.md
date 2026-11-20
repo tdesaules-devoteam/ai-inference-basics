@@ -16,3 +16,8 @@ being configured. After publishing, set `images.bastion` and `images.provision`
 to the verified public digest references in the environment JSON. The bootstrap
 unit pulls remote references before Helmfile and waits for explicit imports only
 for `localhost/` references. Never put registry tokens into the committed sample.
+
+For package publication without a Git release, dispatch `release.yml` on `main`
+with `images-only=true`. This uses the same build, functional test, receipt and
+public digest checks with the job's `packages: write` permission; no bot token
+or source ref mutation is needed in this mode.

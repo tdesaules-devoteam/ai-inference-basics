@@ -1,0 +1,11 @@
+name: Read tested manifest identity
+description: Rehash the selected promoted archive and require its tested receipt
+inputs:
+  image: {description: Expected application image, required: true}
+outputs:
+  digest: {description: Exact tested manifest digest}
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    COMPONENT: ${{ inputs.image }}

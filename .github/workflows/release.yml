@@ -3,7 +3,12 @@ name: release
   push:
     tags:
       - '*'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      images-only:
+        description: Publish qualified application images without creating a Git tag or GitHub Release
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -32,7 +37,7 @@ jobs:
         id: plan
       - uses: tdesaules/github-actions/workflow/new-release-plan@e00720678192c53c13a0ba37fccd5349ea755068
         id: version
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !inputs.images-only
   lint:
     needs:
       - check
@@ -70,8 +75,8 @@ jobs:
     needs:
       - check
       - lint
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' && needs.check.outputs.changed
-      == 'true' }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' && (inputs.images-only || needs.check.outputs.changed
+      == 'true') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -217,7 +222,8 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+      - if: ${{ !inputs.images-only }}
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
         with:
           app-id: ${{ vars.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
@@ -227,7 +233,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-          token: ${{ steps.bot.outputs.token }}
+          token: ${{ steps.bot.outputs.token || github.token }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: qualified-bastion
@@ -242,6 +248,11 @@ jobs:
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
         if: github.event_name == 'workflow_dispatch'
+      - uses: ./.github/actions/read-qualification
+        id: verified-bastion
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          image: bastion
       - uses: tdesaules/github-actions/oci/publish-image@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           source: oci-archive:dist/bastion/image.oci.tar
@@ -252,6 +263,7 @@ jobs:
       - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           image: ghcr.io/${{ github.repository }}/bastion:sha-${{ github.sha }}
+          expected-digest: ${{ steps.verified-bastion.outputs.digest }}
         id: bastion
         if: github.event_name == 'workflow_dispatch'
       - name: Sign bastion
@@ -276,6 +288,11 @@ jobs:
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
         if: github.event_name == 'workflow_dispatch'
+      - uses: ./.github/actions/read-qualification
+        id: verified-provision
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          image: provision
       - uses: tdesaules/github-actions/oci/publish-image@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           source: oci-archive:dist/provision/image.oci.tar
@@ -286,6 +303,7 @@ jobs:
       - uses: tdesaules/github-actions/oci/get-image-digest@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           image: ghcr.io/${{ github.repository }}/provision:sha-${{ github.sha }}
+          expected-digest: ${{ steps.verified-provision.outputs.digest }}
         id: provision
         if: github.event_name == 'workflow_dispatch'
       - name: Sign provision
@@ -301,7 +319,7 @@ jobs:
           version: ${{ needs.check.outputs.version }}
           bastion: ${{ steps.bastion.outputs.digest }}
           provision: ${{ steps.provision.outputs.digest }}
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && !inputs.images-only
       - uses: tdesaules/github-actions/workflow/new-github-release@e00720678192c53c13a0ba37fccd5349ea755068
         with:
           repository: ${{ github.repository }}
