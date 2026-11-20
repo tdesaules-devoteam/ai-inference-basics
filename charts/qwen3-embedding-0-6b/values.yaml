@@ -6,10 +6,11 @@ modelName: qwen3-embedding-0-6b
 task: embeddings
 nativeContextTokens: 32768
 maxModelLen: 32768
+kvCacheGiB: 4
 threads: "2"
 cores: "4-5"
-memory: 6Gi
-requestMemory: 3Gi
+memory: 10Gi
+requestMemory: 8Gi
 import:
   enabled: true
 serving:

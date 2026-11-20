@@ -22,7 +22,10 @@ For CPU chat, the 40,960-token window needs about 4.375 GiB of BF16 KV data
 (28 layers, 8 KV heads, 128 head dimensions, two K/V tensors). Reserve 5 GiB
 instead of the former 1 GiB, which exposed only 9,344 cache tokens at runtime.
 The container memory limit is 12 GiB to include weights and runtime overhead.
-Pooling runners do not use a generation KV cache.
+The installed vLLM CPU pooling runners also allocate KV cache for these decoder
+models: embeddings reserve 4 GiB (at least 3.5 GiB required) and reranking reserves
+5 GiB. Their container memory limits are 10 and 12 GiB respectively. All caches
+remain BF16. The devenv definition therefore targets 48 GiB of RAM.
 
 These are context ceilings, not throughput or memory guarantees for concurrent
 full-window requests. Resource sizing must also accommodate the other loaded

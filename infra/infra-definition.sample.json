@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "environment": "devenv",
   "machines": [
-    {"name": "lab", "count": 1, "cpu": 12, "memoryGiB": 36, "diskGiB": 64}
+    {"name": "lab", "count": 1, "cpu": 12, "memoryGiB": 48, "diskGiB": 64}
   ],
   "network": {"hostname": "lab.example.test", "httpsNodePort": 30443},
   "access": {

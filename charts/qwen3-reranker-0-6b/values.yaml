@@ -6,10 +6,11 @@ modelName: qwen3-reranker-0-6b
 task: rerank
 nativeContextTokens: 40960
 maxModelLen: 40960
+kvCacheGiB: 5
 threads: "2"
 cores: "6-7"
-memory: 6Gi
-requestMemory: 3Gi
+memory: 12Gi
+requestMemory: 9Gi
 import:
   enabled: true
 serving:

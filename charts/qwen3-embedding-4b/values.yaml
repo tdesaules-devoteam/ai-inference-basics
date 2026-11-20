@@ -9,7 +9,7 @@ maxModelLen: 40960
 threads: "4"
 memory: 24Gi
 requestMemory: 12Gi
-gpuMemoryMiB: "16384"
+gpuMemoryMiB: "20480"
 gpuCores: "20"
 import:
   enabled: true

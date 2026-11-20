@@ -25,8 +25,10 @@ Pulling the parent repository alone does not necessarily update the submodule
 checkout. Pulling the runtime's upstream repository also does not change the
 revision recorded by this repository.
 
-`.devenv/config.k` is ignored and user-owned. The current hardware is 24 vCPU,
-49152 MiB RAM and 64 GiB disk. Beszel uses `http://10.10.10.1:8090`.
+`.devenv/config.k` is ignored and user-owned. It reads machine sizing from the
+private environment JSON. The CPU sample specifies 12 vCPU, 48 GiB RAM and
+64 GiB disk; these are desired settings, not a measurement of a running VM.
+Beszel uses `http://10.10.10.1:8090`.
 The native workspace share is unchanged; installation does not use it.
 
 The k0s custom copy reads the tracked configuration directly, relative to the
