@@ -263,11 +263,6 @@ releases:
         import:
           enabled: {{ $settings.import }}
         maxModelLen: {{ int $native }}
-{{- if eq $model "lfm3-omni-2b" }}
-        image: {{ $infra.images.omni | quote }}
-        gpu:
-          enabled: {{ eq $infra.environment "scaleway" }}
-{{- end }}
 {{- if $settings.enabled }}
     hooks:
       - events: [postsync]

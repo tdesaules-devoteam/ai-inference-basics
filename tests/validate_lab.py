@@ -110,7 +110,7 @@ for component in ('driver', 'devicePlugin', 'migManager', 'dcgmExporter'):
 assert policy['toolkit']['enabled'] is True
 for route in ('root', 'terminal', 'code', 'headlamp', 'oauth2', 'dex'):
     find('HTTPRoute', 'browser-' + route, 'gateway')
-gpu_names = ['qwen3-8b-fp8', 'qwen3-embedding-4b', 'qwen3-reranker-4b', 'lfm3-omni-2b']
+gpu_names = ['qwen3-8b-fp8', 'qwen3-embedding-4b', 'qwen3-reranker-4b']
 definition['environment'] = 'scaleway'
 definition['storage']['modelsGiB'] = 100
 for name, config in definition['models'].items():

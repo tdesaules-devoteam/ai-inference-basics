@@ -8,4 +8,3 @@ modelNames:
   - qwen3-0-6b
   - qwen3-embedding-0-6b
   - qwen3-reranker-0-6b
-  - lfm3-omni-2b

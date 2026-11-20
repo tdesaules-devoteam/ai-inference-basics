@@ -23,7 +23,7 @@ oauth2-proxy <-- OIDC --> dex      Agent Router
         +--> bastion              +--> qwen3-0-6b
         |    ttyd/Zellij          +--> qwen3-embedding-0-6b
         |    code-server          +--> qwen3-reranker-0-6b
-        +--> headlamp              +--> lfm3-omni-2b
+        +--> headlamp
                                          |
                                          | read-only S3 initialization
                                          v
@@ -56,4 +56,4 @@ including code-server path rewriting. Envoy remains the external entrypoint.
 The Scaleway environment substitutes larger GPU Qwen models. GPU Operator
 configures Container Toolkit, HAMi handles GPU sharing, and DCGM Exporter exposes
 hardware metrics. These hardware paths are unqualified on the CPU VM; see
-[GPU and Omni](gpu-and-omni.md) for image boundaries and model selection.
+[GPU setup](gpu.md) for image boundaries and model selection.

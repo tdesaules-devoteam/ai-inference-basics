@@ -26,7 +26,7 @@ local image import; see [lab access and qualification](docs/lab.md).
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
-- `charts/`: three model charts, one shared bastion chart and one gateway/TLS chart.
+- `charts/`: six model charts, one shared bastion chart and one gateway/TLS chart.
 - `tests/`: render checks and opt-in runtime qualification; `reports/` stays local and ignored.
 
 See [the platform](docs/platform.md) for upstream chart references, namespace

@@ -10,7 +10,6 @@ nodePort: {{ $infra.network.httpsNodePort }}
 origin: {{ printf "https://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
 bastionImage: {{ $infra.images.bastion | quote }}
 provisionImage: {{ $infra.images.provision | quote }}
-omniImage: {{ $infra.images.omni | quote }}
 imagePullPolicy: {{ $infra.images.pullPolicy | quote }}
 modelNames:
 {{ $models | toYaml | indent 2 }}

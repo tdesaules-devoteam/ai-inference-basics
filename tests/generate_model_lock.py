@@ -14,7 +14,6 @@ MODELS = {
     'qwen3-8b-fp8': ('Qwen/Qwen3-8B-FP8', '220b46e3b2180893580a4454f21f22d3ebb187d3'),
     'qwen3-embedding-4b': ('Qwen/Qwen3-Embedding-4B', '5cf2132abc99cad020ac570b19d031efec650f2b'),
     'qwen3-reranker-4b': ('Qwen/Qwen3-Reranker-4B', '22e683669bc0f0bd69640a1354a6d0aebcfeede5'),
-    'lfm3-omni-2b': ('LiquidAI/LFM3-Omni-2B', '21d75123f86c1f7ffb4bef1ea202710c4e7ebe67'),
 }
 selected = set(sys.argv[1:]) or set(MODELS)
 assert selected <= set(MODELS), 'Unknown model name'

@@ -1,6 +1,6 @@
 # Domain-oriented CPU lab
 
-Helmfile declares 25 releases, with 22 enabled by the sample definition. Each model has a dedicated chart, release, namespace
+Helmfile declares environment-selected releases. Each model has a dedicated chart, release, namespace
 and S3 prefix. The shared pair-training workstation uses one Dex account named
 `cluster-admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
 
@@ -44,8 +44,8 @@ ordering and the existing-installation migration boundary.
 
 ## Local image prerequisite
 
-GHCR publication remains unavailable. Bastion, provision and LFM3 inference are
-separate images; see [GPU and multimodal setup](gpu-and-omni.md). Domain hooks
+GHCR publication remains unavailable. Bastion and provision are
+separate images; see [GPU setup](gpu.md). Domain hooks
 use provision, including its locked huggingface_hub, boto3, bcrypt and RustFS rc.
 
 Build with `bash oci/prepare.sh` or reuse a qualified OCI archive. A fresh VM must
@@ -53,7 +53,7 @@ receive the images before these domain hooks can run:
 
 ```sh
 VM="$(id -un)@$(cat .devenv/.uuid).local"
-for name in bastion provision lfm3-omni-2b-transformers; do
+for name in bastion provision; do
   (cd dist && sha256sum -c "$name.SHA256SUMS")
   ssh "$VM" 'sudo k0s ctr images import --digests -' < "dist/$name.oci.tar"
   ssh "$VM" "sudo k0s ctr images tag --force localhost/ai-inference-basics-$name:dev $(cat "dist/$name.ref")"
@@ -72,6 +72,12 @@ synchronize those directories, remove obsolete templates, and update the unit
 before restarting `platform-k0s-bootstrap.service`.
 
 ## Model import and activation
+
+For an existing installation that served `lfm3-omni-2b`, remove its `images.omni`
+and `models.lfm3-omni-2b` entries from the private environment JSON. Apply the
+updated gateway routes, then run `helm uninstall lfm3-omni-2b -n lfm3-omni-2b`
+on that cluster. Removing a release from Helmfile does not uninstall it. This
+leaves the shared `models` bucket and its stored snapshots intact.
 
 Each model's `files/model.lock.json` pins the Hugging Face repository revision
 and each file's size/SHA-256. The import Job uses the Python `huggingface_hub`

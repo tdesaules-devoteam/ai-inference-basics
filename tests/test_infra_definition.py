@@ -23,9 +23,11 @@ class InfrastructureContract(unittest.TestCase):
         gpu = json.loads((ROOT / 'infra/infra-definition.scaleway.sample.json').read_text())
         validator.validate(gpu)
         self.assertEqual(gpu['environment'], 'scaleway')
-        self.assertTrue(gpu['models']['lfm3-omni-2b']['enabled'])
-        self.assertEqual(gpu['models']['lfm3-omni-2b']['replicas'], 1)
-        self.assertNotEqual(gpu['images']['omni'], SAMPLE['images']['omni'])
+        for definition, expected in (
+            (SAMPLE, {'qwen3-0-6b', 'qwen3-embedding-0-6b', 'qwen3-reranker-0-6b'}),
+            (gpu, {'qwen3-8b-fp8', 'qwen3-embedding-4b', 'qwen3-reranker-4b'}),
+        ):
+            self.assertEqual({name for name, model in definition['models'].items() if model['enabled']}, expected)
         for field, value in [('enabled', False), ('replicas', 2), ('import', 'true')]:
             with self.subTest(field=field):
                 invalid = copy.deepcopy(SAMPLE)
