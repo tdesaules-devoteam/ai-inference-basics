@@ -3,7 +3,7 @@
 The root Taskfile includes `.devenv/taskfile.qemu.yaml` directly under `devenv:`.
 The lab adds storage, gateways, three KServe models and one shared authenticated
 admin workspace through Helmfile. See [platform setup](platform.md) and [lab setup](lab.md).
-There is no preparation or runtime dependency on the repository's `.local/` directory.
+For Helm checks on the host, install Helm and make `helm` available on `PATH`.
 
 ## Configuration
 
