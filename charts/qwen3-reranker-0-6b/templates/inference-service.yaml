@@ -11,6 +11,7 @@ metadata:
     serving.kserve.io/deploymentMode: Standard
     serving.kserve.io/autoscalerClass: external
     serving.kserve.io/secretName: model-reader
+    # KServe stops the predictor through this annotation; replica bounds below remain one.
     serving.kserve.io/stop: {{ eq (int .Values.serving.replicas) 0 | quote }}
 spec:
   predictor:

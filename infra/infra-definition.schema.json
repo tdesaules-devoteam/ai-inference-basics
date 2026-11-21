@@ -50,6 +50,7 @@
       }
     },
     "storage": {
+      "description": "Requested RustFS volume capacity, shared by model and observability buckets.",
       "type": "object", "additionalProperties": false,
       "required": ["modelsGiB"],
       "properties": {"modelsGiB": {"type": "integer", "minimum": 1}}
@@ -70,6 +71,7 @@
   "$defs": {
     "image": {"type": "string", "pattern": "^[a-zA-Z0-9./:_-]+@sha256:[a-f0-9]{64}$"},
     "model": {
+      "description": "An enabled release may be stopped or skip import. A disabled release must not request replicas or import.",
       "type": "object", "additionalProperties": false,
       "required": ["enabled", "replicas", "import"],
       "properties": {"enabled": {"type": "boolean"}, "replicas": {"enum": [0, 1]}, "import": {"type": "boolean"}},

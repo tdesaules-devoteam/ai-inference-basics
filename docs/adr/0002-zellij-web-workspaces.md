@@ -1,6 +1,7 @@
 # ADR 0002: native Zellij web administration
 
-Status: accepted by the user and locally browser-qualified.
+Status: superseded. This records the former native web-client design. The current
+[shared workspace](../workspaces.md) uses ttyd and Zellij CLI behind one Dex login.
 
 Replace ttyd with Zellij 0.46.0's web-enabled upstream binary in a digest-pinned
 Fedora Minimal image. Retain bash/curl/git/jq, kubectl, k9s, Helm and Task. Each

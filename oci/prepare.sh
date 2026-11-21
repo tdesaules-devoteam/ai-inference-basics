@@ -24,6 +24,7 @@ for name in "${images[@]}"; do
       podman run --rm --entrypoint rc "$image" --version ;;
   esac
   podman save --format oci-archive -o "dist/$name.oci.tar" "$image"
+  # Pin the manifest referenced by the archive index, not the checksum of the transport tarball.
   digest=$(python3 - "dist/$name.oci.tar" <<'PY'
 import hashlib, json, sys, tarfile
 with tarfile.open(sys.argv[1]) as archive:

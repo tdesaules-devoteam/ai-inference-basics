@@ -65,7 +65,7 @@ extraManifests:
           - s3-observability
         verbs: [get]
       # Kubernetes RBAC cannot restrict create by resourceNames. The script creates
-      # only rustfs-root and s3-models, confined to the release namespace.
+      # only the three named credential Secrets in this release namespace.
       - apiGroups: [""]
         resources: [secrets]
         verbs: [create]

@@ -23,7 +23,7 @@ oauth2-proxy <-- OIDC --> dex      Agent Router
         +--> bastion              +--> qwen3-0-6b
         |    ttyd/Zellij          +--> qwen3-embedding-0-6b
         |    code-server          +--> qwen3-reranker-0-6b
-        +--> headlamp
+        +--> headlamp and grafana
                                          |
                                          | S3 model initialization
                                          v
@@ -50,7 +50,7 @@ The infrastructure JSON controls the desired state. See [lab operations](lab.md)
 ownership, access, model activation and qualification.
 
 Caddy is a sidecar in the oauth2-proxy Pod, in namespace `oauth2-proxy`.
-After authentication it routes browser paths to ttyd, code-server and Headlamp,
+After authentication it routes browser paths to ttyd, code-server, Headlamp and Grafana,
 including code-server path rewriting. Envoy remains the external entrypoint.
 
 The Scaleway environment supports larger GPU Qwen models. GPU Operator

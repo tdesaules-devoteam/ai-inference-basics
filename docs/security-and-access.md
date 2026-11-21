@@ -1,7 +1,7 @@
 # Security and access
 
 One Dex account named `cluster-admin` is shared by the pair at one computer. Its login
-email is `cluster-admin@devoteam.com`. The bastion and Headlamp ServiceAccounts both have
+email comes from `access.adminEmail` in the private environment definition. The bastion and Headlamp ServiceAccounts both have
 Kubernetes `cluster-admin` rights across all namespaces, as intended for this lab.
 The bastion's Linux process runs as UID 1000; its Kubernetes privileges come from
 the ServiceAccount, not a privileged container.
@@ -14,6 +14,7 @@ Domain-local Helm hook Jobs generate and preserve credentials in Kubernetes:
 - `oauth2-proxy/oauth-config`: Kyverno combines the local OIDC client and session key.
 - `oauth2-proxy/browser-session`: the stable cookie key.
 - `gateway/lab-api-key`: the separate static model API key.
+- `rustfs/s3-observability`: separate credentials restricted to the five telemetry buckets.
 - `rustfs/s3-models`: shared read/write credentials for the models bucket.
 
 No generated credential is tracked or printed by deployment automation.

@@ -1,5 +1,8 @@
 # Align HTTP/2 buffers for multimodal responses
 
+Status: the buffer settings are retained. The multimodal model used to diagnose
+the issue is no longer part of the lab.
+
 ## Context
 
 An Omni text/audio request succeeded with Python's HTTP/1.1 client but returned

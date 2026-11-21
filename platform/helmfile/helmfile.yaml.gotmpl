@@ -295,6 +295,7 @@ releases:
     values:
       - values/dcgm-exporter.yaml
 
+{{/* Chain only enabled models: parallel cold imports can exhaust the single node and RustFS. */}}
 {{- $previousModel := "" }}
 {{- range $model, $settings := $infra.models }}
 {{- $native := (readFile (printf "../../charts/%s/values.yaml" $model) | fromYaml).nativeContextTokens }}

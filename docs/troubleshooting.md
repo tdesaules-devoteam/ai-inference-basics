@@ -2,8 +2,7 @@
 
 - **KCL 0.13.3 rejects external file probes:** initialize the pinned submodule
   revision, which includes the upstream host-file access correction. No local
-  KCL override or runtime patch is needed. `task ssh` connects directly using the
-  persisted VM identity without evaluating KCL.
+  KCL override or runtime patch is needed. `task devenv:ssh` connects to the VM using its persisted identity.
 - **VM startup fails:** use the original devenv dependency/network diagnostics.
   The host must already provide KVM, br-qemu, bridge-helper permissions and mDNS.
 - **Provisioning fails:** use `task devenv:ssh` and inspect the journals for
@@ -13,13 +12,10 @@
   executable is a consequence. Check `rpm -q selinux-policy-targeted cockpit-ws`
   and `rpm-ostree status`, including the booted versus staged deployments.
   Configure the policy unit as described in [local setup](devenv.md).
-- **Wrong workspace:** config.k overrides only the workspace fsdev path so the
-  shared directory is the repository root despite the include running in .devenv.
+- **Wrong workspace:** distinguish the native VM share from the persistent Git
+  checkout used by code-server. See [workspaces](workspaces.md).
 - **Charts do not converge:** inspect `helm list -A --all`, the bootstrap journal,
   controller readiness and webhook endpoints. Helmfile owns the releases.
 - **Browser fails:** use the VM hostname printed by up, check bridge/mDNS and trust
   the guest's self-signed certificate. Do not add a host tunnel as a workaround.
-- **Preview 502:** start the canonical port-forward in the matching bastion.
-
-This version is rebuilt with down/up. Do not manually uninstall the four related
-releases as a substitute for destroying the disposable VM.
+- **Keep or discard state:** `task devenv:stop` retains the disk; `task devenv:down` destroys it.

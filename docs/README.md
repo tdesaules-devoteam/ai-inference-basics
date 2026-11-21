@@ -4,6 +4,10 @@
 
 - [Local setup](devenv.md)
 - [Current CPU lab: access, image import and qualification](lab.md)
+- [Environment definition and model selection](infrastructure-definition.md)
+- [Native model context windows](token-budgets.md)
+- [GPU configuration and qualification limits](gpu.md)
+- [CI, render and runtime test inventory](../tests/README.md)
 - [Architecture](architecture.md)
 - [Operations](operations-runbook.md)
 - [Bastions and browser access](workspaces.md)

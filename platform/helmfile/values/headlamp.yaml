@@ -3,6 +3,7 @@ image:
   tag: v0.46.0@sha256:8a0ef97527544baa2b35825940ddf4db6e2d09c30cd5aa31fd269ff604cc8b75
 config:
   baseURL: /headlamp
+  # The shared admin uses this identity; the ingress policy below limits access to the browser proxy.
   unsafeUseServiceAccountToken: true
 clusterRoleBinding:
   clusterRoleName: cluster-admin

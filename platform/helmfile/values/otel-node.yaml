@@ -75,6 +75,7 @@ config:
       endpoint: http://loki.loki.svc.cluster.local:3100/otlp
     prometheusremotewrite:
       endpoint: http://mimir-gateway.mimir.svc.cluster.local/api/v1/push
+      # Keep the two writers distinct in Mimir and avoid duplicate target_info series.
       external_labels:
         collector: otel-node
       target_info:

@@ -12,6 +12,7 @@ tasks:
       DEFINITION: '{{default "infra/infra-definition.devenv.json" .INFRA_DEFINITION}}'
     cmds:
       - python3 platform/helmfile/scripts/validate-infra.py '{{.DEFINITION}}'
+  # This explicit operator task prints live secrets. Bootstrap and CI do not call it.
   lab:access:
     desc: Print the current lab login and model API key (explicit private use only)
     silent: true

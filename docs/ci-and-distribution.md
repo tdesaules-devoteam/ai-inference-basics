@@ -2,7 +2,8 @@
 
 Branch pushes run `main`; manual release preparation on `main` and stable SemVer
 tags run `release`; scheduled or manual maintenance runs `maintenance`. No VM or
-private environment definition is used. All action sources are owned by the [shared catalog](https://github.com/tdesaules/github-actions).
+private environment definition is used. Business operations use actions from the [shared catalog](https://github.com/tdesaules/github-actions);
+checkout, artifact transfer and App tokens use official GitHub actions.
 
 The Helmfile checks render both environments plus an empty model selection and
 check the bytes of pinned HTTP charts. Images are built separately for native

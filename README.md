@@ -26,6 +26,7 @@ see [lab access and qualification](docs/lab.md).
 - `infra/`: environment JSON schema/sample and the shared Helmfile values adapter.
 - `platform/units/`: inline tool installers, per-user kubeconfig generation and platform bootstrap.
 - `platform/cloud-init/`, `platform/terraform/`: empty local placeholders, no cloud code.
+- `oci/provision/`: credentials, RustFS IAM and model-import tooling for initialization Jobs.
 - `oci/bastion/`: Fedora Minimal administration image with Zellij and CLI tools.
 - `charts/`: six model charts, shared bastion, gateway/TLS and Dex configuration.
 - `tests/`: render checks and opt-in runtime qualification; `reports/` stays local and ignored.
@@ -41,15 +42,8 @@ sample specifies 12 vCPU, 48 GiB RAM and 64 GiB disk; the private environment JS
 is the sizing source for `.devenv/config.k`. The bootstrap fetches the pinned
 bastion and provision manifests before Helmfile runs. See [qualification](docs/lab.md#validation).
 
-**Foundation history:** a temporary
-Gateway/Agent Router route returned a mock OpenAI response; signed S3 operations
-and anonymous rejection passed, and test resources were removed. Reexecuting the
-bootstrap preserved the PVC and credential Secrets. A subsequent user-initiated
-down/up qualified the full foundation bootstrap from a clean VM without intervention.
-All six releases reached revision 1 and both RustFS hooks completed. The former storage-bootstrap chart is removed;
-no existing buckets were deleted.
-RustFS credential generation and bucket initialization now run as pre/post Helm
-hooks in extraManifests. Fresh-namespace creation, upgrade preservation and scoped
-RBAC were qualified; the host credential service has been removed.
+**Qualification:** the CPU lab has passed a blank-disk boot on FCOS 45, model API
+checks, shared S3 access checks and authenticated Grafana queries. The GPU sample
+is render-tested; H100 execution remains unqualified. See [acceptance](docs/acceptance.md).
 
 [Documentation](docs/README.md) · [Implementation status](docs/implementation-tracker.md)

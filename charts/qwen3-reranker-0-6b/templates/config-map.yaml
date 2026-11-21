@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/hook: pre-install,pre-upgrade
+    # The pre-install import Job needs both files before ordinary chart resources exist.
     helm.sh/hook-weight: "-5"
     helm.sh/hook-delete-policy: before-hook-creation
 data:

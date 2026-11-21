@@ -9,6 +9,7 @@ spec:
       serving.kserve.io/inferenceservice: {{ .Values.modelName }}
   policyTypes:
     - Ingress
+  # Only the cluster Collector scrapes vLLM; the node Collector reads logs on the host.
   ingress:
     - from:
         - namespaceSelector:

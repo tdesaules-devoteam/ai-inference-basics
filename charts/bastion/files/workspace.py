@@ -13,6 +13,7 @@ desired = {'workbench.colorTheme': os.environ['EDITOR_THEME'], 'window.autoDetec
            'editor.fontFamily': 'Geist Mono, Symbols Nerd Font Mono, monospace',
            'terminal.integrated.fontFamily': 'Geist Mono, Symbols Nerd Font Mono, monospace'}
 if any(preferences.get(key) != value for key, value in desired.items()):
+    # Keep the original JSONC once; later pod restarts must not replace that backup.
     backup = settings.with_name('settings.before-lab-theme.jsonc')
     if settings.exists() and not backup.exists():
         backup.write_text(settings.read_text())

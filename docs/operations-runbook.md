@@ -1,36 +1,45 @@
-# Operations
+# Operating the CPU lab
 
-Run from the repository root:
+Run these tasks on the workstation from the repository root, after completing
+[local setup](devenv.md):
+
+| Task | Effect |
+| --- | --- |
+| `task infra:validate` | Validate the private environment definition without displaying its credentials. |
+| `task devenv:up attach=false` | Start or provision the VM without attaching an interactive SSH session. |
+| `task devenv:ssh` | Connect to the guest using its native bridge and mDNS name. |
+| `task devenv:stop` | Stop the VM and retain its disk, workspace and buckets. |
+| `task devenv:down` | Destroy the VM disk, including its local persistent volumes. |
+
+## Check readiness inside the guest
+
+SSH availability does not mean the models are ready. On a first boot, check
+provisioning, then Helmfile, then the inference services:
 
 ```sh
-task up
-task ssh
-task down
-```
-
-`up` creates/provisions the lab and waits for readiness. `down` destroys the guest
-disk; there is no separate stop/destroy operator interface in this version.
-The original devenv runtime manages VM identity and disk lifecycle. SSH uses that
-persisted identity and the same SSH options directly, without KCL evaluation.
-
-Inside the VM, mise supplies kubectl, k9s, Helm and Task. Bootstrap writes the
-instructor's private kubeconfig to `~/.kube/config`.
-
-```sh
-kubectl get nodes
-kubectl get pods -A
-kubectl get charts.helm.k0sproject.io -n kube-system
-kubectl -n ai-inference-basics get llmisvc,isvc,gateway,httproute
+systemctl --failed
+systemctl status platform-images-ready.service platform-k0s-bootstrap.service --no-pager
+sudo journalctl -b -u platform-k0s-bootstrap.service --no-pager
 helm list -A
-k9s
-sudo journalctl -u ai-inference-basics-bootstrap.service
+kubectl get nodes
+kubectl get inferenceservices -A
+kubectl -n gateway get gateway,httproute
 ```
 
-The inline unit's marker is `/var/lib/ai-inference-basics/initialized`: it means
-the binary/configuration and bastion image have been installed, not that every
-application is ready. The host-side wait checks the four k0s-managed chart releases
-and model readiness before task up succeeds. Browser/API acceptance remains separate.
+A successful bootstrap uses the environment copied to `/etc/ai-inference-basics`.
+In the CPU sample all three Qwen services should be Ready. If a model is
+intentionally stopped, expect the KServe `Stopped=True` condition and zero
+predictor Pods instead. To verify actual responses, use the [API examples](api.md).
 
-Use the k0s configuration as the deployment authority. Do not run a competing
-manual upgrade against one of its releases. To rebuild the disposable lab, use
-`task down`, then `task up`.
+## Apply a configuration change
+
+Edit the private environment JSON and validate it on the workstation. Ignition
+copies are first-boot inputs: before reconciling an existing guest, synchronize
+the changed definition and any changed chart, values or unit files to their
+installed locations. Preserve the private definition's permissions. Reload systemd
+if units changed; if image pins changed, restart `platform-images-ready.service`.
+Then run `sudo systemctl restart platform-k0s-bootstrap.service` inside the guest.
+Helmfile owns the releases; `platform/k0s/k0s.yaml` configures the cluster itself.
+
+For failures see [troubleshooting](troubleshooting.md); for browser, S3 and
+telemetry qualification see [acceptance](acceptance.md).

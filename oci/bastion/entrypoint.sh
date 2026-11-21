@@ -3,6 +3,7 @@ set -euo pipefail
 umask 077
 mkdir -p "$HOME/.config" "$XDG_RUNTIME_DIR"
 [[ -e "$HOME/.bashrc" ]] || cp /etc/lab-bashrc "$HOME/.bashrc"
+# Reference the projected token file so kubectl sees token rotation without rewriting the PVC.
 if [[ -r /var/run/secrets/kubernetes.io/serviceaccount/token && ! -e "$HOME/.kube/config" ]]; then
   mkdir -p "$HOME/.kube"
   cat > "$HOME/.kube/config" <<EOF

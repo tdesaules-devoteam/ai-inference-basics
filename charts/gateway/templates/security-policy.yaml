@@ -4,6 +4,7 @@ metadata:
   name: model-api-key
   namespace: {{ .Release.Namespace }}
 spec:
+  # Agent Router creates this HTTPRoute; attach Bearer authentication only to model traffic.
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute

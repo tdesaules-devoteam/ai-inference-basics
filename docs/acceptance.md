@@ -1,23 +1,27 @@
 # Acceptance
 
-Offline checks validate upstream archive checksums, digest-pinned workload images,
-unique ownership, domain namespaces, embedded scripts, model locks and active
-defaults. Strict Helm lint covers active/stopped settings; KCL/Butane checks verify
-all source files are copied exactly. Offline checks do not constitute boot evidence.
+## Without a cluster
 
-After explicit VM authorization:
+From the repository root, `python tests/validate.py` renders the Helmfile storage
+and lab contracts with Helm, Helmfile and `requirements-dev.txt` installed. It
+checks CPU, GPU and disabled model selections, pinned artifacts, model locks,
+namespaces and ownership. It fetches upstream charts but does not install releases.
+Run `python -m unittest discover -s tests -p 'test_*.py'` for the configuration,
+credential, systemd and rollout checks; some checks require the Kyverno CLI or
+systemd tools. See [CI and distribution](ci-and-distribution.md) for image tests.
 
-- The full 16-release Helmfile bootstrap completes successfully.
-- One admin login reaches ttyd/Zellij, code-server and Headlamp over native HTTPS.
-- Bastion and Headlamp have actual cluster-admin permissions.
-- Anonymous identity-header spoofing fails, and browser cookies cannot authorize APIs.
-- All three verified model snapshots are present under their named S3 prefixes.
-- Each reader can read its own model but cannot write or read another model's objects.
-- Models automatically reach Ready=True with one inference Pod each.
-- Explicit stopping returns selected models to zero inference Pods.
-- Active models produce real chat/SSE, embeddings and reranking responses.
-- A short vLLM benchmark succeeds from the bastion through the internal Gateway.
-- A final bootstrap preserves credentials/PVCs and restores the one-replica default.
+## With the deployed CPU lab
 
-Scripts and prerequisites are listed in [lab validation](lab.md#validation).
-Observability and GPU acceptance remain future milestones. Reports stay ignored.
+| What to verify | Evidence |
+| --- | --- |
+| Clean boot | Native `devenv:up` succeeds; the image readiness and platform bootstrap units complete. The CPU sample selects 27 of 30 declared releases. |
+| Models | Three Ready InferenceServices; CA-verified chat, SSE, embeddings and reranking succeed, and invalid Bearer keys fail. |
+| Browser access | One Dex login reaches the terminal, editor, Headlamp and Grafana. The terminal and editor share the workspace PVC; browser cookies cannot authorize model requests. |
+| Storage | Model reader/writer aliases use one account that can read and write across all model prefixes. It cannot access any of the five observability buckets. |
+| Telemetry | A real chat request produces metrics in Mimir, token counts in Loki and a correlated gateway trace in Tempo, queried through authenticated Grafana. |
+| Reconciliation | On a retained disk, technical credentials and PVC identity survive a bootstrap rerun. A deliberately stopped model stays stopped until its desired replica count changes. |
+
+The FCOS 45 clean boot and CPU runtime checks are recorded in the
+[implementation tracker](implementation-tracker.md). An offline Scaleway render
+is not H100 qualification. Performance benchmarks are not an acceptance gate.
+Runtime commands, private inputs and fixture prerequisites are in [lab validation](lab.md#validation).

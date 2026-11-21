@@ -179,6 +179,7 @@ jobs:
           destination: .candidate
           application-smoke: ${{ matrix.image }}
         if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
+      # Execute the candidate itself before its build receipt can be promoted to tested.
       - uses: ./.candidate
       - uses: tdesaules/github-actions/workflow/test-build-artifact@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:

@@ -158,9 +158,8 @@ The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust for client
 code-server opens `/workspace/ai-inference-basics` by default and initializes new
 user settings with Nord and Geist fonts. Its init container clones the
 configured repository only when no checkout exists, and preserves existing files
-and editor preferences. The workspace is a persistent Git copy, not a bind mount
-of the workstation checkout. For this deployment it was seeded from local Git
-history because the remote does not yet contain the latest lab commits.
+and unrelated editor preferences. The workspace is a persistent Git copy, not a bind mount
+of the workstation checkout.
 
 ## Validation
 
@@ -180,7 +179,7 @@ Runtime checks require the deployed lab and explicit authorization:
 - `tests/qualify_admin.sh`: actual bastion and Headlamp cluster-admin permissions
   and the shared terminal/editor volume.
 - `tests/browser/qualify.mjs`: one Dex login, real terminal command, editor,
-  Headlamp, anonymous-header spoof rejection and API-cookie rejection.
+  Headlamp, Grafana datasource queries, anonymous-header spoof rejection and API-cookie rejection.
   Set `LAB_SKIP_TERMINAL_COMMAND=1` when the shared terminal is already running
   an application; it then checks terminal rendering without typing into it.
 - `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
@@ -196,22 +195,10 @@ object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
 Chromium accepts the lab certificate for interaction tests; API TLS verification
 is performed separately with the CA. Reports and credentials stay untracked.
 
-The previous domain reorganization qualification passed the admin browser journey, both
-cluster-admin identities, prefix-scoped S3 checks, all three real APIs and the
-bastion benchmark. Reexecuting the complete bootstrap preserved nine credential
-Secrets and the workspace PVC, deployed all 16 releases, and returned all three
-models to Stopped=True with zero inference Pods. That validated the stopped mode;
-the current JSON definition now controls activation per model.
-The automatic-start default was qualified without `LAB_MODEL_REPLICAS`: all three
-InferenceServices reached Ready=True, and TLS/Bearer, chat/SSE, embeddings and
-reranking checks passed.
-
-Those earlier results predate the JSON/Kyverno/native-extension migration. The
-three-Qwen configuration was separately qualified on the retained 48-GiB VM
-disk: a native stop/start, successful platform bootstrap, three ready services,
-actual model requests, workspace/PVC and credential preservation, S3 isolation
-and authenticated Grafana telemetry. For the FCOS 45 first-boot policy correction,
-see [local setup](devenv.md) and the [tracker](implementation-tracker.md).
+The FCOS 45 CPU lab passed a native blank-disk bootstrap and real model, S3,
+workspace, browser and telemetry checks. Retained-disk tests separately checked
+credential and PVC preservation. See the [tracker](implementation-tracker.md)
+for the scope of each run; GPU execution is not part of this evidence.
 
 ## Existing installations of the previous layout
 

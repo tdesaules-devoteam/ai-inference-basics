@@ -12,7 +12,7 @@ spec:
     bufferLimit: {{ .Values.bufferLimit }}
   http2:
     # HTTP/2 stream buffers are independent of the TCP connection watermark.
-    # Buffered multimodal responses must not retain the default 64-KiB limit.
+    # Align both windows so a smaller per-stream limit does not truncate buffered responses.
     initialStreamWindowSize: {{ .Values.bufferLimit }}
     initialConnectionWindowSize: {{ .Values.bufferLimit }}
   headers:

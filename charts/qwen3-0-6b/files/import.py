@@ -1,4 +1,4 @@
-"""Import one pinned Hugging Face snapshot into its immutable S3 prefix."""
+"""Import one pinned Hugging Face snapshot into its revision-specific S3 prefix."""
 import hashlib
 import json
 import os
@@ -25,6 +25,7 @@ for entry in model['files']:
         if error.response['ResponseMetadata']['HTTPStatusCode'] != 404:
             raise
     else:
+        # Reuse by stored size and hash metadata; this is not a fresh download or S3 Object Lock.
         if existing['ContentLength'] != entry['size'] or existing.get('Metadata', {}).get('sha256') != entry['sha256']:
             raise RuntimeError('Immutable S3 object differs: ' + key)
         print('Already imported: ' + entry['path'], flush=True)
@@ -41,5 +42,6 @@ for entry in model['files']:
     assert uploaded['ContentLength'] == entry['size'] and uploaded['Metadata']['sha256'] == checksum
     target.unlink()
     print('Verified and uploaded: ' + entry['path'], flush=True)
+# Publish the inventory only after every expected object has passed its check.
 s3.put_object(Bucket=bucket, Key=prefix + 'snapshot-manifest.json', Body=json.dumps(model, sort_keys=True).encode())
 print('Pinned model snapshot available: ' + name, flush=True)

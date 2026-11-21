@@ -23,8 +23,9 @@ values pin workload images. There is no deployment-time custom chart downloader.
 
 Current render checks cover the full Helmfile platform, CPU/GPU selection, disabled
 models, image pins, namespace boundaries and resource ownership. Unit checks cover
-request limits, credential handling, reload patches and model convergence.
-The earlier six-release foundation update was installed in the authorized
+environment validation, credential handling, reload patches and model convergence.
+The current FCOS 45 CPU platform has passed a blank-disk bootstrap with real
+model APIs and browser/telemetry checks. The earlier six-release foundation update was installed in the authorized
 existing VM and then qualified from scratch during a user-initiated down/up, with
 all six releases at revision 1 and both RustFS hooks completing without intervention.
 The earlier authorized clean rebuild qualified the storage-only flow. Earlier full-lab

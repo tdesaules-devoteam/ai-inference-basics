@@ -2,7 +2,8 @@
 
 Helmfile is the sole owner of the platform releases. k0s configures the native
 cluster only; `platform/k0s/k0s.yaml` has no Helm extensions. Project-authored
-charts belong in `charts/`; this milestone uses upstream charts exclusively.
+charts belong in `charts/`. This page focuses on the storage and routing subset
+of the current deployment; see [lab operations](lab.md) for the full stack.
 
 ## Releases and upstream sources
 
@@ -30,7 +31,7 @@ images, are pinned by digest. The upstream image exception remains applicable.
 ## Dependency and readiness contract
 
 ```text
-local-path-provisioner → rustfs (including bucket Job)
+local-path-provisioner + kyverno → rustfs (credentials, buckets and IAM)
 
 cert-manager ────────────┐
 envoy-gateway ───────────┼→ agent-router
@@ -48,7 +49,7 @@ names still use ai-gateway. Its controller and Service are named `agent-router`.
 Envoy Gateway's extension manager connects to
 `agent-router.agent-router.svc.cluster.local:1063`; Agent Router's Envoy RBAC points
 to `envoy-gateway`. Envoy data-plane pods are created in each Gateway's namespace.
-No model API, public Gateway or browser route is installed in this milestone.
+The project gateway chart supplies the public listener and browser/model routes.
 QuotaPolicy and the optional rate-limit server are not enabled yet.
 
 ## RustFS buckets and persistent data
@@ -70,11 +71,11 @@ stages, without a dedicated chart or host credential service:
    Other API errors fail the hook. A concurrent creation (409) is followed by a
    fresh read and validation. An existing invalid Secret fails without replacement.
 2. After RustFS is ready, the `rustfs-buckets` post-install/post-upgrade Job creates
-   and checks the application buckets using that Secret.
+   and checks the application buckets using that Secret. The subsequent `rustfs-accounts`
+   Job applies separate IAM policies for models and observability.
 
-The credential Job uses a digest-pinned official Python image and only the standard
-library; it does not install tools or packages at runtime. It never prints credential
-values. RBAC grants GET only for rustfs-root and CREATE Secrets only in the release
+The credential Job uses the pinned provision image with Python and kubectl; it does not install tools or packages at runtime. It never prints credential
+values. RBAC grants GET for `rustfs-root`, `s3-models` and `s3-observability`, and CREATE only in the release
 namespace; Kubernetes cannot restrict CREATE by resource name. No list/update/delete
 permissions or ClusterRoleBinding are granted. The buckets Job has no API token.
 
@@ -84,7 +85,7 @@ The six buckets are:
 - `mimir-blocks`, `mimir-ruler`, `mimir-alertmanager`;
 - `models`.
 
-There is no separate storage-bootstrap chart/release. Both Jobs have a one-hour
+There is no separate storage-bootstrap chart/release. The bucket and credential Jobs have a one-hour
 TTL after completion/failure and are replaced before their next hook execution.
 The hook RBAC and generated Secret remain until explicitly removed or their
 namespace is deleted; Helm uninstall does not own the generated Secret. Upgrades
@@ -96,7 +97,7 @@ The internal endpoint is `http://rustfs-svc.rustfs.svc.cluster.local:9000`, usin
 region `us-east-1` and path-style S3 addressing. Only ClusterIP services are exposed;
 the RustFS console is disabled. Data survives pod replacement but is lost when the
 VM disk is destroyed. Root credentials are reserved for administration/bootstrap;
-per-application bucket-scoped credentials will accompany the application consumers.
+the model and observability accounts have disjoint bucket permissions.
 
 ## Provisioning units
 
@@ -146,9 +147,10 @@ explicit migration; merely omitting a release from Helmfile does not uninstall i
 
 ## Validation
 
-With Helm 4.3.1, Helmfile 1.8.3 and a Python environment containing PyYAML:
+With Helm 4.3.1, Helmfile 1.8.3 and a Python environment containing `requirements-dev.txt`:
 
 ```sh
+export INFRA_DEFINITION="$PWD/infra/infra-definition.sample.json"
 helmfile -f platform/helmfile/helmfile.yaml.gotmpl show-dag
 helmfile -f platform/helmfile/helmfile.yaml.gotmpl lint
 python3 tests/validate_storage.py

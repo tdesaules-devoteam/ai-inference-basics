@@ -44,6 +44,7 @@ jobs:
         if: ${{ !cancelled() && steps.plan.outcome == 'success' }}
         with:
           files: ${{ steps.files.outputs.lychee-files }}
+      # Rescan deployed images even if the Renovate App token or a link check failed.
       - name: Generate published bastion SBOM
         uses: tdesaules/github-actions/oci/new-sbom@be037a8ee89b4431dde66fe72c482b5e9c66d137
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}

@@ -3,13 +3,14 @@
 The shared HTTPS Gateway serves the browser and model APIs. Browser sessions and
 model API credentials are independent: APIs require `Authorization: Bearer <key>`.
 
-| Endpoint | Model name and namespace |
+| Endpoint | CPU sample model name and namespace |
 | --- | --- |
 | `POST /v1/chat/completions` | `qwen3-0-6b` |
 | `POST /v1/embeddings` | `qwen3-embedding-0-6b` |
 | `POST /cohere/v2/rerank` | `qwen3-reranker-0-6b` |
 
-All three use KServe `InferenceService` and vLLM CPU. They start automatically
+The CPU sample uses KServe `InferenceService` and vLLM CPU for all three.
+For the GPU sample, use the [corresponding GPU model names](gpu.md#environment-selection). They start automatically
 according to the environment JSON. Setting a model's `replicas` to zero stops selected
 models as described in [lab operations](lab.md); requests do not wake stopped models.
 

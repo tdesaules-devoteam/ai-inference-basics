@@ -88,11 +88,10 @@ checks KServe convergence, including the explicit stopped state.
 
 ## Existing installation migration
 
-The source refactor has offline validation only. Before applying to the existing
-VM, import the new provision image (now containing kubectl), install the host
-Python JSON-schema dependency, and synchronize the new source directories and
-bootstrap unit. Preserve the current credential Secrets and PVCs. The native
-devenv lifecycle and identity are unchanged; Ignition is first-boot provisioning.
+The CPU layout is qualified on a newly provisioned FCOS 45 VM. This does not
+validate an in-place migration from the retired umbrella chart. For an existing
+guest, preserve credential Secrets and PVCs and reconcile the guest copies of
+the environment, charts and units. The samples use public GHCR image digests.
 
 The previous `dex-domain` ServiceAccount/Role/RoleBinding were Helm hook resources;
 inspect their ownership before moving them to the `dex-config` release. Old hook

@@ -171,6 +171,7 @@ jobs:
           destination: .candidate
           application-smoke: ${{ matrix.image }}
         if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
+      # The catalog generated this action in the runner workspace for the exact candidate digest.
       - uses: ./.candidate
         if: ${{ !contains(fromJSON(needs.check.outputs.scan_only), matrix.image) }}
       - uses: tdesaules/github-actions/workflow/test-build-artifact@be037a8ee89b4431dde66fe72c482b5e9c66d137

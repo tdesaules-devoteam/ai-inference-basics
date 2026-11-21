@@ -30,6 +30,7 @@ def publish(name, values):
                    input=json.dumps(document), text=True, check=True, stdout=subprocess.DEVNULL)
 
 
+# Keep the OIDC client secret and user ID stable across Helm upgrades, even if the login changes.
 existing = read('admin-access')
 if existing:
     state = json.loads(data(existing)['credentials.json'])

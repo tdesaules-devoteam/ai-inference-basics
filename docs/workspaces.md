@@ -1,11 +1,12 @@
 # Shared administration workspace
 
-Pair training uses one computer, one Dex account named `admin`, and one shared
+Pair training uses one computer, one Dex account named `cluster-admin`, and one shared
 workspace in namespace `bastion`. Its Deployment contains ttyd with Zellij CLI
 and code-server, sharing a 2-GiB PVC. There is no separate Zellij web-token login.
 
 - `/terminal/`: shared Zellij session.
 - `/code/`: shared editor and files (not a Live Share collaboration service).
+- `/grafana/`: Explore the metrics, logs and traces collected by the lab.
 - `/headlamp/`: full Kubernetes administration through the same browser login.
 
 The bastion and Headlamp ServiceAccounts have `cluster-admin` permissions across
@@ -14,13 +15,13 @@ workspace are shared intentionally; there are no Alice/Bob instances or `lab-a`
 and `lab-b` namespaces in new installs.
 
 code-server opens the persistent checkout at `/workspace/ai-inference-basics`.
-New editor settings use the Default Dark Modern theme. Initialization preserves
+Initialization applies the Nord theme and Geist fonts, backing up existing settings
+before changing the managed keys. It preserves
 an existing checkout and user settings; it never resets or automatically pulls
 over local changes. This is a Git copy inside the PVC, not the host checkout.
 
 The Fedora Minimal image includes kubectl, k9s, vLLM benchmarking, curl, bash,
-Zellij, Starship, jq, Helix, code-server and RustFS rc. It is built on the host and
-currently imported locally into native k0s. No nested container engine is needed.
+Zellij, Starship, jq, Helix and code-server. Native k0s pulls it by digest from GHCR. No nested container engine is needed.
 
 See [lab access](lab.md) for private credential retrieval, the image prerequisite,
 model activation and qualification commands. A persistent workspace survives Pod

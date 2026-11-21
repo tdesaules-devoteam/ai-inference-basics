@@ -103,6 +103,7 @@ config:
         insecure: true
     prometheusremotewrite:
       endpoint: http://mimir-gateway.mimir.svc.cluster.local/api/v1/push
+      # Keep the two writers distinct in Mimir and avoid duplicate target_info series.
       external_labels:
         collector: otel-cluster
       target_info:

@@ -9,6 +9,7 @@ if [[ $(kubectl -n "$name" get inferenceservice "$name" -o jsonpath='{.metadata.
   echo "$name is stopped with zero inference Pods."
   exit 0
 fi
+# A Ready status from the previous generation is not proof that the new runtime settings took effect.
 until
   desired=$(kubectl -n "$name" get inferenceservice "$name" -o json)
   runtime=$(kubectl -n "$name" get servingruntime "$name" -o json)

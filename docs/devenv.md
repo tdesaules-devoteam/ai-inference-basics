@@ -86,7 +86,7 @@ Local custom copies include the JSON schema, private environment definition
 (mode 0600), shared `infra/helmfile/lab.yaml.gotmpl` adapter and readiness checks.
 The local config reads machine sizing from `infra/infra-definition.devenv.json`;
 the bootstrap unit selects this guest-side definition through `INFRA_DEFINITION`.
-The host Python package `python3-jsonschema` validates it before Helmfile rendering.
+The guest Python package `python3-jsonschema` validates it before Helmfile rendering.
 Units are loaded with KCL `file.read` from `../platform/units/`:
 
 - `platform-k0s-install.service` installs native k0s;
@@ -97,6 +97,7 @@ Units are loaded with KCL `file.read` from `../platform/units/`:
 - `platform-curl-install.service` ensures the distribution curl package is available;
 - `platform-kubeconfig@<user>.service` creates the administrator kubeconfig for the selected account;
 - `platform-k0s-ready.service` waits for the API and Ready node;
+- `platform-images-ready.service` waits for containerd, then makes the two application images available;
 - `platform-k0s-bootstrap.service` coordinates those dependencies and runs Helmfile.
 
 The readiness unit is dependency-activated, not enabled independently. Helmfile
