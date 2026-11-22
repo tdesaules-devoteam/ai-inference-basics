@@ -41,4 +41,6 @@ Official references:
 - [Zellij](https://zellij.dev/documentation/)
 
 The user approved official upstream images outside the project's build-base
-allowlist. Project-owned bastion and CI builds still use allowed, pinned bases.
+allowlist. Bastion and provision build from `quay.io/fedora/fedora-minimal:45`
+without a digest so rebuilds pick up Fedora 45 base updates. The lab deploys the
+resulting qualified application images by manifest digest.

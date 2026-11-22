@@ -2,5 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", "docker:pinDigests"],
   "enabledManagers": ["dockerfile", "github-actions", "helm-values", "helmv3", "pip_requirements"],
-  "packageRules": [{"matchManagers": ["helmv3"], "automerge": false}]
+  "packageRules": [
+    {"matchManagers": ["helmv3"], "automerge": false},
+    {
+      "description": "Keep the Fedora Minimal build base on the rolling 45 tag",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["quay.io/fedora/fedora-minimal"],
+      "allowedVersions": "/^45$/",
+      "pinDigests": false
+    }
+  ]
 }
