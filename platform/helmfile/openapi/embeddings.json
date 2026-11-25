@@ -1,0 +1,2877 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/embeddings": {
+      "post": {
+        "summary": "Create Embedding",
+        "operationId": "create_embedding_v1_embeddings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/embeddings_EmbeddingCompletionRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_EmbeddingChatRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_EmbeddingBatchChatRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_EmbeddingChatInputRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_EmbeddingBatchChatInputRequest"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/embeddings_ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/embeddings_ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/embeddings_HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "schemas": {
+    "embeddings_EmbeddingCompletionRequest": {
+      "properties": {
+        "add_special_tokens": {
+          "type": "boolean",
+          "title": "Add Special Tokens",
+          "description": "If true (the default), special tokens (e.g. BOS) will be added to the prompt.",
+          "default": true
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "encoding_format": {
+          "type": "string",
+          "enum": [
+            "float",
+            "base64",
+            "bytes",
+            "bytes_only"
+          ],
+          "title": "Encoding Format",
+          "default": "float"
+        },
+        "embed_dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float16",
+            "bfloat16",
+            "fp8_e4m3",
+            "fp8_e5m2"
+          ],
+          "title": "Embed Dtype",
+          "description": "What dtype to use for encoding. Default to using float32 for base64 encoding to match the OpenAI python client behavior. This parameter will affect base64 and binary_response.",
+          "default": "float32"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "native",
+            "big",
+            "little"
+          ],
+          "title": "Endianness",
+          "description": "What endianness to use for encoding. Default to using native for base64 encoding to match the OpenAI python client behavior.This parameter will affect base64 and binary_response.",
+          "default": "native"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Dimensions"
+        },
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "input": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Input"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "title": "EmbeddingCompletionRequest"
+    },
+    "embeddings_EmbeddingChatRequest": {
+      "properties": {
+        "add_special_tokens": {
+          "type": "boolean",
+          "title": "Add Special Tokens",
+          "description": "If true, special tokens (e.g. BOS) will be added to the prompt on top of what is added by the chat template. For most models, the chat template takes care of adding the special tokens so this should be set to false (as is the default).",
+          "default": false
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "encoding_format": {
+          "type": "string",
+          "enum": [
+            "float",
+            "base64",
+            "bytes",
+            "bytes_only"
+          ],
+          "title": "Encoding Format",
+          "default": "float"
+        },
+        "embed_dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float16",
+            "bfloat16",
+            "fp8_e4m3",
+            "fp8_e5m2"
+          ],
+          "title": "Embed Dtype",
+          "description": "What dtype to use for encoding. Default to using float32 for base64 encoding to match the OpenAI python client behavior. This parameter will affect base64 and binary_response.",
+          "default": "float32"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "native",
+            "big",
+            "little"
+          ],
+          "title": "Endianness",
+          "description": "What endianness to use for encoding. Default to using native for base64 encoding to match the OpenAI python client behavior.This parameter will affect base64 and binary_response.",
+          "default": "native"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Dimensions"
+        },
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "add_generation_prompt": {
+          "type": "boolean",
+          "title": "Add Generation Prompt",
+          "description": "If true, the generation prompt will be added to the chat template. This is a parameter used by chat template in tokenizer config of the model.",
+          "default": false
+        },
+        "continue_final_message": {
+          "type": "boolean",
+          "title": "Continue Final Message",
+          "description": "If this is set, the chat will be formatted so that the final message in the chat is open-ended, without any EOS tokens. The model will continue this message rather than starting a new one. This allows you to \"prefill\" part of the model's response for it. Cannot be used at the same time as `add_generation_prompt`.",
+          "default": false
+        },
+        "chat_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template",
+          "description": "A Jinja template to use for this conversion. As of transformers v4.44, default chat template is no longer allowed, so you must provide a chat template if the tokenizer does not define one."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the template renderer. Will be accessible by the chat template."
+        },
+        "media_io_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media Io Kwargs",
+          "description": "Additional kwargs to pass to the media IO connectors, keyed by modality. Merged with engine-level media_io_kwargs."
+        },
+        "messages": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_Message"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Messages"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "messages"
+      ],
+      "title": "EmbeddingChatRequest",
+      "description": "OpenAI embeddings request with one top-level chat conversation."
+    },
+    "embeddings_ChatCompletionDeveloperMessageParam": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Content"
+        },
+        "role": {
+          "type": "string",
+          "const": "developer",
+          "title": "Role"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content",
+        "role"
+      ],
+      "title": "ChatCompletionDeveloperMessageParam",
+      "description": "Developer-provided instructions that the model should follow, regardless of\nmessages sent by the user. With o1 models and newer, `developer` messages\nreplace the previous `system` messages."
+    },
+    "embeddings_ChatCompletionContentPartTextParam": {
+      "properties": {
+        "text": {
+          "type": "string",
+          "title": "Text"
+        },
+        "type": {
+          "type": "string",
+          "const": "text",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/embeddings_PromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "text",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartTextParam",
+      "description": "Learn about [text inputs](https://developers.openai.com/api/docs/guides/text)."
+    },
+    "embeddings_PromptCacheBreakpoint": {
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "explicit",
+          "title": "Mode"
+        },
+        "ttl": {
+          "type": "string",
+          "enum": [
+            "30m",
+            "12h"
+          ],
+          "title": "Ttl"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "title": "PromptCacheBreakpoint",
+      "description": "Marks the exact end of a reusable prompt prefix.\n\nWhen `ttl` is omitted, the breakpoint inherits the request's `prompt_cache_options.ttl`; the boundary is not rounded to a token block."
+    },
+    "embeddings_ChatCompletionSystemMessageParam": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Content"
+        },
+        "role": {
+          "type": "string",
+          "const": "system",
+          "title": "Role"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content",
+        "role"
+      ],
+      "title": "ChatCompletionSystemMessageParam",
+      "description": "Developer-provided instructions that the model should follow, regardless of\nmessages sent by the user. With o1 models and newer, use `developer` messages\nfor this purpose instead."
+    },
+    "embeddings_ChatCompletionUserMessageParam": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartImageParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartInputAudioParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_File"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Content"
+        },
+        "role": {
+          "type": "string",
+          "const": "user",
+          "title": "Role"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content",
+        "role"
+      ],
+      "title": "ChatCompletionUserMessageParam",
+      "description": "Messages sent by an end user, containing prompts or additional context\ninformation."
+    },
+    "embeddings_ChatCompletionContentPartImageParam": {
+      "properties": {
+        "image_url": {
+          "$ref": "#/components/schemas/embeddings_ImageURL"
+        },
+        "type": {
+          "type": "string",
+          "const": "image_url",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/embeddings_PromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "image_url",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartImageParam",
+      "description": "Learn about [image inputs](https://developers.openai.com/api/docs/guides/images-vision)."
+    },
+    "embeddings_ImageURL": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Url"
+        },
+        "detail": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "low",
+            "high",
+            "original"
+          ],
+          "title": "Detail"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "title": "ImageURL"
+    },
+    "embeddings_ChatCompletionContentPartInputAudioParam": {
+      "properties": {
+        "input_audio": {
+          "$ref": "#/components/schemas/embeddings_InputAudio"
+        },
+        "type": {
+          "type": "string",
+          "const": "input_audio",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/embeddings_PromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "input_audio",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartInputAudioParam",
+      "description": "Learn about [audio inputs](https://developers.openai.com/api/docs/guides/audio)."
+    },
+    "embeddings_InputAudio": {
+      "properties": {
+        "data": {
+          "type": "string",
+          "title": "Data"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "wav",
+            "mp3"
+          ],
+          "title": "Format"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "data",
+        "format"
+      ],
+      "title": "InputAudio"
+    },
+    "embeddings_File": {
+      "properties": {
+        "file": {
+          "$ref": "#/components/schemas/embeddings_FileFile"
+        },
+        "type": {
+          "type": "string",
+          "const": "file",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/embeddings_FilePromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "file",
+        "type"
+      ],
+      "title": "File",
+      "description": "Learn about [file inputs](https://developers.openai.com/api/docs/guides/text) for text generation."
+    },
+    "embeddings_FileFile": {
+      "properties": {
+        "file_data": {
+          "type": "string",
+          "title": "File Data"
+        },
+        "file_id": {
+          "type": "string",
+          "title": "File Id"
+        },
+        "filename": {
+          "type": "string",
+          "title": "Filename"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "title": "FileFile"
+    },
+    "embeddings_FilePromptCacheBreakpoint": {
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "explicit",
+          "title": "Mode"
+        },
+        "ttl": {
+          "type": "string",
+          "enum": [
+            "30m",
+            "12h"
+          ],
+          "title": "Ttl"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "title": "FilePromptCacheBreakpoint",
+      "description": "Marks the exact end of a reusable prompt prefix.\n\nWhen `ttl` is omitted, the breakpoint inherits the request's `prompt_cache_options.ttl`; the boundary is not rounded to a token block."
+    },
+    "embeddings_ChatCompletionAssistantMessageParam": {
+      "properties": {
+        "role": {
+          "type": "string",
+          "const": "assistant",
+          "title": "Role"
+        },
+        "audio": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/embeddings_Audio"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartRefusalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content"
+        },
+        "function_call": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/embeddings_FunctionCall"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "refusal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refusal"
+        },
+        "tool_calls": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionMessageFunctionToolCallParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionMessageCustomToolCallParam"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Tool Calls"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "title": "ChatCompletionAssistantMessageParam",
+      "description": "Messages sent by the model in response to user messages."
+    },
+    "embeddings_Audio": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "title": "Audio",
+      "description": "Data about a previous audio response from the model.\n[Learn more](https://developers.openai.com/api/docs/guides/audio)."
+    },
+    "embeddings_ChatCompletionContentPartRefusalParam": {
+      "properties": {
+        "refusal": {
+          "type": "string",
+          "title": "Refusal"
+        },
+        "type": {
+          "type": "string",
+          "const": "refusal",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "refusal",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartRefusalParam"
+    },
+    "embeddings_FunctionCall": {
+      "properties": {
+        "arguments": {
+          "type": "string",
+          "title": "Arguments"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "arguments",
+        "name"
+      ],
+      "title": "FunctionCall",
+      "description": "Deprecated and replaced by `tool_calls`.\n\nThe name and arguments of a function that should be called, as generated by the model."
+    },
+    "embeddings_ChatCompletionMessageFunctionToolCallParam": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id"
+        },
+        "function": {
+          "$ref": "#/components/schemas/embeddings_Function"
+        },
+        "type": {
+          "type": "string",
+          "const": "function",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "id",
+        "function",
+        "type"
+      ],
+      "title": "ChatCompletionMessageFunctionToolCallParam",
+      "description": "A call to a function tool created by the model."
+    },
+    "embeddings_Function": {
+      "properties": {
+        "arguments": {
+          "type": "string",
+          "title": "Arguments"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "arguments",
+        "name"
+      ],
+      "title": "Function",
+      "description": "The function that the model called."
+    },
+    "embeddings_ChatCompletionMessageCustomToolCallParam": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id"
+        },
+        "custom": {
+          "$ref": "#/components/schemas/embeddings_Custom"
+        },
+        "type": {
+          "type": "string",
+          "const": "custom",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "id",
+        "custom",
+        "type"
+      ],
+      "title": "ChatCompletionMessageCustomToolCallParam",
+      "description": "A call to a custom tool created by the model."
+    },
+    "embeddings_Custom": {
+      "properties": {
+        "input": {
+          "type": "string",
+          "title": "Input"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "input",
+        "name"
+      ],
+      "title": "Custom",
+      "description": "The custom tool that the model called."
+    },
+    "embeddings_ChatCompletionToolMessageParam": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Content"
+        },
+        "role": {
+          "type": "string",
+          "const": "tool",
+          "title": "Role"
+        },
+        "tool_call_id": {
+          "type": "string",
+          "title": "Tool Call Id"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content",
+        "role",
+        "tool_call_id"
+      ],
+      "title": "ChatCompletionToolMessageParam"
+    },
+    "embeddings_ChatCompletionFunctionMessageParam": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "role": {
+          "type": "string",
+          "const": "function",
+          "title": "Role"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content",
+        "name",
+        "role"
+      ],
+      "title": "ChatCompletionFunctionMessageParam"
+    },
+    "embeddings_CustomChatCompletionMessageParam": {
+      "properties": {
+        "role": {
+          "type": "string",
+          "title": "Role"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartTextParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartImageParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartInputAudioParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_File"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartAudioParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartVideoParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartRefusalParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_CustomChatCompletionContentSimpleImageParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartImageEmbedsParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartAudioEmbedsParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartVideoEmbedsParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartPromptEmbedsParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_CustomChatCompletionContentSimpleAudioParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_CustomChatCompletionContentSimpleVideoParam"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_CustomChatCompletionContentToolReferenceParam"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/embeddings_CustomThinkCompletionContentParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Content"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "tool_call_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tool Call Id"
+        },
+        "tool_calls": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionMessageFunctionToolCallParam"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tool Calls"
+        },
+        "reasoning": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/embeddings_ChatCompletionContentPartPromptEmbedsParam"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reasoning"
+        },
+        "tools": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionToolParam"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tools"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Task"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "title": "CustomChatCompletionMessageParam",
+      "description": "Enables custom roles in the Chat Completion API."
+    },
+    "embeddings_ChatCompletionContentPartAudioParam": {
+      "properties": {
+        "audio_url": {
+          "$ref": "#/components/schemas/embeddings_AudioURL"
+        },
+        "type": {
+          "type": "string",
+          "const": "audio_url",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "audio_url",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartAudioParam"
+    },
+    "embeddings_AudioURL": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Url"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "title": "AudioURL"
+    },
+    "embeddings_ChatCompletionContentPartVideoParam": {
+      "properties": {
+        "video_url": {
+          "$ref": "#/components/schemas/embeddings_VideoURL"
+        },
+        "type": {
+          "type": "string",
+          "const": "video_url",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "video_url",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartVideoParam"
+    },
+    "embeddings_VideoURL": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Url"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "title": "VideoURL"
+    },
+    "embeddings_CustomChatCompletionContentSimpleImageParam": {
+      "properties": {
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Url"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "title": "CustomChatCompletionContentSimpleImageParam",
+      "description": "A simpler version of the param that only accepts a plain image_url.\nThis is supported by OpenAI API, although it is not documented.\n\nExample:\n{\n    \"image_url\": \"https://example.com/image.jpg\"\n}"
+    },
+    "embeddings_ChatCompletionContentPartImageEmbedsParam": {
+      "properties": {
+        "image_embeds": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Embeds"
+        },
+        "type": {
+          "type": "string",
+          "const": "image_embeds",
+          "title": "Type"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "title": "ChatCompletionContentPartImageEmbedsParam"
+    },
+    "embeddings_ChatCompletionContentPartAudioEmbedsParam": {
+      "properties": {
+        "audio_embeds": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Audio Embeds"
+        },
+        "type": {
+          "type": "string",
+          "const": "audio_embeds",
+          "title": "Type"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "title": "ChatCompletionContentPartAudioEmbedsParam"
+    },
+    "embeddings_ChatCompletionContentPartVideoEmbedsParam": {
+      "properties": {
+        "video_embeds": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Video Embeds"
+        },
+        "audio_embeds": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Audio Embeds"
+        },
+        "type": {
+          "type": "string",
+          "const": "video_embeds",
+          "title": "Type"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "title": "ChatCompletionContentPartVideoEmbedsParam"
+    },
+    "embeddings_ChatCompletionContentPartPromptEmbedsParam": {
+      "properties": {
+        "data": {
+          "type": "string",
+          "title": "Data"
+        },
+        "type": {
+          "type": "string",
+          "const": "prompt_embeds",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "data",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartPromptEmbedsParam"
+    },
+    "embeddings_CustomChatCompletionContentSimpleAudioParam": {
+      "properties": {
+        "audio_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Audio Url"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "title": "CustomChatCompletionContentSimpleAudioParam",
+      "description": "A simpler version of the param that only accepts a plain audio_url.\n\nExample:\n{\n    \"audio_url\": \"https://example.com/audio.mp3\"\n}"
+    },
+    "embeddings_CustomChatCompletionContentSimpleVideoParam": {
+      "properties": {
+        "video_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Video Url"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "title": "CustomChatCompletionContentSimpleVideoParam",
+      "description": "A simpler version of the param that only accepts a plain audio_url.\n\nExample:\n{\n    \"video_url\": \"https://example.com/video.mp4\"\n}"
+    },
+    "embeddings_CustomChatCompletionContentToolReferenceParam": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "type": {
+          "type": "string",
+          "const": "tool_reference",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "title": "CustomChatCompletionContentToolReferenceParam",
+      "description": "A tool reference content param that only accepts a plain tool name.\n\nExample:\n{\n    \"name\": \"get_weather\",\n    \"type\": \"tool_reference\"\n}"
+    },
+    "embeddings_CustomThinkCompletionContentParam": {
+      "properties": {
+        "thinking": {
+          "type": "string",
+          "title": "Thinking"
+        },
+        "closed": {
+          "type": "boolean",
+          "title": "Closed"
+        },
+        "type": {
+          "type": "string",
+          "const": "thinking",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "thinking",
+        "type"
+      ],
+      "title": "CustomThinkCompletionContentParam",
+      "description": "A Think Completion Content Param that accepts a plain text and a boolean.\n\nExample:\n{\n    \"thinking\": \"I am thinking about the answer\",\n    \"closed\": True,\n    \"type\": \"thinking\"\n}"
+    },
+    "embeddings_ChatCompletionFunctionToolParam": {
+      "properties": {
+        "function": {
+          "$ref": "#/components/schemas/embeddings_openai__types__shared_params__function_definition__FunctionDefinition"
+        },
+        "type": {
+          "type": "string",
+          "const": "function",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "function",
+        "type"
+      ],
+      "title": "ChatCompletionFunctionToolParam",
+      "description": "A function tool that can be used to generate a response."
+    },
+    "embeddings_openai__types__shared_params__function_definition__FunctionDefinition": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "type": "object",
+          "title": "Parameters"
+        },
+        "strict": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Strict"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "title": "FunctionDefinition"
+    },
+    "embeddings_Message": {
+      "properties": {
+        "author": {
+          "$ref": "#/components/schemas/embeddings_Author"
+        },
+        "content": {
+          "items": {
+            "$ref": "#/components/schemas/embeddings_Content"
+          },
+          "type": "array",
+          "title": "Content"
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Channel"
+        },
+        "recipient": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recipient"
+        },
+        "content_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content Type"
+        }
+      },
+      "type": "object",
+      "required": [
+        "author"
+      ],
+      "title": "Message"
+    },
+    "embeddings_Author": {
+      "properties": {
+        "role": {
+          "$ref": "#/components/schemas/embeddings_Role"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        }
+      },
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "title": "Author"
+    },
+    "embeddings_Role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "assistant",
+        "system",
+        "developer",
+        "tool"
+      ],
+      "title": "Role",
+      "description": "The role of a message author (mirrors ``chat::Role``)."
+    },
+    "embeddings_Content": {
+      "properties": {},
+      "type": "object",
+      "title": "Content"
+    },
+    "embeddings_EmbeddingBatchChatRequest": {
+      "properties": {
+        "add_special_tokens": {
+          "type": "boolean",
+          "title": "Add Special Tokens",
+          "description": "If true, special tokens (e.g. BOS) will be added to the prompt on top of what is added by the chat template. For most models, the chat template takes care of adding the special tokens so this should be set to false (as is the default).",
+          "default": false
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "encoding_format": {
+          "type": "string",
+          "enum": [
+            "float",
+            "base64",
+            "bytes",
+            "bytes_only"
+          ],
+          "title": "Encoding Format",
+          "default": "float"
+        },
+        "embed_dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float16",
+            "bfloat16",
+            "fp8_e4m3",
+            "fp8_e5m2"
+          ],
+          "title": "Embed Dtype",
+          "description": "What dtype to use for encoding. Default to using float32 for base64 encoding to match the OpenAI python client behavior. This parameter will affect base64 and binary_response.",
+          "default": "float32"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "native",
+            "big",
+            "little"
+          ],
+          "title": "Endianness",
+          "description": "What endianness to use for encoding. Default to using native for base64 encoding to match the OpenAI python client behavior.This parameter will affect base64 and binary_response.",
+          "default": "native"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Dimensions"
+        },
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "add_generation_prompt": {
+          "type": "boolean",
+          "title": "Add Generation Prompt",
+          "description": "If true, the generation prompt will be added to the chat template. This is a parameter used by chat template in tokenizer config of the model.",
+          "default": false
+        },
+        "continue_final_message": {
+          "type": "boolean",
+          "title": "Continue Final Message",
+          "description": "If this is set, the chat will be formatted so that the final message in the chat is open-ended, without any EOS tokens. The model will continue this message rather than starting a new one. This allows you to \"prefill\" part of the model's response for it. Cannot be used at the same time as `add_generation_prompt`.",
+          "default": false
+        },
+        "chat_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template",
+          "description": "A Jinja template to use for this conversion. As of transformers v4.44, default chat template is no longer allowed, so you must provide a chat template if the tokenizer does not define one."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the template renderer. Will be accessible by the chat template."
+        },
+        "media_io_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media Io Kwargs",
+          "description": "Additional kwargs to pass to the media IO connectors, keyed by modality. Merged with engine-level media_io_kwargs."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "messages": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_Message"
+                }
+              ]
+            },
+            "type": "array",
+            "minItems": 1
+          },
+          "type": "array",
+          "minItems": 1,
+          "title": "Messages"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "messages"
+      ],
+      "title": "EmbeddingBatchChatRequest",
+      "description": "OpenAI embeddings request with batched top-level chat conversations.\n\nMirrors ``BatchChatCompletionRequest`` by keeping batched conversations in\n``messages`` instead of introducing a separate batch-specific field."
+    },
+    "embeddings_EmbeddingChatInputRequest": {
+      "properties": {
+        "add_special_tokens": {
+          "type": "boolean",
+          "title": "Add Special Tokens",
+          "description": "If true, special tokens (e.g. BOS) will be added to the prompt on top of what is added by the chat template. For most models, the chat template takes care of adding the special tokens so this should be set to false (as is the default).",
+          "default": false
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "encoding_format": {
+          "type": "string",
+          "enum": [
+            "float",
+            "base64",
+            "bytes",
+            "bytes_only"
+          ],
+          "title": "Encoding Format",
+          "default": "float"
+        },
+        "embed_dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float16",
+            "bfloat16",
+            "fp8_e4m3",
+            "fp8_e5m2"
+          ],
+          "title": "Embed Dtype",
+          "description": "What dtype to use for encoding. Default to using float32 for base64 encoding to match the OpenAI python client behavior. This parameter will affect base64 and binary_response.",
+          "default": "float32"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "native",
+            "big",
+            "little"
+          ],
+          "title": "Endianness",
+          "description": "What endianness to use for encoding. Default to using native for base64 encoding to match the OpenAI python client behavior.This parameter will affect base64 and binary_response.",
+          "default": "native"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Dimensions"
+        },
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "add_generation_prompt": {
+          "type": "boolean",
+          "title": "Add Generation Prompt",
+          "description": "If true, the generation prompt will be added to the chat template. This is a parameter used by chat template in tokenizer config of the model.",
+          "default": false
+        },
+        "continue_final_message": {
+          "type": "boolean",
+          "title": "Continue Final Message",
+          "description": "If this is set, the chat will be formatted so that the final message in the chat is open-ended, without any EOS tokens. The model will continue this message rather than starting a new one. This allows you to \"prefill\" part of the model's response for it. Cannot be used at the same time as `add_generation_prompt`.",
+          "default": false
+        },
+        "chat_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template",
+          "description": "A Jinja template to use for this conversion. As of transformers v4.44, default chat template is no longer allowed, so you must provide a chat template if the tokenizer does not define one."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the template renderer. Will be accessible by the chat template."
+        },
+        "media_io_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media Io Kwargs",
+          "description": "Additional kwargs to pass to the media IO connectors, keyed by modality. Merged with engine-level media_io_kwargs."
+        },
+        "messages": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_Message"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Messages"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "input": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+              },
+              {
+                "$ref": "#/components/schemas/embeddings_Message"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Input"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "messages",
+        "input"
+      ],
+      "title": "EmbeddingChatInputRequest",
+      "description": "OpenAI embeddings request with one chat conversation in ``input``."
+    },
+    "embeddings_EmbeddingBatchChatInputRequest": {
+      "properties": {
+        "add_special_tokens": {
+          "type": "boolean",
+          "title": "Add Special Tokens",
+          "description": "If true, special tokens (e.g. BOS) will be added to the prompt on top of what is added by the chat template. For most models, the chat template takes care of adding the special tokens so this should be set to false (as is the default).",
+          "default": false
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "encoding_format": {
+          "type": "string",
+          "enum": [
+            "float",
+            "base64",
+            "bytes",
+            "bytes_only"
+          ],
+          "title": "Encoding Format",
+          "default": "float"
+        },
+        "embed_dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float16",
+            "bfloat16",
+            "fp8_e4m3",
+            "fp8_e5m2"
+          ],
+          "title": "Embed Dtype",
+          "description": "What dtype to use for encoding. Default to using float32 for base64 encoding to match the OpenAI python client behavior. This parameter will affect base64 and binary_response.",
+          "default": "float32"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "native",
+            "big",
+            "little"
+          ],
+          "title": "Endianness",
+          "description": "What endianness to use for encoding. Default to using native for base64 encoding to match the OpenAI python client behavior.This parameter will affect base64 and binary_response.",
+          "default": "native"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Dimensions"
+        },
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "add_generation_prompt": {
+          "type": "boolean",
+          "title": "Add Generation Prompt",
+          "description": "If true, the generation prompt will be added to the chat template. This is a parameter used by chat template in tokenizer config of the model.",
+          "default": false
+        },
+        "continue_final_message": {
+          "type": "boolean",
+          "title": "Continue Final Message",
+          "description": "If this is set, the chat will be formatted so that the final message in the chat is open-ended, without any EOS tokens. The model will continue this message rather than starting a new one. This allows you to \"prefill\" part of the model's response for it. Cannot be used at the same time as `add_generation_prompt`.",
+          "default": false
+        },
+        "chat_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template",
+          "description": "A Jinja template to use for this conversion. As of transformers v4.44, default chat template is no longer allowed, so you must provide a chat template if the tokenizer does not define one."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the template renderer. Will be accessible by the chat template."
+        },
+        "media_io_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Media Io Kwargs",
+          "description": "Additional kwargs to pass to the media IO connectors, keyed by modality. Merged with engine-level media_io_kwargs."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "messages": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_Message"
+                }
+              ]
+            },
+            "type": "array",
+            "minItems": 1
+          },
+          "type": "array",
+          "minItems": 1,
+          "title": "Messages"
+        },
+        "input": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionDeveloperMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionSystemMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionUserMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionAssistantMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionToolMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_ChatCompletionFunctionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_CustomChatCompletionMessageParam"
+                },
+                {
+                  "$ref": "#/components/schemas/embeddings_Message"
+                }
+              ]
+            },
+            "type": "array",
+            "minItems": 1
+          },
+          "type": "array",
+          "minItems": 1,
+          "title": "Input"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "messages",
+        "input"
+      ],
+      "title": "EmbeddingBatchChatInputRequest",
+      "description": "OpenAI embeddings request with batched chat conversations in ``input``."
+    },
+    "embeddings_ErrorResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/components/schemas/embeddings_ErrorInfo"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "title": "ErrorResponse"
+    },
+    "embeddings_ErrorInfo": {
+      "properties": {
+        "message": {
+          "type": "string",
+          "title": "Message"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Param"
+        },
+        "code": {
+          "type": "integer",
+          "title": "Code"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "message",
+        "type",
+        "code"
+      ],
+      "title": "ErrorInfo"
+    },
+    "embeddings_HTTPValidationError": {
+      "properties": {
+        "detail": {
+          "items": {
+            "$ref": "#/components/schemas/embeddings_ValidationError"
+          },
+          "type": "array",
+          "title": "Detail"
+        }
+      },
+      "type": "object",
+      "title": "HTTPValidationError"
+    },
+    "embeddings_ValidationError": {
+      "properties": {
+        "loc": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Location"
+        },
+        "msg": {
+          "type": "string",
+          "title": "Message"
+        },
+        "type": {
+          "type": "string",
+          "title": "Error Type"
+        },
+        "input": {
+          "title": "Input"
+        },
+        "ctx": {
+          "type": "object",
+          "title": "Context"
+        }
+      },
+      "type": "object",
+      "required": [
+        "loc",
+        "msg",
+        "type"
+      ],
+      "title": "ValidationError"
+    }
+  }
+}

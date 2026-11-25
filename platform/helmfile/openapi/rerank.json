@@ -1,0 +1,1516 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/v2/rerank": {
+      "post": {
+        "summary": "Do Rerank V2",
+        "operationId": "do_rerank_v2_v2_rerank_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/rerank_RerankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/score": {
+      "post": {
+        "summary": "Create Score",
+        "operationId": "create_score_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreQueriesDocumentsRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreQueriesItemsRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreDataRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreTextRequest"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/rerank_HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "schemas": {
+    "rerank_RerankRequest": {
+      "properties": {
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "max_tokens_per_query": {
+          "type": "integer",
+          "title": "Max Tokens Per Query",
+          "description": "Maximum number of tokens per query. Queries longer than this will be truncated to this length. 0 means no query-level truncation is applied.",
+          "default": 0
+        },
+        "max_tokens_per_doc": {
+          "type": "integer",
+          "title": "Max Tokens Per Doc",
+          "description": "Maximum number of tokens per document. Documents longer than this will be truncated to this length. 0 means no document-level truncation is applied (only truncate_prompt_tokens applies to the combined query+document).",
+          "default": 0
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instruction",
+          "description": "Task instruction prepended to each scored pair via the chat template. Equivalent to passing chat_template_kwargs={'instruction': ...}."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the chat template renderer. Will be accessible by the score/rerank chat template."
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            }
+          ],
+          "title": "Query"
+        },
+        "documents": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Documents"
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Top N",
+          "default": 0
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "query",
+        "documents"
+      ],
+      "title": "RerankRequest"
+    },
+    "rerank_ScoreMultiModalParam": {
+      "properties": {
+        "content": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/rerank_ChatCompletionContentPartImageParam"
+              },
+              {
+                "$ref": "#/components/schemas/rerank_ChatCompletionContentPartImageEmbedsParam"
+              },
+              {
+                "$ref": "#/components/schemas/rerank_ChatCompletionContentPartTextParam"
+              },
+              {
+                "$ref": "#/components/schemas/rerank_ChatCompletionContentPartVideoParam"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Content"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "content"
+      ],
+      "title": "ScoreMultiModalParam",
+      "description": "A specialized parameter type for scoring multimodal content.\n\nThe reasons why don't reuse `CustomChatCompletionMessageParam` directly:\n1. Score tasks don't need the 'role' field (user/assistant/system) that's required in chat completions\n2. Including chat-specific fields would confuse users about their purpose in scoring\n3. This is a more focused interface that only exposes what's needed for scoring"
+    },
+    "rerank_ChatCompletionContentPartImageParam": {
+      "properties": {
+        "image_url": {
+          "$ref": "#/components/schemas/rerank_ImageURL"
+        },
+        "type": {
+          "type": "string",
+          "const": "image_url",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/rerank_PromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "image_url",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartImageParam",
+      "description": "Learn about [image inputs](https://developers.openai.com/api/docs/guides/images-vision)."
+    },
+    "rerank_ImageURL": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Url"
+        },
+        "detail": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "low",
+            "high",
+            "original"
+          ],
+          "title": "Detail"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "title": "ImageURL"
+    },
+    "rerank_PromptCacheBreakpoint": {
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "explicit",
+          "title": "Mode"
+        },
+        "ttl": {
+          "type": "string",
+          "enum": [
+            "30m",
+            "12h"
+          ],
+          "title": "Ttl"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "title": "PromptCacheBreakpoint",
+      "description": "Marks the exact end of a reusable prompt prefix.\n\nWhen `ttl` is omitted, the breakpoint inherits the request's `prompt_cache_options.ttl`; the boundary is not rounded to a token block."
+    },
+    "rerank_ChatCompletionContentPartImageEmbedsParam": {
+      "properties": {
+        "image_embeds": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Embeds"
+        },
+        "type": {
+          "type": "string",
+          "const": "image_embeds",
+          "title": "Type"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uuid"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "title": "ChatCompletionContentPartImageEmbedsParam"
+    },
+    "rerank_ChatCompletionContentPartTextParam": {
+      "properties": {
+        "text": {
+          "type": "string",
+          "title": "Text"
+        },
+        "type": {
+          "type": "string",
+          "const": "text",
+          "title": "Type"
+        },
+        "prompt_cache_breakpoint": {
+          "$ref": "#/components/schemas/rerank_PromptCacheBreakpoint"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "text",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartTextParam",
+      "description": "Learn about [text inputs](https://developers.openai.com/api/docs/guides/text)."
+    },
+    "rerank_ChatCompletionContentPartVideoParam": {
+      "properties": {
+        "video_url": {
+          "$ref": "#/components/schemas/rerank_VideoURL"
+        },
+        "type": {
+          "type": "string",
+          "const": "video_url",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "video_url",
+        "type"
+      ],
+      "title": "ChatCompletionContentPartVideoParam"
+    },
+    "rerank_VideoURL": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "Url"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "title": "VideoURL"
+    },
+    "rerank_ErrorResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/components/schemas/rerank_ErrorInfo"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "title": "ErrorResponse"
+    },
+    "rerank_ErrorInfo": {
+      "properties": {
+        "message": {
+          "type": "string",
+          "title": "Message"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Param"
+        },
+        "code": {
+          "type": "integer",
+          "title": "Code"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "message",
+        "type",
+        "code"
+      ],
+      "title": "ErrorInfo"
+    },
+    "rerank_HTTPValidationError": {
+      "properties": {
+        "detail": {
+          "items": {
+            "$ref": "#/components/schemas/rerank_ValidationError"
+          },
+          "type": "array",
+          "title": "Detail"
+        }
+      },
+      "type": "object",
+      "title": "HTTPValidationError"
+    },
+    "rerank_ValidationError": {
+      "properties": {
+        "loc": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Location"
+        },
+        "msg": {
+          "type": "string",
+          "title": "Message"
+        },
+        "type": {
+          "type": "string",
+          "title": "Error Type"
+        },
+        "input": {
+          "title": "Input"
+        },
+        "ctx": {
+          "type": "object",
+          "title": "Context"
+        }
+      },
+      "type": "object",
+      "required": [
+        "loc",
+        "msg",
+        "type"
+      ],
+      "title": "ValidationError"
+    },
+    "rerank_ScoreQueriesDocumentsRequest": {
+      "properties": {
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "max_tokens_per_query": {
+          "type": "integer",
+          "title": "Max Tokens Per Query",
+          "description": "Maximum number of tokens per query. Queries longer than this will be truncated to this length. 0 means no query-level truncation is applied.",
+          "default": 0
+        },
+        "max_tokens_per_doc": {
+          "type": "integer",
+          "title": "Max Tokens Per Doc",
+          "description": "Maximum number of tokens per document. Documents longer than this will be truncated to this length. 0 means no document-level truncation is applied (only truncate_prompt_tokens applies to the combined query+document).",
+          "default": 0
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instruction",
+          "description": "Task instruction prepended to each scored pair via the chat template. Equivalent to passing chat_template_kwargs={'instruction': ...}."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the chat template renderer. Will be accessible by the score/rerank chat template."
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Queries"
+        },
+        "documents": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Documents"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "queries",
+        "documents"
+      ],
+      "title": "ScoreQueriesDocumentsRequest"
+    },
+    "rerank_ScoreQueriesItemsRequest": {
+      "properties": {
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "max_tokens_per_query": {
+          "type": "integer",
+          "title": "Max Tokens Per Query",
+          "description": "Maximum number of tokens per query. Queries longer than this will be truncated to this length. 0 means no query-level truncation is applied.",
+          "default": 0
+        },
+        "max_tokens_per_doc": {
+          "type": "integer",
+          "title": "Max Tokens Per Doc",
+          "description": "Maximum number of tokens per document. Documents longer than this will be truncated to this length. 0 means no document-level truncation is applied (only truncate_prompt_tokens applies to the combined query+document).",
+          "default": 0
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instruction",
+          "description": "Task instruction prepended to each scored pair via the chat template. Equivalent to passing chat_template_kwargs={'instruction': ...}."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the chat template renderer. Will be accessible by the score/rerank chat template."
+        },
+        "queries": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Queries"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Items"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "queries",
+        "items"
+      ],
+      "title": "ScoreQueriesItemsRequest"
+    },
+    "rerank_ScoreDataRequest": {
+      "properties": {
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "max_tokens_per_query": {
+          "type": "integer",
+          "title": "Max Tokens Per Query",
+          "description": "Maximum number of tokens per query. Queries longer than this will be truncated to this length. 0 means no query-level truncation is applied.",
+          "default": 0
+        },
+        "max_tokens_per_doc": {
+          "type": "integer",
+          "title": "Max Tokens Per Doc",
+          "description": "Maximum number of tokens per document. Documents longer than this will be truncated to this length. 0 means no document-level truncation is applied (only truncate_prompt_tokens applies to the combined query+document).",
+          "default": 0
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instruction",
+          "description": "Task instruction prepended to each scored pair via the chat template. Equivalent to passing chat_template_kwargs={'instruction': ...}."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the chat template renderer. Will be accessible by the score/rerank chat template."
+        },
+        "data_1": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Data 1"
+        },
+        "data_2": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Data 2"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "data_1",
+        "data_2"
+      ],
+      "title": "ScoreDataRequest"
+    },
+    "rerank_ScoreTextRequest": {
+      "properties": {
+        "use_activation": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Use Activation",
+          "description": "Whether to use activation for the pooler outputs. `None` uses the pooler's default, which is `True` in most cases."
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User"
+        },
+        "truncate_prompt_tokens": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncate Prompt Tokens"
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "max_length",
+                "do_not_pad"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Padding",
+          "description": "Whether to pad the prompt, using the same names as the Transformers tokenizer. 'max_length' pads to the maximum input length, 'do_not_pad' leaves the prompt as is. Models trained with a fixed sequence length and no attention mask, such as SigLIP, need 'max_length' to match training, otherwise their embeddings are not comparable."
+        },
+        "truncation_side": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Truncation Side",
+          "description": "Which side to truncate from when truncate_prompt_tokens is active. 'right' keeps the first N tokens. 'left' keeps the last N tokens."
+        },
+        "request_id": {
+          "type": "string",
+          "title": "Request Id",
+          "description": "The request_id related to this request. If the caller does not set it, a random_uuid will be generated. This id is used through out the inference process and return in response."
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9.223372036854776e+18,
+          "minimum": -9.223372036854776e+18,
+          "title": "Priority",
+          "description": "The priority of the request (lower means earlier handling; default: 0). Any priority other than 0 will raise an error if the served model does not use priority scheduling.",
+          "default": 0
+        },
+        "mm_processor_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mm Processor Kwargs",
+          "description": "Additional kwargs to pass to the HF processor."
+        },
+        "cache_salt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1024,
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Salt",
+          "description": "If specified, the prefix cache will be salted with the provided string to prevent an attacker to guess prompts in multi-user environments. The salt should be random, protected from access by 3rd parties, and long enough to be unpredictable (e.g., 43 characters base64-encoded, corresponding to 256 bit)."
+        },
+        "max_tokens_per_query": {
+          "type": "integer",
+          "title": "Max Tokens Per Query",
+          "description": "Maximum number of tokens per query. Queries longer than this will be truncated to this length. 0 means no query-level truncation is applied.",
+          "default": 0
+        },
+        "max_tokens_per_doc": {
+          "type": "integer",
+          "title": "Max Tokens Per Doc",
+          "description": "Maximum number of tokens per document. Documents longer than this will be truncated to this length. 0 means no document-level truncation is applied (only truncate_prompt_tokens applies to the combined query+document).",
+          "default": 0
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instruction",
+          "description": "Task instruction prepended to each scored pair via the chat template. Equivalent to passing chat_template_kwargs={'instruction': ...}."
+        },
+        "chat_template_kwargs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chat Template Kwargs",
+          "description": "Additional keyword args to pass to the chat template renderer. Will be accessible by the score/rerank chat template."
+        },
+        "text_1": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Text 1"
+        },
+        "text_2": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/components/schemas/rerank_ScoreMultiModalParam"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Text 2"
+        }
+      },
+      "additionalProperties": true,
+      "type": "object",
+      "required": [
+        "text_1",
+        "text_2"
+      ],
+      "title": "ScoreTextRequest"
+    }
+  }
+}
