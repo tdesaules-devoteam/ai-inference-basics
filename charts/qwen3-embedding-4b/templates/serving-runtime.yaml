@@ -23,6 +23,8 @@ spec:
         - {{ .Values.modelName }}
         - --port
         - "8080"
+        - --otlp-traces-endpoint
+        - http://otel-cluster.opentelemetry-collector.svc.cluster.local:4317
         - --max-model-len
         - {{ $.Values.maxModelLen | quote }}
         - --dtype
@@ -44,6 +46,10 @@ spec:
         - '{"architectures":["Qwen3ForSequenceClassification"],"classifier_from_token":["no","yes"],"is_original_qwen3_reranker":true}'
         {{- end }}
       env:
+        - name: OTEL_SERVICE_NAME
+          value: vllm
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: {{ printf "service.namespace=%s" .Release.Namespace | quote }}
         - name: HF_HUB_OFFLINE
           value: "1"
         - name: TRANSFORMERS_OFFLINE

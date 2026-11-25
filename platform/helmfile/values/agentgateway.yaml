@@ -14,7 +14,7 @@ extraVolumeMounts:
     readOnly: true
 extraEnv:
   - name: OTEL_SERVICE_NAME
-    value: lab-model-api
+    value: agent-gateway
 config:
   config:
     logging:

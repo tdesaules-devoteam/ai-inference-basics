@@ -88,6 +88,12 @@ config:
       timeout: 5s
       send_batch_size: 512
       send_batch_max_size: 1024
+    # Envoy Gateway qualifies its configured tracing service with the namespace.
+    transform/envoy-service:
+      trace_statements:
+        - context: resource
+          statements:
+            - set(attributes["service.name"], "envoy-gateway") where attributes["service.name"] == "gateway/envoy-gateway"
     resource/lab:
       attributes:
         - key: k8s.cluster.name
@@ -138,6 +144,7 @@ config:
           - otlp
         processors:
           - memory_limiter
+          - transform/envoy-service
           - resource/lab
           - batch
         exporters:

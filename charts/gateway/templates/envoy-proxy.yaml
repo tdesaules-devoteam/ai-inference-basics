@@ -11,7 +11,7 @@ spec:
       samplingRate: 100
       provider:
         type: OpenTelemetry
-        serviceName: lab-gateway
+        serviceName: envoy-gateway
         backendRefs:
           - name: otel-cluster
             namespace: opentelemetry-collector

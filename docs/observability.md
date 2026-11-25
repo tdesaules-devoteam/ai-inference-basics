@@ -12,7 +12,10 @@ index labels. A sampling rate of 100 is intentional for this local lab.
 
 - Mimir: query `vllm:generation_tokens_total{model="qwen3-0-6b"}`.
 - Loki: query `{k8s_namespace_name="agentgateway"} | json` and filter by request ID.
-- Tempo: search `{ resource.service.name = "lab-model-api" }` or a trace ID.
+- Tempo: search `{ resource.service.name = "envoy-gateway" }` for web traffic,
+  `agent-gateway` for the model API and `vllm` for inference spans. The operation
+  name (for example `ingress`) is independent of the service name. Existing
+  traces retain the service name used when they were ingested.
 
 RustFS stores logs in `loki`, traces in `tempo`, and Mimir data in `mimir-blocks`,
 `mimir-ruler` and `mimir-alertmanager`. Kyverno distributes a dedicated account

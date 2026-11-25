@@ -49,7 +49,7 @@ export async function qualifyTelemetry(http, base, state) {
       } catch { return false; }
     }));
     const tempo = await proxy('tempo', 'api/search', {
-      q: `{ resource.service.name = "lab-model-api" && span.request_id = "${loggedRequestId ?? marker}" }`,
+      q: `{ resource.service.name = "agent-gateway" && span.request_id = "${loggedRequestId ?? marker}" } && { resource.service.name = "vllm" }`,
     });
     traces ||= tempo.traces?.some(entry => entry.traceID.padStart(32, '0') === trace);
     if (metrics && logs && traces) {
