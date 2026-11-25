@@ -112,13 +112,26 @@ for route in listener['routes']:
         'podSelector': {'matchLabels': {'app.kubernetes.io/instance': 'agentgateway'}},
     }
 assert listener['policies']['apiKey']['keys'] == [{'keyHash': 'sha256:' + hashlib.sha256(definition['access']['apiBearerToken'].encode()).hexdigest()}]
+web_origin = 'https://{}:{}'.format(definition['network']['hostname'], definition['network']['httpsNodePort'])
+assert listener['policies']['cors']['allowOrigins'] == [web_origin]
+assert not listener['policies']['cors'].get('allowCredentials', False)
+def collection():
+    return yaml.safe_load(find('ConfigMap', 'requester-collection', 'requester')['data']['models.yaml'])
+
+spec = collection()
+assert spec['servers'] == [{'url': 'https://{}:{}'.format(definition['network']['hostname'], definition['network']['apiNodePort'])}]
+assert spec['security'] == [{'modelKey': []}]
+assert set(spec['paths']) == {'/v1/chat/completions', '/v1/embeddings', '/cohere/v2/rerank'}
+assert {operation['post']['requestBody']['content']['application/json']['examples']['default']['value']['model']
+        for operation in spec['paths'].values()} == set(names)
+assert definition['access']['apiBearerToken'] not in str(spec)
 assert not any(o['kind'] == 'HTTPRoute' and o['metadata']['name'] == 'model-api' for o in objects)
 assert not any(o['metadata'].get('namespace') in ('inference-service', 'lab-a', 'lab-b') for o in objects)
 state = yaml.safe_load(subprocess.check_output(helmfile + ['build'], text=True))
 releases = {r['name']: r for r in state['releases']}
 platform_releases = {'kyverno', 'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway',
                      'agentgateway-config', 'agentgateway', 'kserve-crds', 'kserve', 'dex-config', 'dex',
-                     'headlamp', 'bastion', 'oauth2-proxy', 'gateway', 'gpu-operator', 'hami', 'dcgm-exporter',
+                     'headlamp', 'bastion', 'requester', 'oauth2-proxy', 'gateway', 'gpu-operator', 'hami', 'dcgm-exporter',
                      'grafana', 'loki', 'tempo', 'mimir', 'otel-node', 'otel-cluster'}
 assert set(releases) == platform_releases | set(definition['models'])
 assert {n for n, r in releases.items() if r.get('installed', True)} == platform_releases | set(names)
@@ -147,7 +160,7 @@ policy = next(o for o in objects if o['kind'] == 'ClusterPolicy')['spec']
 for component in ('driver', 'devicePlugin', 'migManager', 'dcgmExporter'):
     assert policy[component]['enabled'] is False
 assert policy['toolkit']['enabled'] is True
-for route in ('root', 'terminal', 'code', 'headlamp', 'grafana', 'oauth2', 'dex'):
+for route in ('root', 'terminal', 'code', 'headlamp', 'requester', 'grafana', 'oauth2', 'dex'):
     find('HTTPRoute', 'browser-' + route, 'gateway')
 for kind, name, namespace in [('Deployment', 'grafana', 'grafana'), ('StatefulSet', 'loki', 'loki'),
                               ('StatefulSet', 'tempo', 'tempo'), ('StatefulSet', 'mimir-ingester', 'mimir'),
@@ -166,6 +179,8 @@ with tempfile.TemporaryDirectory() as directory:
     os.environ['INFRA_DEFINITION'] = str(path)
     objects = list(filter(None, yaml.safe_load_all(subprocess.check_output(helmfile + ['-e', 'scaleway', 'template'], text=True))))
 assert {o['metadata']['name'] for o in objects if o['kind'] == 'InferenceService'} == set(gpu_names)
+assert {operation['post']['requestBody']['content']['application/json']['examples']['default']['value']['model']
+        for operation in collection()['paths'].values()} == set(gpu_names)
 for name in gpu_names:
     model = find('InferenceService', name, name)['spec']['predictor']['model']
     limits = model['resources']['limits']

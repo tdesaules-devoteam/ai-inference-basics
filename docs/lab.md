@@ -1,6 +1,6 @@
 # Domain-oriented CPU lab
 
-Helmfile declares 30 releases, with 27 enabled by the sample definition. Each model has a dedicated chart, release, namespace
+Helmfile declares 31 releases, with 28 enabled by the sample definition. Each model has a dedicated chart, release, namespace
 and S3 prefix. The shared pair-training workstation uses one Dex account named
 `cluster-admin`, one computer, one workspace PVC and Kubernetes `cluster-admin` rights.
 
@@ -126,6 +126,7 @@ Dex and oauth2-proxy's internal Services still use HTTP.
 | --- | --- |
 | `/terminal/` | Shared ttyd/Zellij CLI session |
 | `/code/` | Shared code-server and workspace files |
+| `/requester/` | [Scalar HTTP client and example model requests](requester.md) |
 | `/headlamp/` | Full Kubernetes administration |
 | `/grafana/` | Authenticated metrics, logs and traces in Explore |
 

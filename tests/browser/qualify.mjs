@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 import { qualifyTelemetry } from './telemetry.mjs';
+import { qualifyRequester } from './requester.mjs';
 
 const base = process.env.LAB_ORIGIN;
 const state = JSON.parse(fs.readFileSync(process.env.LAB_CREDENTIALS_FILE, 'utf8'));
@@ -14,7 +15,7 @@ let phase = 'startup';
 try {
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   phase = 'anonymous-access';
-  for (const path of ['/terminal/', '/code/', '/headlamp/', '/grafana/']) {
+  for (const path of ['/terminal/', '/code/', '/headlamp/', '/grafana/', '/requester/', '/requester/openapi/models.yaml']) {
     const response = await context.request.get(base + path, {
       maxRedirects: 0, headers: { 'X-Forwarded-Email': state.email },
     });
@@ -85,6 +86,8 @@ try {
   phase = 'headlamp';
   await page.goto(`${base}/headlamp/`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Namespaces', { exact: true }).first().waitFor({ timeout: 60000 });
+  phase = 'requester';
+  await qualifyRequester(page, base, process.env.LAB_API_ORIGIN, state.api_key);
   phase = 'grafana-telemetry';
   await qualifyTelemetry(context.request, base, state);
   phase = 'api-cookie-rejection';
@@ -94,7 +97,7 @@ try {
   assert.equal(api.status(), 401, 'Browser cookie unexpectedly authorized the model API');
   console.log(JSON.stringify({ adminLogin: true, terminalRendered: true, terminalCommand: markerSeen, editor: true,
     editorNord: true, geistWebfonts: true, terminalNord: true, repositoryDefault: true, headlamp: true,
-    anonymousSpoofDenied: true, apiCookieDenied: true }));
+    requester: true, anonymousSpoofDenied: true, apiCookieDenied: true }));
   await context.close();
 } catch (error) {
   console.error(JSON.stringify({ phase, error: error.name,

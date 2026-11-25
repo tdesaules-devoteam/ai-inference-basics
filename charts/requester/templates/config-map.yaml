@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: requester-collection
+  namespace: {{ .Release.Namespace }}
+data:
+  models.yaml: |
+    openapi: 3.1.0
+    info:
+      title: Lab model requests
+      version: '1.0'
+      description: Select an operation, open Test Request, enter your model API Bearer key and edit the JSON body before sending it.
+    servers:
+      - url: {{ required "modelApiOrigin is required" .Values.modelApiOrigin | quote }}
+    security:
+      - modelKey: []
+    components:
+      securitySchemes:
+        modelKey:
+          type: http
+          scheme: bearer
+    paths:{{ if not .Values.modelNames }} {}{{ end }}
+{{- range .Values.modelNames }}
+{{- $task := ternary "embeddings" (ternary "rerank" "chat" (contains "reranker" .)) (contains "embedding" .) }}
+{{- $path := index (dict "chat" "/v1/chat/completions" "embeddings" "/v1/embeddings" "rerank" "/cohere/v2/rerank") $task }}
+      {{ $path }}:
+        post:
+          operationId: {{ $task }}
+          summary: {{ index (dict "chat" "Chat completion" "embeddings" "Generate embeddings" "rerank" "Rank documents") $task }}
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties: true
+                examples:
+                  default:
+                    summary: {{ . | quote }}
+                    value:
+                      model: {{ . | quote }}
+{{- if eq $task "chat" }}
+                      messages:
+                        - role: user
+                          content: Explain what an embedding is in one sentence.
+                      max_tokens: 64
+                      chat_template_kwargs:
+                        enable_thinking: false
+                  streaming:
+                    summary: Stream the response (SSE)
+                    value:
+                      model: {{ . | quote }}
+                      messages:
+                        - role: user
+                          content: Say hello.
+                      max_tokens: 32
+                      stream: true
+{{- else if eq $task "embeddings" }}
+                      input:
+                        - Paris is the capital of France.
+                        - Berlin is the capital of Germany.
+{{- else }}
+                      query: What is the capital of France?
+                      documents:
+                        - Paris is the capital of France.
+                        - Berlin is the capital of Germany.
+                      top_n: 2
+{{- end }}
+          responses:
+            '200':
+              description: Model response
+            '401':
+              description: Missing or invalid model API key
+{{- end }}

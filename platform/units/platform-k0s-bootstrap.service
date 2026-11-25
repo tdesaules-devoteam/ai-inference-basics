@@ -28,7 +28,7 @@ ExecStart=/usr/bin/bash -ec 'k0s kubeconfig admin > "$${KUBECONFIG}"'
 ExecStart=/usr/local/bin/helmfile --file /etc/ai-inference-basics/platform/helmfile/helmfile.yaml.gotmpl sync
 ExecStart=/usr/local/bin/k0s kubectl -n rustfs wait job/rustfs-buckets --for=condition=Complete --timeout=300s
 ExecStart=/usr/local/bin/k0s kubectl -n rustfs get pvc rustfs-data
-ExecStart=/usr/local/bin/k0s kubectl -n gateway wait httproute/browser-root httproute/browser-terminal httproute/browser-code httproute/browser-headlamp httproute/browser-grafana httproute/browser-oauth2 httproute/browser-dex '--for=jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout=180s
+ExecStart=/usr/local/bin/k0s kubectl -n gateway wait httproute/browser-root httproute/browser-terminal httproute/browser-code httproute/browser-requester httproute/browser-headlamp httproute/browser-grafana httproute/browser-oauth2 httproute/browser-dex '--for=jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout=180s
 ExecStart=/usr/bin/bash /etc/ai-inference-basics/platform/helmfile/scripts/check-api-route.sh
 ExecStart=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig
 ExecStopPost=/usr/bin/rm -f /run/platform-k0s-bootstrap/kubeconfig

@@ -14,7 +14,7 @@ systemd tools. See [CI and distribution](ci-and-distribution.md) for image tests
 
 | What to verify | Evidence |
 | --- | --- |
-| Clean boot | Native `devenv:up` succeeds; the image readiness and platform bootstrap units complete. The CPU sample selects 27 of 30 declared releases. |
+| Clean boot | Native `devenv:up` succeeds; the image readiness and platform bootstrap units complete. The CPU sample selects 28 of 31 declared releases. |
 | Models | Three Ready InferenceServices; CA-verified chat, SSE, embeddings and reranking succeed, and invalid Bearer keys fail. |
 | Browser access | One Dex login reaches the terminal, editor, Headlamp and Grafana. The terminal and editor share the workspace PVC; browser cookies cannot authorize model requests. |
 | Storage | Model reader/writer aliases use one account that can read and write across all model prefixes. It cannot access any of the five observability buckets. |

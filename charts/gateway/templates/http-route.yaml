@@ -1,4 +1,5 @@
 {{- $routes := list
+  (dict "name" "requester" "path" "/requester" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
   (dict "name" "grafana" "path" "/grafana" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
   (dict "name" "terminal" "path" "/terminal" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
   (dict "name" "code" "path" "/code" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)

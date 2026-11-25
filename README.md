@@ -35,6 +35,8 @@ See [the platform](docs/platform.md) for upstream chart references, namespace
 boundaries, deployment and test commands.
 See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image import.
 
+**Developer tools:** [terminal and editor](docs/workspaces.md) and the [Scalar HTTP requester](docs/requester.md) share one Dex login.
+
 **Local endpoints:** Envoy serves the browser on `:30443`; agentgateway serves the
 model APIs directly on `:30444`. Both use HTTPS and the native VM hostname.
 

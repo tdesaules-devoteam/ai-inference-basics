@@ -19,3 +19,4 @@ splitModelGateway: {{ eq $infra.environment "devenv" }}
 apiNodePort: {{ $infra.network.apiNodePort }}
 apiBaseUrl: https://agentgateway.agentgateway.svc.cluster.local/v1
 {{ end -}}
+modelApiOrigin: {{ printf "https://%s:%v" $infra.network.hostname (index $infra.network "apiNodePort" | default $infra.network.httpsNodePort) | quote }}

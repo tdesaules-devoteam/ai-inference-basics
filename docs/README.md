@@ -12,6 +12,7 @@
 - [Operations](operations-runbook.md)
 - [Bastions and browser access](workspaces.md)
 - [Security](security-and-access.md)
+- [Browser HTTP requester](requester.md)
 - [Model API](api.md)
 - [Observability](observability.md)
 - [Acceptance](acceptance.md)

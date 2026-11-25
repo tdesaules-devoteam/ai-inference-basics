@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: requester
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: requester
+  template:
+    metadata:
+      labels:
+        app: requester
+      annotations:
+        checksum/collection: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: scalar
+          image: {{ .Values.image | quote }}
+          env:
+            - name: BASE_PATH
+              value: /requester
+            - name: CDN_URL
+              value: /requester/scalar.js
+            - name: API_REFERENCE_CONFIG
+              value: '{"theme":"deepSpace","telemetry":false,"withDefaultFonts":false,"persistAuth":false,"showDeveloperTools":"never","hideClientButton":true}'
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: docs
+              mountPath: /docs
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: docs
+          configMap:
+            name: requester-collection
+        - name: tmp
+          emptyDir: {}
+        - name: config
+          emptyDir: {}
+        - name: data
+          emptyDir: {}

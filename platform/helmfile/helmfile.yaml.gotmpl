@@ -243,6 +243,12 @@ releases:
     values:
       - ../../infra/helmfile/lab.yaml.gotmpl
 
+  - name: requester
+    namespace: requester
+    chart: ../../charts/requester
+    values:
+      - ../../infra/helmfile/lab.yaml.gotmpl
+
   - name: oauth2-proxy
     namespace: oauth2-proxy
     chart: oauth2-proxy/oauth2-proxy
@@ -252,6 +258,7 @@ releases:
       - bastion/bastion
       - headlamp/headlamp
       - grafana/grafana
+      - requester/requester
     values:
       - values/oauth2-proxy.yaml
       - ../../infra/helmfile/lab.yaml.gotmpl
@@ -304,6 +311,14 @@ releases:
                     cert: /tls/tls.crt
                     key: /tls/tls.key
                   policies:
+                    cors:
+                      allowOrigins:
+                        - {{ printf "https://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
+                      allowMethods:
+                        - POST
+                      allowHeaders:
+                        - authorization
+                        - content-type
                     apiKey:
                       mode: strict
                       keys:
@@ -324,6 +339,9 @@ releases:
                         - {{ $infra.network.hostname | quote }}
                         - agentgateway.agentgateway.svc.cluster.local
                       matches:
+                        - method: OPTIONS
+                          path:
+                            exact: {{ $path }}
                         - method: POST
                           path:
                             exact: {{ $path }}
