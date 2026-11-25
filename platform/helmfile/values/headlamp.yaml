@@ -10,7 +10,47 @@ clusterRoleBinding:
 resources:
   requests: {cpu: 20m, memory: 64Mi}
   limits: {memory: 256Mi}
+volumes:
+  - name: nord-theme
+    configMap:
+      name: headlamp-nord
+volumeMounts:
+  - name: nord-theme
+    mountPath: /headlamp/plugins/nord
+    readOnly: true
 extraManifests:
+  - |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: headlamp-nord
+      namespace: {{ .Release.Namespace }}
+    data:
+      package.json: |
+        {"name":"lab-nord","version":"1.0.0","description":"Nord theme for the shared lab","devDependencies":{"@kinvolk/headlamp-plugin":"0.14.0"}}
+      main.js: |
+        window.pluginLib.registerAppTheme({
+          name: "Nord",
+          base: "dark",
+          primary: "#88C0D0",
+          secondary: "#81A1C1",
+          secondaryContrastText: "#2E3440",
+          text: { primary: "#ECEFF4" },
+          link: { color: "#88C0D0" },
+          background: { default: "#2E3440", surface: "#3B4252", muted: "#434C5E" },
+          sidebar: {
+            background: "#3B4252", color: "#D8DEE9", selectedBackground: "#434C5E",
+            selectedColor: "#ECEFF4", actionBackground: "#4C566A"
+          },
+          navbar: { background: "#2E3440", color: "#ECEFF4" },
+          terminal: {
+            background: "#2E3440", foreground: "#ECEFF4", cursor: "#88C0D0",
+            ansi: {
+              red: "#BF616A", green: "#A3BE8C", yellow: "#EBCB8B",
+              blue: "#81A1C1", magenta: "#B48EAD", cyan: "#88C0D0"
+            }
+          }
+        }, { default: true });
   - |
     apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
