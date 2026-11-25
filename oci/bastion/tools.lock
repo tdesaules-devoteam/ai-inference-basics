@@ -1,7 +1,7 @@
 # SHA-256 filename URL
-c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4 kubectl https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl
+9a1b55af2795b25dd288dbef62387db9b5530087ab918d28c6ad067f2e3cb07c kubectl https://dl.k8s.io/release/v1.37.3/bin/linux/amd64/kubectl
 c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7 k9s.tar.gz https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_amd64.tar.gz
-0940e467f99ca57aec5a63edcad633450d49cd6f22e8a7d9c686771a0d9f86ae zellij.tar.gz https://github.com/zellij-org/zellij/releases/download/v0.46.0/zellij-x86_64-unknown-linux-gnu.tar.gz
+5bbfb977f383b78e9c3cc9342511f9a84d05f2283fb53f158737dcea2d59e2a6 zellij.tar.gz https://github.com/zellij-org/zellij/releases/download/v0.46.1/zellij-x86_64-unknown-linux-gnu.tar.gz
 10c8eb4cb3b761d9bf59ea828444c2dab36c900b7d69a69e08814b286969df89 starship.tar.gz https://github.com/starship/starship/releases/download/v1.27.0/starship-x86_64-unknown-linux-musl.tar.gz
-5acfd9177cfecf0bf87578f059728215ccc884388988f55f7a65041b57387d91 uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.13.8/uv-x86_64-unknown-linux-gnu.tar.gz
-2f6db6c3e8b733dd6b3aeee83532e148b2bae2e392353ba85452d03572348962 code-server.tar.gz https://github.com/coder/code-server/releases/download/v4.145.2/code-server-4.145.2-linux-amd64.tar.gz
+bf65ac1a0af10f92c522d91ac096c7c0a39657647b155577e7836c2cbbb4526c uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.13.10/uv-x86_64-unknown-linux-gnu.tar.gz
+cf7e82ca5fe1df664d43a43d900c3c9710f8f3403a5e8d0e18f6a12d10d7401b code-server.tar.gz https://github.com/coder/code-server/releases/download/v4.146.0/code-server-4.146.0-linux-amd64.tar.gz

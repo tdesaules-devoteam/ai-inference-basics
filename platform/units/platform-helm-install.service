@@ -1,5 +1,5 @@
 [Unit]
-Description=Install verified Helm 4.3.1
+Description=Install verified Helm 4.3.2
 ConditionVirtualization=vm
 Wants=network-online.target
 Requires=platform-curl-install.service
@@ -11,12 +11,12 @@ RemainAfterExit=yes
 PrivateTmp=yes
 TimeoutStartSec=600
 ExecCondition=/usr/bin/bash -ec 'if command -v rpm-ostree >/dev/null; then rpm-ostree status --json | jq -e ".deployments[0].booted == true" >/dev/null; fi'
-ExecCondition=/usr/bin/bash -ec '! echo "b66cb19f2b31f9d427632ea6c4b4a1ff89b74ecaeaee323cd166da41a7af53bd  /usr/local/bin/helm" | sha256sum --check --status 2>/dev/null'
-ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/helm.tar.gz https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz
-ExecStart=/usr/bin/bash -ec 'echo "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b  /tmp/helm.tar.gz" | sha256sum --check -'
+ExecCondition=/usr/bin/bash -ec '! echo "876242ea89b1fc07692e179d9abdc47028979fb64b20d85448e85193c8b04931  /usr/local/bin/helm" | sha256sum --check --status 2>/dev/null'
+ExecStart=/usr/bin/curl --fail --location --retry 3 --connect-timeout 20 --max-time 500 --output /tmp/helm.tar.gz https://get.helm.sh/helm-v4.3.2-linux-amd64.tar.gz
+ExecStart=/usr/bin/bash -ec 'echo "d1c0278d46beab79582d7e50f5b3dc206944ba8e577cde618513fd07daa53983  /tmp/helm.tar.gz" | sha256sum --check -'
 ExecStart=/usr/bin/tar -xzf /tmp/helm.tar.gz -C /tmp linux-amd64/helm
 ExecStart=/usr/bin/install -D -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
-ExecStart=/usr/bin/bash -ec 'echo "b66cb19f2b31f9d427632ea6c4b4a1ff89b74ecaeaee323cd166da41a7af53bd  /usr/local/bin/helm" | sha256sum --check -'
+ExecStart=/usr/bin/bash -ec 'echo "876242ea89b1fc07692e179d9abdc47028979fb64b20d85448e85193c8b04931  /usr/local/bin/helm" | sha256sum --check -'
 ExecStart=/usr/bin/rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
 
 [Install]

@@ -1,2 +1,2 @@
-vllm @ https://github.com/vllm-project/vllm/releases/download/v0.23.0/vllm-0.23.0%2Bcpu-cp38-abi3-manylinux_2_34_x86_64.whl#sha256=571a4ac24629d6100479cdf20d67b4c5cd1dd9bab1b485cd4f3bd631c961187d
-json5==0.12.1
+vllm @ https://github.com/vllm-project/vllm/releases/download/v0.34.0/vllm-0.34.0%2Bcpu-cp38-abi3-manylinux_2_39_x86_64.whl#sha256=47fc0adfbbb00168d5a755b08a4b5fbde7e180c91c0a065221e7a253b8bbb5ff
+json5==0.17.3
