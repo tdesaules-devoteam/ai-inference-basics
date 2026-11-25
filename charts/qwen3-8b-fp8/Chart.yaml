@@ -3,4 +3,4 @@ name: qwen3-8b-fp8
 description: Verified S3 import and HAMi GPU serving of Qwen3-8B-FP8
 type: application
 version: 0.1.0
-appVersion: "0.23.0"
+appVersion: "0.34.0"
