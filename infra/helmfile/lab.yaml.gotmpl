@@ -14,3 +14,8 @@ provisionImage: {{ $infra.images.provision | quote }}
 imagePullPolicy: {{ $infra.images.pullPolicy | quote }}
 modelNames:
 {{ $models | toYaml | indent 2 }}
+splitModelGateway: {{ eq $infra.environment "devenv" }}
+{{ if eq $infra.environment "devenv" -}}
+apiNodePort: {{ $infra.network.apiNodePort }}
+apiBaseUrl: https://agentgateway.agentgateway.svc.cluster.local/v1
+{{ end -}}

@@ -1,3 +1,4 @@
+{{- if not .Values.splitModelGateway }}
 {{- if .Values.modelNames }}
 apiVersion: aigateway.envoyproxy.io/v1beta1
 kind: AIGatewayRoute
@@ -29,4 +30,5 @@ spec:
       backendRefs:
         - name: {{ $name }}
     {{- end }}
+{{- end }}
 {{- end }}

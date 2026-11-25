@@ -1,6 +1,6 @@
 # Model APIs
 
-The shared HTTPS Gateway serves the browser and model APIs. Browser sessions and
+In devenv, agentgateway exposes the model APIs on their own TLS listener. Envoy serves browser traffic only. Browser sessions and
 model API credentials are independent: APIs require `Authorization: Bearer <key>`.
 
 | Endpoint | CPU sample model name and namespace |
@@ -15,7 +15,7 @@ according to the environment JSON. Setting a model's `replicas` to zero stops se
 models as described in [lab operations](lab.md); requests do not wake stopped models.
 
 The admin bastion has `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust configured.
-Outside the cluster, use the native VM hostname on port 30443 and the public lab
+Outside the cluster, use the native VM hostname on port 30444 and the public lab
 CA. The API key is stored in `gateway/lab-api-key`; do not put it in Git or logs.
 
 ## Requests from the bastion terminal
@@ -108,7 +108,7 @@ it and configure the public CA for curl:
 ```sh
 VM_HOST="$(cat .devenv/.uuid).local"
 VM="$(id -un)@$VM_HOST"
-BASE_URL="https://$VM_HOST:30443"
+BASE_URL="https://$VM_HOST:30444"
 OPENAI_API_KEY="$(ssh "$VM" 'kubectl -n gateway get secret lab-api-key -o jsonpath="{.data.lab}" | base64 -d')"
 umask 077
 CA_DIR="$(mktemp -d)"

@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: model-api-tls
+  namespace: gateway
+spec:
+  secretName: model-api-tls
+  dnsNames:
+    - {{ required "API hostname is required" .Values.hostname | quote }}
+    - agentgateway.agentgateway.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: lab-ca

@@ -50,6 +50,22 @@ Passwords are passed only to the Dex configuration release, and the Bearer key
 only to Gateway. Upstream dependency versions remain in Helmfile and its values;
 they are software pins, not a second set of environment defaults.
 
+## Independent devenv endpoints
+
+Set `network.httpsNodePort` (web, default sample 30443) and `network.apiNodePort`
+(models, default sample 30444) to different available NodePorts. Add the API port
+to existing private devenv definitions before validating them. Both listeners use
+`network.hostname` and the lab CA, but terminate TLS independently. Helmfile renders
+only the SHA-256 verifier of the API key into the agentgateway ConfigMap. The
+bastion reaches `https://agentgateway.agentgateway.svc.cluster.local/v1`.
+A devenv environment can enable at most one model per operation.
+
+For a retained cluster that ran TheAgentRouter, reconcile the Envoy configuration,
+web and model releases first, then uninstall the former `agent-router` and
+`agent-router-crds` releases after confirming they have no remaining consumers.
+Merely omitting an old Helmfile release does not uninstall it. The Scaleway
+sample's existing routing is unchanged by this local migration.
+
 ## Model lifecycle
 
 Every known model is explicitly present in the definition, including disabled

@@ -1,3 +1,4 @@
+{{- if not .Values.splitModelGateway }}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -17,3 +18,4 @@ spec:
     extractFrom:
       - headers:
           - Authorization
+{{- end }}

@@ -12,7 +12,8 @@
 | RustFS | 1.0.5, official HTTP Helm repository, exact version |
 | cert-manager | v1.21.3, official OCI chart pinned by manifest digest |
 | Envoy Gateway | v1.10.0, official OCI chart pinned by manifest digest |
-| Agent Router | v1.2.1 controller and CRD charts, official OCI digests |
+| agentgateway (devenv model API) | v1.7.0 standalone, OCI chart and proxy image pinned by digest |
+| Agent Router (Scaleway sample) | v1.2.1 controller and CRD charts, official OCI digests |
 | Guest kubectl / k9s / Task | 1.37.2 / 0.51.0 / 3.54.0 |
 | Bastion | Fedora Minimal 45; tool versions and hashes in `oci/bastion/tools.lock` |
 

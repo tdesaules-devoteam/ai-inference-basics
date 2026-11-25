@@ -14,10 +14,14 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: gateway
+              kubernetes.io/metadata.name: {{ ternary "agentgateway" "gateway" (.Values.splitModelGateway | default false) }}
           podSelector:
             matchLabels:
+              {{- if .Values.splitModelGateway }}
+              app.kubernetes.io/instance: agentgateway
+              {{- else }}
               gateway.envoyproxy.io/owning-gateway-name: ai-inference-basics
+              {{- end }}
       ports:
         - protocol: TCP
           port: 8080

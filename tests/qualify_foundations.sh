@@ -6,7 +6,7 @@ check="platform-check-$(openssl rand -hex 4)"
 cleanup() {
     status=$?
     if [[ $status != 0 ]]; then
-        kubectl -n "$check" get pods,gateways,httproutes,aigatewayroutes -o wide || true
+        kubectl -n "$check" get pods,gateways,httproutes -o wide || true
         kubectl -n "$check" get events --sort-by=.metadata.creationTimestamp || true
         kubectl -n "$check" logs request || true
         kubectl -n rustfs logs "job/$check" --all-containers=true || true
@@ -14,8 +14,7 @@ cleanup() {
     cleanup_failed=0
     kubectl -n rustfs delete job "$check" --ignore-not-found --wait=true --timeout=60s >/dev/null || cleanup_failed=1
     # Let controllers finalize their resources while the namespace is still active.
-    kubectl -n "$check" delete aigatewayroute smoke --ignore-not-found --wait=true --timeout=90s >/dev/null || cleanup_failed=1
-    kubectl -n "$check" delete aiservicebackend upstream --ignore-not-found --wait=true --timeout=90s >/dev/null || cleanup_failed=1
+    kubectl -n "$check" delete httproute smoke --ignore-not-found --wait=true --timeout=90s >/dev/null || cleanup_failed=1
     kubectl -n "$check" delete gateway smoke --ignore-not-found --wait=true --timeout=120s >/dev/null || cleanup_failed=1
     kubectl -n "$check" delete deployment --all --wait=true --timeout=120s >/dev/null || cleanup_failed=1
     kubectl delete namespace "$check" --ignore-not-found --wait=true --timeout=180s >/dev/null || cleanup_failed=1
@@ -42,4 +41,4 @@ kubectl -n "$check" logs request | jq -e '.choices | length > 0' >/dev/null
 sed "s/__CHECK__/$check/g" "$ROOT/fixtures/s3-access.yaml" | kubectl apply -f -
 kubectl -n rustfs wait "job/$check" --for=condition=Complete --timeout=180s
 kubectl -n rustfs logs "job/$check"
-echo 'Certificate-backed Agent Router webhook, Envoy routing, mock OpenAI response and S3 access qualified.'
+echo 'Envoy HTTP routing, mock OpenAI response and S3 access qualified.'

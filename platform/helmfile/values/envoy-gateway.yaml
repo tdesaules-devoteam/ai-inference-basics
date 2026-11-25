@@ -13,22 +13,3 @@ config:
       kubernetes:
         deploy:
           type: GatewayNamespace
-    extensionApis:
-      enableBackend: true
-    extensionManager:
-      hooks:
-        xdsTranslator:
-          translation:
-            listener:
-              includeAll: true
-            route:
-              includeAll: true
-            cluster:
-              includeAll: true
-            secret:
-              includeAll: true
-          post: [Translation, Cluster, Route]
-      service:
-        fqdn:
-          hostname: agent-router.agent-router.svc.cluster.local
-          port: 1063

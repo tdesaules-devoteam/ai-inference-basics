@@ -6,13 +6,13 @@ provisions these three data sources; no dashboards are installed.
 
 `otel-node` collects container logs, host and kubelet metrics. `otel-cluster`
 collects Kubernetes events, cluster metrics, vLLM and Envoy scrapes and the
-Gateway's OTLP spans. Only eligible GPU nodes supply DCGM metrics. Envoy logs
+gateways' OTLP spans. Only eligible GPU nodes supply DCGM metrics. Agentgateway access logs
 contain the request ID, model and token counts; these fields are not Loki
 index labels. A sampling rate of 100 is intentional for this local lab.
 
 - Mimir: query `vllm:generation_tokens_total{model="qwen3-0-6b"}`.
-- Loki: query `{k8s_namespace_name="gateway"} | json` and filter by request ID.
-- Tempo: search `{ resource.service.name = "lab-gateway" }` or a trace ID.
+- Loki: query `{k8s_namespace_name="agentgateway"} | json` and filter by request ID.
+- Tempo: search `{ resource.service.name = "lab-model-api" }` or a trace ID.
 
 RustFS stores logs in `loki`, traces in `tempo`, and Mimir data in `mimir-blocks`,
 `mimir-ruler` and `mimir-alertmanager`. Kyverno distributes a dedicated account

@@ -18,7 +18,9 @@ spec:
             port: 4317
       tags:
         request_id: "%REQ(X-REQUEST-ID)%"
+        {{- if not .Values.splitModelGateway }}
         model: "%REQ(X-AI-EG-MODEL)%"
+        {{- end }}
     accessLog:
       settings:
         - sinks:
@@ -47,12 +49,14 @@ spec:
               upstream_host: "%UPSTREAM_HOST%"
               upstream_transport_failure: "%UPSTREAM_TRANSPORT_FAILURE_REASON%"
               user_agent: "%REQ(USER-AGENT)%"
+              {{- if not .Values.splitModelGateway }}
               model: "%REQ(X-AI-EG-MODEL)%"
               response_model: "%DYNAMIC_METADATA(io.envoy.ai_gateway:response_model)%"
               backend: "%DYNAMIC_METADATA(io.envoy.ai_gateway:backend_name)%"
               input_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:input_tokens)%"
               output_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:output_tokens)%"
               total_tokens: "%DYNAMIC_METADATA(io.envoy.ai_gateway:total_tokens)%"
+              {{- end }}
   provider:
     type: Kubernetes
     kubernetes:

@@ -17,7 +17,7 @@ import yaml
 
 root = Path(__file__).resolve().parent.parent
 os.environ['INFRA_DEFINITION'] = str(root / 'infra/infra-definition.sample.json')
-foundation = {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
+foundation = {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway'}
 selection = [arg for name in sorted(foundation) for arg in ('--selector', 'name=' + name)]
 cluster = yaml.safe_load((root / 'platform/k0s/k0s.yaml').read_text())
 assert not cluster['spec'].get('extensions', {}).get('helm'), 'Competing k0s Helm deployer configuration'
@@ -36,10 +36,7 @@ for obj in objects:
         pod = obj['spec']['template']['spec']
         for container in pod.get('initContainers', []) + pod['containers']:
             images.append(container['image'])
-    if obj['kind'] == 'Secret':
-        # Agent Router generates its own MCP seed; RustFS root credentials remain external.
-        assert metadata['namespace'] == 'agent-router'
-        assert metadata['name'] == 'agent-router-mcp-session-encryption'
+    assert obj['kind'] != 'Secret', 'Foundation credentials must be initialized at runtime'
     if obj['kind'] == 'ConfigMap' and 'helperPod.yaml' in obj.get('data', {}):
         helper = yaml.safe_load(obj['data']['helperPod.yaml'])
         images.extend(c['image'] for c in helper['spec']['containers'])
@@ -91,13 +88,9 @@ compile(credential_job['spec']['template']['spec']['containers'][0]['args'][0], 
 
 deployments = {(o['metadata']['namespace'], o['metadata']['name']) for o in objects if o['kind'] == 'Deployment'}
 assert {('cert-manager', 'cert-manager'), ('cert-manager', 'cert-manager-webhook'),
-        ('cert-manager', 'cert-manager-cainjector'), ('envoy-gateway', 'envoy-gateway'),
-        ('agent-router', 'agent-router')} <= deployments
-certificate = next(o for o in objects if o['kind'] == 'Certificate')
-assert certificate['metadata']['namespace'] == 'agent-router'
-assert 'agent-router.agent-router.svc' in certificate['spec']['dnsNames']
+        ('cert-manager', 'cert-manager-cainjector'), ('envoy-gateway', 'envoy-gateway')} <= deployments
 gateway_config = next(o for o in objects if o['kind'] == 'ConfigMap' and o['metadata']['namespace'] == 'envoy-gateway')
-assert 'agent-router.agent-router.svc.cluster.local' in str(gateway_config['data'])
+assert 'agent-router.agent-router.svc.cluster.local' not in str(gateway_config['data'])
 assert 'envoy-gateway-system' not in rendered and 'envoy-ai-gateway-system' not in rendered
 
 # Build the resolved state as well as the manifests: needs is an orchestration
@@ -107,8 +100,7 @@ state = yaml.safe_load(subprocess.check_output([
 ], text=True))
 releases = {r['name']: r for r in state['releases']}
 assert releases['rustfs']['needs'] == ['local-path-provisioner/local-path-provisioner', 'kyverno/kyverno']
-assert set(releases) == {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway', 'agent-router-crds', 'agent-router'}
-assert set(releases['agent-router']['needs']) == {'cert-manager/cert-manager', 'envoy-gateway/envoy-gateway', 'agent-router/agent-router-crds'}
+assert set(releases) == {'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway'}
 assert state['helmDefaults']['wait'] and state['helmDefaults']['waitForJobs']
 # build resolves OCI references to the Helmfile cache. Validate declared references separately.
 declared = (root / 'platform/helmfile/helmfile.yaml.gotmpl').read_text().split('\nreleases:', 1)[1]

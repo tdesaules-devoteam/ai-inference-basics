@@ -1,3 +1,4 @@
+{{- if not .Values.splitModelGateway }}
 {{- range $name := .Values.modelNames }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
@@ -10,4 +11,5 @@ spec:
     - fqdn:
         hostname: {{ $name }}-predictor.{{ $name }}.svc.cluster.local
         port: 80
+{{- end }}
 {{- end }}

@@ -23,7 +23,7 @@ Each model's serving workload receives the shared bucket credential and no
 Kubernetes API token. The account can read/write all model prefixes; other
 application buckets remain excluded.
 
-The Gateway terminates HTTPS using a cert-manager-issued certificate from the lab
+The web and model gateways in devenv terminate HTTPS separately using cert-manager-issued certificates from the lab
 CA. Its private key stays in `gateway`; a public CA ConfigMap supplies client trust.
 Internal Dex/oauth2-proxy traffic remains HTTP. Browser access uses one Dex session
 through oauth2-proxy; there is no second Zellij token. Model APIs require their own

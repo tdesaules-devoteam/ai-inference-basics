@@ -27,6 +27,8 @@ if errors:
         print('Invalid infrastructure field: ' + '.'.join(map(str, error.absolute_path)) +
               ' (' + str(error.validator) + ')', file=sys.stderr)
     sys.exit(1)
+if definition['network'].get('apiNodePort') == definition['network']['httpsNodePort']:
+    sys.exit('Web and model NodePorts must differ.')
 if len(definition['access']['adminPassword'].encode()) > 72:
     sys.exit('adminPassword exceeds bcrypt\'s 72-byte limit.')
 if definition['environment'] == 'devenv' and (len(definition['machines']) != 1 or definition['machines'][0]['count'] != 1):

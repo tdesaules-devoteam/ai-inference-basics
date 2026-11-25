@@ -45,48 +45,18 @@ spec:
     - port: 80
       targetPort: 8080
 ---
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: Backend
-metadata:
-  name: upstream
-  namespace: __CHECK__
-spec:
-  endpoints:
-    - fqdn:
-        hostname: upstream.__CHECK__.svc.cluster.local
-        port: 80
----
-apiVersion: aigateway.envoyproxy.io/v1beta1
-kind: AIServiceBackend
-metadata:
-  name: upstream
-  namespace: __CHECK__
-spec:
-  schema:
-    name: OpenAI
-  backendRef:
-    name: upstream
-    kind: Backend
-    group: gateway.envoyproxy.io
----
-apiVersion: aigateway.envoyproxy.io/v1beta1
-kind: AIGatewayRoute
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: smoke
   namespace: __CHECK__
 spec:
   parentRefs:
     - name: smoke
-      kind: Gateway
-      group: gateway.networking.k8s.io
   rules:
-    - matches:
-        - headers:
-            - type: Exact
-              name: x-ai-eg-model
-              value: platform-smoke
-      backendRefs:
+    - backendRefs:
         - name: upstream
+          port: 80
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy

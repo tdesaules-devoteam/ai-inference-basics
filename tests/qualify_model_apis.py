@@ -8,7 +8,7 @@ import ssl
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-origin = os.environ['LAB_ORIGIN']
+origin = os.environ['LAB_API_ORIGIN']
 key = json.loads(Path(os.environ['LAB_CREDENTIALS_FILE']).read_text())['api_key']
 context = ssl.create_default_context(cafile=os.environ['LAB_CA_FILE'])
 
@@ -22,6 +22,15 @@ def request(path, body, token=key):
 
 chat = {'model': 'qwen3-0-6b', 'messages': [{'role': 'user', 'content': 'Reply only OK.'}],
         'max_tokens': 64, 'temperature': 0, 'chat_template_kwargs': {'enable_thinking': False}}
+# Web and API ports must remain isolated even on the same hostname.
+for url, body in ((os.environ['LAB_ORIGIN'] + '/v1/chat/completions', json.dumps(chat).encode()),
+                  (origin + '/grafana/', None)):
+    try:
+        urlopen(Request(url, data=body, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'}), context=context, timeout=15)
+    except HTTPError as error:
+        assert error.code == 404, (url, error.code)
+    else:
+        raise AssertionError('Unexpected cross-gateway route: ' + url)
 for token in (None, 'invalid-lab-key'):
     try:
         request('/v1/chat/completions', chat, token)
@@ -30,6 +39,13 @@ for token in (None, 'invalid-lab-key'):
         error.close()
     else:
         raise AssertionError('Missing/invalid Bearer key was accepted')
+try:
+    request('/v1/chat/completions', chat | {'model': 'not-installed'})
+except HTTPError as error:
+    assert error.code in (400, 403, 404), error.code
+    error.close()
+else:
+    raise AssertionError('An unknown model was silently routed to chat')
 with request('/v1/chat/completions', chat) as response:
     result = json.load(response)
 assert result['choices'][0]['message']['content']

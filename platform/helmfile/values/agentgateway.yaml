@@ -1,0 +1,41 @@
+fullnameOverride: agentgateway
+image: cr.agentgateway.dev/agentgateway@sha256:60216aafb03d37f94e952ff3d51d2f630a65b10ecaebdc0a864882f92610c45b
+mode: readonly
+gateway:
+  service:
+    enabled: false
+extraVolumes:
+  - name: serving-certificate
+    secret:
+      secretName: model-api-tls
+extraVolumeMounts:
+  - name: serving-certificate
+    mountPath: /tls
+    readOnly: true
+extraEnv:
+  - name: OTEL_SERVICE_NAME
+    value: lab-model-api
+config:
+  config:
+    logging:
+      format: json
+  frontendPolicies:
+    accessLog:
+      remove:
+        - http.path
+      add:
+        model: llm.requestModel
+        input_tokens: llm.inputTokens
+        output_tokens: llm.outputTokens
+        total_tokens: llm.totalTokens
+        request_id: '"x-request-id" in request.headers ? request.headers["x-request-id"] : uuid()'
+        traceparent: 'request.headers["traceparent"]'
+        user_agent: 'request.headers["user-agent"]'
+        path: request.path
+        response_code: response.code
+    tracing:
+      host: otel-cluster.opentelemetry-collector.svc.cluster.local:4317
+      protocol: grpc
+      randomSampling: true
+      attributes:
+        request_id: 'request.headers["x-request-id"]'

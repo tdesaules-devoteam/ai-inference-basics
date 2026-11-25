@@ -13,8 +13,9 @@ of the current deployment; see [lab operations](lab.md) for the full stack.
 | rustfs | rustfs | 1.0.5 | <https://charts.rustfs.com> |
 | cert-manager | cert-manager | v1.21.3 | OCI quay.io/jetstack/charts/cert-manager |
 | envoy-gateway | envoy-gateway | v1.10.0 | OCI docker.io/envoyproxy/gateway-helm |
-| agent-router-crds | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-crds-helm |
-| agent-router | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-helm |
+| agentgateway (devenv) | agentgateway | v1.7.0 | OCI cr.agentgateway.dev/charts/agentgateway-standalone |
+| agent-router-crds (Scaleway sample) | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-crds-helm |
+| agent-router (Scaleway sample) | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-helm |
 
 The complete OCI manifest digests are recorded directly in
 `platform/helmfile/helmfile.yaml.gotmpl`. Helmfile 1.8.3 / Helm 4.3.1 fetch these official
@@ -33,24 +34,15 @@ images, are pinned by digest. The upstream image exception remains applicable.
 ```text
 local-path-provisioner + kyverno → rustfs (credentials, buckets and IAM)
 
-cert-manager ────────────┐
-envoy-gateway ───────────┼→ agent-router
-agent-router-crds ───────┘
+devenv: cert-manager + Envoy + Kyverno + otel-cluster → web gateway
+        web gateway → agentgateway-config (NodePort and leaf TLS) → agentgateway
+        browser stack + agentgateway → selected models, one release at a time
 ```
 
-Independent prerequisites install in parallel. `wait`, `waitForJobs` and explicit
-timeouts gate Helmfile dependency groups. Additional postsync hooks wait for the
-required CRDs to be Established, Agent Router's Certificate to be Ready and its
-webhook CA bundle to be injected. cert-manager's upstream startup API check and
-Envoy Gateway's certificate-generation hooks remain enabled.
-
-Agent Router is the renamed Envoy AI Gateway project: upstream chart/API/image
-names still use ai-gateway. Its controller and Service are named `agent-router`.
-Envoy Gateway's extension manager connects to
-`agent-router.agent-router.svc.cluster.local:1063`; Agent Router's Envoy RBAC points
-to `envoy-gateway`. Envoy data-plane pods are created in each Gateway's namespace.
-The project gateway chart supplies the public listener and browser/model routes.
-QuotaPolicy and the optional rate-limit server are not enabled yet.
+Envoy is the only browser entry point; no model routes or external AI processor
+are attached to the devenv web proxy. The separate agentgateway listener uses
+strict Bearer authentication and per-operation routes to vLLM. The Scaleway
+render still uses the Agent Router extension on Envoy; it is not deployed here.
 
 ## RustFS buckets and persistent data
 
@@ -128,7 +120,8 @@ kubectl get pods -A
 kubectl -n rustfs get pvc,jobs
 kubectl -n rustfs logs job/rustfs-credentials
 kubectl -n rustfs logs job/rustfs-buckets
-kubectl -n agent-router get certificates,issuers
+kubectl -n gateway get certificates,issuers
+kubectl -n agentgateway get service,deployment
 ```
 
 To reconcile the current guest copies, use

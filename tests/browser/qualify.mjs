@@ -88,7 +88,7 @@ try {
   phase = 'grafana-telemetry';
   await qualifyTelemetry(context.request, base, state);
   phase = 'api-cookie-rejection';
-  const api = await context.request.post(`${base}/v1/chat/completions`, {
+  const api = await context.request.post(`${process.env.LAB_API_ORIGIN}/v1/chat/completions`, {
     data: { model: 'qwen3-0-6b', messages: [{ role: 'user', content: 'hello' }], max_tokens: 1 },
   });
   assert.equal(api.status(), 401, 'Browser cookie unexpectedly authorized the model API');

@@ -19,7 +19,7 @@ and S3 prefix. The shared pair-training workstation uses one Dex account named
 | Administration dashboard | headlamp | Official Headlamp chart |
 
 Infrastructure controllers retain their own namespaces: `kserve`, `cert-manager`,
-`envoy-gateway`, `agent-router` and `local-path-provisioner`. The Envoy Gateway
+`envoy-gateway`, `agentgateway` and `local-path-provisioner`. The Envoy Gateway
 controller configures the proxy in `gateway`; user traffic reaches the proxy,
 not the controller. Controller CRDs can have a separate upstream release.
 
@@ -118,7 +118,7 @@ Ready/UpToDate via JSONPath, accommodating stale observedGeneration in v0.21.0.
 
 ## Admin access
 
-Use `https://<native-VM-hostname>:30443` over the native bridge/mDNS connection.
+For browser access use `https://<native-VM-hostname>:30443` over the native bridge/mDNS connection.
 Trust the public lab CA. The server certificate terminates TLS at the Gateway;
 Dex and oauth2-proxy's internal Services still use HTTP.
 
@@ -128,6 +128,11 @@ Dex and oauth2-proxy's internal Services still use HTTP.
 | `/code/` | Shared code-server and workspace files |
 | `/headlamp/` | Full Kubernetes administration |
 | `/grafana/` | Authenticated metrics, logs and traces in Explore |
+
+Model paths are served independently at `https://<native-VM-hostname>:30444`:
+
+| Path | Purpose |
+| --- | --- |
 | `/v1/chat/completions` | Bearer API, selected chat model |
 | `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
 | `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
@@ -190,7 +195,7 @@ Runtime checks require the deployed lab and explicit authorization:
 - `tests/qualify_benchmark.py`: run inside the bastion with the chat lock on stdin;
   download only the verified tokenizer and submit three requests through HTTPS.
 
-Browser/API tests consume `LAB_ORIGIN`, `LAB_CREDENTIALS_FILE` (a private JSON
+Use `LAB_ORIGIN=https://<hostname>:30443` for the browser and `LAB_API_ORIGIN=https://<hostname>:30444` for the model APIs. Browser/API tests also consume `LAB_CREDENTIALS_FILE` (a private JSON
 object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
 Chromium accepts the lab certificate for interaction tests; API TLS verification
 is performed separately with the CA. Reports and credentials stay untracked.

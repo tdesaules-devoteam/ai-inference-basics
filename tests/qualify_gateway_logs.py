@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify actual Envoy token accounting and supplied/generated request IDs."""
+"""Verify actual agentgateway token accounting and supplied/generated request IDs."""
 import getpass
 import json
 import os
@@ -11,12 +11,12 @@ from urllib.request import Request, urlopen
 import uuid
 
 root = Path(__file__).resolve().parent.parent
-origin = os.environ['LAB_ORIGIN']
+origin = os.environ['LAB_API_ORIGIN']
 key = json.loads(Path(os.environ['LAB_CREDENTIALS_FILE']).read_text())['api_key']
 tls = ssl.create_default_context(cafile=os.environ['LAB_CA_FILE'])
 host = os.environ.get('LAB_SSH_HOST', getpass.getuser() + '@' + (root / '.devenv/.uuid').read_text().strip() + '.local')
-ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=no',
-       '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '-o', 'ProxyCommand=none', host]
+ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=yes',
+       '-o', 'UserKnownHostsFile=' + os.environ.get('LAB_KNOWN_HOSTS', str(Path.home() / '.ssh/known_hosts')), '-o', 'LogLevel=ERROR', '-o', 'ProxyCommand=none', host]
 checks = []
 for stream, supplied in ((False, True), (True, True), (False, False)):
     marker = 'lab-log-check/' + uuid.uuid4().hex
@@ -40,7 +40,7 @@ for stream, supplied in ((False, True), (True, True), (False, False)):
 
 deadline = time.monotonic() + 30
 while True:
-    raw = subprocess.check_output(ssh + ['kubectl -n gateway logs deployment/ai-inference-basics -c envoy --since=5m'], text=True)
+    raw = subprocess.check_output(ssh + ['kubectl -n agentgateway logs deployment/agentgateway -c agentgateway --since=5m'], text=True)
     logs = []
     for line in raw.splitlines():
         try:
@@ -64,4 +64,4 @@ for marker, supplied, usage in checks:
         uuid.UUID(entry['request_id'])
     for field, key in [('input_tokens', 'prompt_tokens'), ('output_tokens', 'completion_tokens'), ('total_tokens', 'total_tokens')]:
         assert entry[field] == usage[key], (field, entry[field], usage[key])
-print('Envoy JSON logs match chat/SSE token usage, preserve client IDs, generate missing IDs and omit query strings.')
+print('Agentgateway JSON logs match chat/SSE token usage, preserve client IDs, generate missing IDs and omit query strings.')

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: agentgateway-config
+description: Expose the native model API on its own TLS listener
+version: 0.1.0

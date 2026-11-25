@@ -5,7 +5,7 @@
   "machines": [
     {"name": "lab", "count": 1, "cpu": 12, "memoryGiB": 48, "diskGiB": 64}
   ],
-  "network": {"hostname": "lab.example.test", "httpsNodePort": 30443},
+  "network": {"hostname": "lab.example.test", "httpsNodePort": 30443, "apiNodePort": 30444},
   "access": {
     "adminEmail": "cluster-admin@devoteam.com",
     "adminPassword": "REPLACE_ME",

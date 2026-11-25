@@ -10,29 +10,16 @@ Project charts own gateway, bastion, Dex configuration and the selected models.
 Each model's chart, release, namespace and S3 prefix have the same normalized name.
 
 ```text
-Browser / API client
-        |
-        | HTTPS :30443, native VM hostname
-        v
-gateway: Envoy + certificates + routes
-        |                         |
-        | browser                 | static Bearer API key
-        v                         v
-oauth2-proxy <-- OIDC --> dex      Agent Router
-        |                         |
-        +--> bastion              +--> qwen3-0-6b
-        |    ttyd/Zellij          +--> qwen3-embedding-0-6b
-        |    code-server          +--> qwen3-reranker-0-6b
-        +--> headlamp and grafana
-                                         |
-                                         | S3 model initialization
-                                         v
-                                       RustFS
+Browser → HTTPS :30443 → Envoy → Dex / oauth2-proxy → bastion, Headlamp, Grafana
+API client → HTTPS :30444 → agentgateway (Bearer) → KServe predictor → vLLM
 ```
 
-Envoy Gateway in `envoy-gateway` is the control plane configuring the proxy in
-`gateway`. KServe in `kserve` manages the model InferenceServices. TLS terminates
-at the Gateway; browser application Services use internal HTTP.
+The two TLS listeners use separate leaf certificates issued by the local CA.
+Agentgateway is not an Envoy extension. Its upstream standalone chart reads
+routes generated from the enabled models in the environment definition. A
+focused configuration chart owns its fixed NodePort, ingress policy and leaf
+certificate distribution. The CA private key stays in `gateway`. The Scaleway
+sample still uses TheAgentRouter; its two public addresses are a separate milestone.
 
 One Dex account, `cluster-admin`, uses the shared workspace and Headlamp. Both Kubernetes
 ServiceAccounts have cluster-admin rights. Authentication at oauth2-proxy remains

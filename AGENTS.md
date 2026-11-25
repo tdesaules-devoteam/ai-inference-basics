@@ -38,7 +38,7 @@
   install the same releases with the k0s Helm deployer or another reconciler.
   Use upstream charts and a namespace per component; verify downloaded artifact bytes.
 - Dex and oauth2-proxy authenticate browser access, including ttyd with Zellij CLI.
-  Model APIs use a separate static Bearer key enforced at Envoy Gateway.
+  Model APIs use a separate static Bearer key enforced at the model gateway (agentgateway on devenv). Envoy exposes browser sites.
 - Chat, embeddings and reranker use InferenceService. No llm-d/EPP.
 - Each model has its own chart, release, namespace and matching S3 prefix.
   The environment definition explicitly selects installed releases, imports and

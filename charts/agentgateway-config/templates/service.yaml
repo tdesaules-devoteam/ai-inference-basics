@@ -1,0 +1,16 @@
+# The upstream standalone chart cannot set a fixed nodePort on its Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/component: standalone
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+      nodePort: {{ .Values.apiNodePort }}

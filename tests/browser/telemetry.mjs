@@ -24,7 +24,7 @@ export async function qualifyTelemetry(http, base, state) {
   };
   const before = await metric();
   const start = Date.now() - 30000;
-  const result = await http.post(`${base}/v1/chat/completions`, {
+  const result = await http.post(`${process.env.LAB_API_ORIGIN}/v1/chat/completions`, {
     headers: { Authorization: `Bearer ${state.api_key}`, 'X-Request-ID': marker,
       traceparent: `00-${trace}-${randomBytes(8).toString('hex')}-01` },
     data: { model, messages: [{ role: 'user', content: 'Reply OK.' }], max_tokens: 8 },
@@ -37,20 +37,19 @@ export async function qualifyTelemetry(http, base, state) {
   for (const end = Date.now() + 150000; Date.now() < end;) {
     metrics ||= await metric() >= before + usage.completion_tokens;
     const loki = await proxy('loki', 'loki/api/v1/query_range', {
-      query: `{k8s_namespace_name="gateway"} |= "${trace}"`, start: `${start}000000`,
+      query: `{k8s_namespace_name="agentgateway"} |= "${trace}"`, start: `${start}000000`,
       end: `${Date.now()}000000`, limit: '50',
     });
     logs ||= loki.data.result.some(stream => stream.values.some(([, line]) => {
       try {
         const entry = JSON.parse(line);
         if (entry.traceparent?.split('-')[1] !== trace || entry.total_tokens !== usage.total_tokens) return false;
-        // Envoy may encode its sampling decision into UUID request IDs.
         loggedRequestId = entry.request_id;
         return Boolean(loggedRequestId);
       } catch { return false; }
     }));
     const tempo = await proxy('tempo', 'api/search', {
-      q: `{ resource.service.name = "lab-gateway" && span.request_id = "${loggedRequestId ?? marker}" }`,
+      q: `{ resource.service.name = "lab-model-api" && span.request_id = "${loggedRequestId ?? marker}" }`,
     });
     traces ||= tempo.traces?.some(entry => entry.traceID.padStart(32, '0') === trace);
     if (metrics && logs && traces) {

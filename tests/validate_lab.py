@@ -93,12 +93,31 @@ assert find('Role', 'gateway-credentials', 'gateway')['rules'] == [
     {'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['lab-api-key'], 'verbs': ['get', 'update']},
     {'apiGroups': [''], 'resources': ['secrets'], 'verbs': ['create']},
 ]
-assert find('SecurityPolicy', 'model-api-key', 'gateway')['spec']['apiKeyAuth']['extractFrom'] == [{'headers': ['Authorization']}]
+assert not any(o['kind'] in ('AIServiceBackend', 'AIGatewayRoute') for o in objects)
+find('Deployment', 'agentgateway', 'agentgateway')
+service = find('Service', 'agentgateway', 'agentgateway')['spec']
+assert service['ports'][0]['nodePort'] == definition['network']['apiNodePort']
+assert service['ports'][0]['nodePort'] != definition['network']['httpsNodePort']
+config = yaml.safe_load(find('ConfigMap', 'agentgateway-config', 'agentgateway')['data']['config.yaml'])
+listener = config['binds'][0]['listeners'][0]
+assert listener['protocol'] == 'HTTPS' and listener['policies']['apiKey']['mode'] == 'strict'
+assert {r['name'] for r in listener['routes']} == set(names)
+for route in listener['routes']:
+    backend = route['backends'][0]['ai']
+    name = route['name']
+    assert backend['hostOverride'] == f'{name}-predictor.{name}.svc.cluster.local:80'
+    assert 'authorization' in backend['policies']['requestHeaderModifier']['remove']
+    assert find('NetworkPolicy', 'model-apis-gateway-only', name)['spec']['ingress'][0]['from'][0] == {
+        'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'agentgateway'}},
+        'podSelector': {'matchLabels': {'app.kubernetes.io/instance': 'agentgateway'}},
+    }
+assert listener['policies']['apiKey']['keys'] == [{'keyHash': 'sha256:' + hashlib.sha256(definition['access']['apiBearerToken'].encode()).hexdigest()}]
+assert not any(o['kind'] == 'HTTPRoute' and o['metadata']['name'] == 'model-api' for o in objects)
 assert not any(o['metadata'].get('namespace') in ('inference-service', 'lab-a', 'lab-b') for o in objects)
 state = yaml.safe_load(subprocess.check_output(helmfile + ['build'], text=True))
 releases = {r['name']: r for r in state['releases']}
 platform_releases = {'kyverno', 'local-path-provisioner', 'rustfs', 'cert-manager', 'envoy-gateway',
-                     'agent-router-crds', 'agent-router', 'kserve-crds', 'kserve', 'dex-config', 'dex',
+                     'agentgateway-config', 'agentgateway', 'kserve-crds', 'kserve', 'dex-config', 'dex',
                      'headlamp', 'bastion', 'oauth2-proxy', 'gateway', 'gpu-operator', 'hami', 'dcgm-exporter',
                      'grafana', 'loki', 'tempo', 'mimir', 'otel-node', 'otel-cluster'}
 assert set(releases) == platform_releases | set(definition['models'])
@@ -159,6 +178,7 @@ for name in gpu_names:
     assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native
     assert not any(e['name'].startswith('VLLM_CPU') for e in env)
 # An infrastructure-only environment must neither import models nor publish API routes.
+definition = json.loads((root / 'infra/infra-definition.sample.json').read_text())
 for config in definition['models'].values():
     config.update(enabled=False, replicas=0, **{'import': False})
 with tempfile.TemporaryDirectory() as directory:
@@ -168,5 +188,8 @@ with tempfile.TemporaryDirectory() as directory:
     disabled = list(filter(None, yaml.safe_load_all(subprocess.check_output(helmfile + ['template'], text=True))))
 assert not any(o['kind'] in ('InferenceService', 'AIGatewayRoute', 'AIServiceBackend') for o in disabled)
 assert not any(o['kind'] == 'Job' and o['metadata']['name'] == 'model-import' for o in disabled)
+api_config = next(o['data']['config.yaml'] for o in disabled if o['kind'] == 'ConfigMap'
+                  and o['metadata']['name'] == 'agentgateway-config')
+assert yaml.safe_load(api_config)['binds'][0]['listeners'][0]['routes'] == []
 print(json.dumps({'releases': len(releases), 'models_installed_in_cpu_sample': len(names), 'shared_admin_workspace': True,
                   'pinned_workload_images': len(images), 'runtime_tested': False}))

@@ -86,12 +86,16 @@ releases:
     chart: oci://docker.io/envoyproxy/gateway-helm@sha256:dcb82a14c04b426615a71d97222c7edf9f5ff58b800d241e71ac5784ae6dc7b7
     values:
       - values/envoy-gateway.yaml
+{{- if ne $infra.environment "devenv" }}
+      - values/envoy-agent-router.yaml
+{{- end }}
     hooks:
       - events: [postsync]
         showlogs: true
         command: kubectl
         args: [wait, --for=condition=Established, crd/gatewayclasses.gateway.networking.k8s.io, crd/gateways.gateway.networking.k8s.io, crd/httproutes.gateway.networking.k8s.io, crd/backends.gateway.envoyproxy.io, --timeout=180s]
 
+{{- if ne $infra.environment "devenv" }}
   - name: agent-router-crds
     namespace: agent-router
     # Upstream chart v1.2.1; product renamed, upstream artifact names unchanged.
@@ -125,6 +129,7 @@ releases:
           - -ec
           - 'until test -n "$(kubectl get mutatingwebhookconfiguration envoy-ai-gateway-gateway-pod-mutator.agent-router -o jsonpath="{.webhooks[0].clientConfig.caBundle}")"; do sleep 2; done'
 
+{{- end }}
   - name: kserve-crds
     namespace: kserve
     chart: oci://ghcr.io/kserve/charts/kserve-crd-minimal@sha256:62362337168d1675b8dc90a846dc9cd51af944f59160a42fc387755aca2fbfec
@@ -258,7 +263,12 @@ releases:
     chart: ../../charts/gateway
     wait: false
     needs:
+{{- if eq $infra.environment "devenv" }}
+      - envoy-gateway/envoy-gateway
+      - cert-manager/cert-manager
+{{- else }}
       - agent-router/agent-router
+{{- end }}
       - kyverno/kyverno
       - opentelemetry-collector/otel-cluster
     values:
@@ -269,6 +279,74 @@ releases:
         command: kubectl
         args: [-n, gateway, wait, gateway/ai-inference-basics, --for=condition=Programmed, --timeout=180s]
 
+{{- if eq $infra.environment "devenv" }}
+  - name: agentgateway-config
+    namespace: agentgateway
+    chart: ../../charts/agentgateway-config
+    needs:
+      - gateway/gateway
+    values:
+      - ../../infra/helmfile/lab.yaml.gotmpl
+  - name: agentgateway
+    namespace: agentgateway
+    chart: oci://cr.agentgateway.dev/charts/agentgateway-standalone@sha256:f8e74f989c6705e3e1aaaaabacf554d594e2a24867eb4097b216e019a88c14a6
+    needs:
+      - agentgateway/agentgateway-config
+    values:
+      - values/agentgateway.yaml
+      - config:
+          binds:
+            - port: 8443
+              listeners:
+                - name: model-api
+                  protocol: HTTPS
+                  tls:
+                    cert: /tls/tls.crt
+                    key: /tls/tls.key
+                  policies:
+                    apiKey:
+                      mode: strict
+                      keys:
+                        - keyHash: sha256:{{ $infra.access.apiBearerToken | sha256sum }}
+{{- $hasRoutes := false }}
+{{- range $settings := $infra.models }}{{ if $settings.enabled }}{{ $hasRoutes = true }}{{ end }}{{ end }}
+                  routes:{{ if not $hasRoutes }} []{{ end }}
+{{- $tasks := dict }}
+{{- range $model, $settings := $infra.models }}
+{{- if $settings.enabled }}
+{{- $task := (readFile (printf "../../charts/%s/values.yaml" $model) | fromYaml).task }}
+{{- if hasKey $tasks $task }}{{ fail (printf "devenv API requires at most one enabled %s model" $task) }}{{- end }}
+{{- $_ := set $tasks $task true }}
+{{- $path := index (dict "chat" "/v1/chat/completions" "embeddings" "/v1/embeddings" "rerank" "/cohere/v2/rerank") $task }}
+{{- $format := index (dict "chat" "completions" "embeddings" "embeddings" "rerank" "rerank") $task }}
+                    - name: {{ $model }}
+                      hostnames:
+                        - {{ $infra.network.hostname | quote }}
+                        - agentgateway.agentgateway.svc.cluster.local
+                      matches:
+                        - method: POST
+                          path:
+                            exact: {{ $path }}
+                      policies:
+                        ai:
+                          routes:
+                            {{ $path }}: {{ $format }}
+                      backends:
+                        - ai:
+                            name: {{ $model }}
+                            hostOverride: {{ $model }}-predictor.{{ $model }}.svc.cluster.local:80
+                            provider:
+                              custom:
+                                formats:
+                                  - type: {{ $format }}
+                                    path: {{ if eq $task "rerank" }}/v2/rerank{{ else }}{{ $path }}{{ end }}
+                            policies:
+                              requestHeaderModifier:
+                                remove:
+                                  - authorization
+{{- end }}
+{{- end }}
+{{- end }}
   - name: gpu-operator
     namespace: gpu-operator
     chart: nvidia/gpu-operator
@@ -310,6 +388,9 @@ releases:
       - rustfs/rustfs
       - gateway/gateway
       - oauth2-proxy/oauth2-proxy
+{{- if eq $infra.environment "devenv" }}
+      - agentgateway/agentgateway
+{{- end }}
 {{- if and $settings.enabled $previousModel }}
       - {{ $previousModel }}/{{ $previousModel }}
 {{- end }}

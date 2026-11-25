@@ -40,6 +40,12 @@ class InfrastructureContract(unittest.TestCase):
         invalid['models']['unknown-model'] = {'enabled': True, 'replicas': 1, 'import': True}
         self.assertFalse(validator.is_valid(invalid))
 
+    def test_devenv_requires_a_separate_api_port(self):
+        validator = Draft202012Validator(SCHEMA)
+        invalid = copy.deepcopy(SAMPLE)
+        del invalid['network']['apiNodePort']
+        self.assertFalse(validator.is_valid(invalid))
+
     def test_validation_errors_do_not_print_credentials(self):
         import tempfile
         invalid = copy.deepcopy(SAMPLE)

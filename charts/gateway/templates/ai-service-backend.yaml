@@ -1,3 +1,4 @@
+{{- if not .Values.splitModelGateway }}
 {{- range $name := .Values.modelNames }}
 ---
 apiVersion: aigateway.envoyproxy.io/v1beta1
@@ -12,4 +13,5 @@ spec:
     name: {{ $name }}
     kind: Backend
     group: gateway.envoyproxy.io
+{{- end }}
 {{- end }}

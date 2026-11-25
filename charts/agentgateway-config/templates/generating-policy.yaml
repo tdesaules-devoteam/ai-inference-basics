@@ -1,0 +1,39 @@
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: agentgateway-serving-certificate
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - secrets
+        resourceNames:
+          - model-api-tls
+  matchConditions:
+    - name: issued-leaf
+      expression: object.metadata.namespace == "gateway" && object.type == "kubernetes.io/tls"
+  generate:
+    - template:
+        interpolate: cel
+        value: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: model-api-tls
+            namespace: {{ .Release.Namespace }}
+          type: kubernetes.io/tls
+          data:
+            tls.crt: (( object.data["tls.crt"] ))
+            tls.key: (( object.data["tls.key"] ))
