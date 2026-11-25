@@ -20,7 +20,7 @@ config:
     redeem_url = "http://dex.dex.svc.cluster.local:5556/dex/token"
     oidc_jwks_url = "http://dex.dex.svc.cluster.local:5556/dex/keys"
     redirect_url = "{{ .Values.origin }}/oauth2/callback"
-    cookie_secure = true
+    cookie_secure = {{ not .Values.localHttp }}
     cookie_httponly = true
     cookie_samesite = "lax"
     cookie_expire = "8h"
@@ -342,8 +342,12 @@ extraObjects:
         http://:4181 {
           bind 127.0.0.1
           route {
-            redir /requester /requester/ 308
-            handle_path /requester/* {
+            redir /scalar /scalar/ 308
+            respond /scalar/session/* 404
+            handle_path /scalar/* {
+              header >Cache-Control "no-store"
+              @session path /session-token
+              rewrite @session /session/token.bin
               header Referrer-Policy "no-referrer"
               header Content-Security-Policy "connect-src 'self' {{ .Values.modelApiOrigin }}; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; object-src 'none'; frame-ancestors 'self'"
               reverse_proxy requester.requester.svc.cluster.local:80 {
@@ -351,11 +355,11 @@ extraObjects:
                 header_up -Authorization
               }
             }
-            redir /terminal /terminal/ 308
+            redir /ttyd /ttyd/ 308
             redir /code /code/ 308
             redir /headlamp /headlamp/ 308
             redir /grafana /grafana/ 308
-            handle /terminal/* {
+            handle /ttyd/* {
               reverse_proxy bastion.bastion.svc.cluster.local:7681
             }
             handle_path /code/* {

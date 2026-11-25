@@ -4,14 +4,6 @@ mode: readonly
 gateway:
   service:
     enabled: false
-extraVolumes:
-  - name: serving-certificate
-    secret:
-      secretName: model-api-tls
-extraVolumeMounts:
-  - name: serving-certificate
-    mountPath: /tls
-    readOnly: true
 extraEnv:
   - name: OTEL_SERVICE_NAME
     value: agent-gateway

@@ -4,10 +4,10 @@ Pair training uses one computer, one Dex account named `cluster-admin`, and one 
 workspace in namespace `bastion`. Its Deployment contains ttyd with Zellij CLI
 and code-server, sharing a 2-GiB PVC. There is no separate Zellij web-token login.
 
-- `/terminal/`: shared Zellij session.
+- `/ttyd/`: shared Zellij session.
 - `/code/`: shared editor and files (not a Live Share collaboration service).
 - `/grafana/`: Explore the metrics, logs and traces collected by the lab.
-- `/requester/`: [Scalar HTTP client](requester.md) with model request examples.
+- `/scalar/`: [Scalar HTTP client](requester.md) with model request examples.
 - `/headlamp/`: full Kubernetes administration through the same browser login.
 
 The bastion and Headlamp ServiceAccounts have `cluster-admin` permissions across

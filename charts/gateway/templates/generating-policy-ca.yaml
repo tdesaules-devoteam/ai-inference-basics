@@ -1,3 +1,4 @@
+{{- if not .Values.localHttp }}
 apiVersion: policies.kyverno.io/v1
 kind: GeneratingPolicy
 metadata:
@@ -37,3 +38,4 @@ spec:
             namespace: {{ .Release.Namespace }}
           data:
             ca.crt: (( string(base64.decode(object.data["tls.crt"])) ))
+{{- end }}

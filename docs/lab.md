@@ -12,7 +12,7 @@ and S3 prefix. The shared pair-training workstation uses one Dex account named
 | Embeddings | qwen3-embedding-0-6b | charts/qwen3-embedding-0-6b |
 | Reranker | qwen3-reranker-0-6b | charts/qwen3-reranker-0-6b |
 | Shared terminal/editor | bastion | charts/bastion |
-| HTTPS, routes, CA and API key | gateway | charts/gateway |
+| Web listener, routes and API key | gateway | charts/gateway |
 | Identity | dex | Official Dex chart + charts/dex-config |
 | Browser session | oauth2-proxy | Official chart + native extraObjects |
 | S3 and shared bucket IAM | rustfs | Official chart + native extraManifests |
@@ -33,7 +33,7 @@ The centralized `lab-bootstrap` release is removed. Domain Jobs generate stable
 credentials locally. Cross-domain contracts are deliberately narrow:
 
 - Dex publishes `oidc-client` for oauth2-proxy, separately from the admin password.
-- Gateway publishes the API key and a public CA ConfigMap for the bastion.
+- Gateway publishes the API key for the bastion.
 - RustFS publishes one shared credential Secret for the models bucket.
 - Dex/oauth2-proxy own their cross-namespace Gateway ReferenceGrants.
 
@@ -118,25 +118,29 @@ Ready/UpToDate via JSONPath, accommodating stale observedGeneration in v0.21.0.
 
 ## Admin access
 
-For browser access use `https://<native-VM-hostname>:30443` over the native bridge/mDNS connection.
-Trust the public lab CA. The server certificate terminates TLS at the Gateway;
-Dex and oauth2-proxy's internal Services still use HTTP.
+For browser access use `http://<native-VM-hostname>:30443` over the native bridge/mDNS connection.
+No browser CA import is required.
 
 | Path | Purpose |
 | --- | --- |
-| `/terminal/` | Shared ttyd/Zellij CLI session |
+| `/` | Public JSON index of web URLs and enabled model endpoints |
+| `/ttyd/` | Shared ttyd/Zellij CLI session |
 | `/code/` | Shared code-server and workspace files |
-| `/requester/` | [Scalar HTTP client and example model requests](requester.md) |
+| `/scalar/` | [Scalar HTTP client and example model requests](requester.md) |
 | `/headlamp/` | Full Kubernetes administration |
 | `/grafana/` | Authenticated metrics, logs and traces in Explore |
 
-Model paths are served independently at `https://<native-VM-hostname>:30444`:
+Model paths are served independently at `http://<native-VM-hostname>:30444`:
 
 | Path | Purpose |
 | --- | --- |
 | `/v1/chat/completions` | Bearer API, selected chat model |
+| `/openapi.json` | Public OpenAPI 3.1 contract used by Scalar |
+| `/v1/models` | Bearer API, configured active model IDs |
+| `/v1/responses` | Bearer API, Responses creation |
+| `/score` | Bearer API, pairwise score |
 | `/v1/embeddings` | Bearer API, model `qwen3-embedding-0-6b` |
-| `/cohere/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
+| `/v2/rerank` | Bearer API, model `qwen3-reranker-0-6b` |
 
 Dex has one account named `cluster-admin`. The environment JSON supplies its email
 and password. The dex-config Job preserves its identity and OIDC client secret,
@@ -154,13 +158,12 @@ kubectl -n gateway get secret lab-api-key -o json |
     '(.data.lab | @base64d) as $key | $admin[0] | {username,email,password,api_key:$key}' \
     > "$HOME/lab-credentials.json"
 rm "$HOME/admin-identity.json"
-kubectl -n gateway get configmap lab-ca -o jsonpath='{.data.ca\.crt}' > "$HOME/lab-ca.crt"
 ```
 
 Both bastion and Headlamp use ServiceAccounts bound to `cluster-admin`. The
 bastion's Linux user remains UID 1000; Kubernetes administration is authorized
 by its ServiceAccount. Browser cookies do not authorize model API calls.
-The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust for clients.
+The bastion provides `OPENAI_BASE_URL`, `OPENAI_API_KEY` for clients.
 code-server opens `/workspace/ai-inference-basics` by default and initializes new
 user settings with Nord and Geist fonts. Its init container clones the
 configured repository only when no checkout exists, and preserves existing files
@@ -169,7 +172,7 @@ of the workstation checkout.
 
 ## Validation
 
-Offline commands require Helm 4.3.1, Helmfile and `requirements-dev.txt`:
+Offline commands require Helm 4.3.2, Helmfile and `requirements-dev.txt`:
 
 ```sh
 python platform/helmfile/scripts/validate-infra.py infra/infra-definition.sample.json
@@ -188,18 +191,16 @@ Runtime checks require the deployed lab and explicit authorization:
   Headlamp, Grafana datasource queries, anonymous-header spoof rejection and API-cookie rejection.
   Set `LAB_SKIP_TERMINAL_COMMAND=1` when the shared terminal is already running
   an application; it then checks terminal rendering without typing into it.
-- `tests/qualify_model_apis.py`: CA-verified HTTPS, Bearer rejection, real chat/SSE,
+- `tests/qualify_model_apis.py`: HTTP on devenv, Bearer rejection, real chat/SSE,
   embeddings and reranking; models must be Ready.
 - `tests/qualify_model_storage.py`: run in a temporary provision-image Pod using
   the bastion ServiceAccount, with a JSON map of model
    locks on stdin; verify shared-bucket reads/writes and rejection of other buckets.
 - `tests/qualify_benchmark.py`: run inside the bastion with the chat lock on stdin;
-  download only the verified tokenizer and submit three requests through HTTPS.
+  download only the verified tokenizer and submit three requests through the model gateway.
 
-Use `LAB_ORIGIN=https://<hostname>:30443` for the browser and `LAB_API_ORIGIN=https://<hostname>:30444` for the model APIs. Browser/API tests also consume `LAB_CREDENTIALS_FILE` (a private JSON
-object with username/email/password/api_key) and `LAB_CA_FILE` for the API test.
-Chromium accepts the lab certificate for interaction tests; API TLS verification
-is performed separately with the CA. Reports and credentials stay untracked.
+Use `LAB_ORIGIN=http://<hostname>:30443` for the browser and `LAB_API_ORIGIN=http://<hostname>:30444` for the model APIs. Browser/API tests also consume `LAB_CREDENTIALS_FILE` (a private JSON
+object with username/email/password/api_key). Reports and credentials stay untracked.
 
 The FCOS 45 CPU lab passed a native blank-disk bootstrap and real model, S3,
 workspace, browser and telemetry checks. Retained-disk tests separately checked

@@ -3,7 +3,12 @@ kind: ConfigMap
 metadata:
   name: requester-collection
   namespace: {{ .Release.Namespace }}
+binaryData:
+  geist-mono.woff2: {{ .Files.Get "files/geist-mono.woff2.b64" | trim | quote }}
 data:
+  OFL.txt: |
+{{ .Files.Get "files/OFL.txt" | indent 4 }}
+{{- if not .Values.splitModelGateway }}
   models.yaml: |
     openapi: 3.1.0
     info:
@@ -22,7 +27,7 @@ data:
     paths:{{ if not .Values.modelNames }} {}{{ end }}
 {{- range .Values.modelNames }}
 {{- $task := ternary "embeddings" (ternary "rerank" "chat" (contains "reranker" .)) (contains "embedding" .) }}
-{{- $path := index (dict "chat" "/v1/chat/completions" "embeddings" "/v1/embeddings" "rerank" "/cohere/v2/rerank") $task }}
+{{- $path := index $.Values.modelPaths . }}
       {{ $path }}:
         post:
           operationId: {{ $task }}
@@ -71,4 +76,5 @@ data:
               description: Model response
             '401':
               description: Missing or invalid model API key
+{{- end }}
 {{- end }}

@@ -1,3 +1,4 @@
+{{- if not .Values.localHttp }}
 apiVersion: policies.kyverno.io/v1
 kind: GeneratingPolicy
 metadata:
@@ -38,3 +39,4 @@ spec:
           type: Opaque
           stringData:
             ca.crt: (( object.data["ca.crt"] ))
+{{- end }}

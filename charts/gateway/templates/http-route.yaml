@@ -1,13 +1,4 @@
-{{- $routes := list
-  (dict "name" "requester" "path" "/requester" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "grafana" "path" "/grafana" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "terminal" "path" "/terminal" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "code" "path" "/code" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "headlamp" "path" "/headlamp" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "oauth2" "path" "/oauth2" "service" "oauth2-proxy" "namespace" "oauth2-proxy" "port" 80)
-  (dict "name" "dex" "path" "/dex" "service" "dex" "namespace" "dex" "port" 5556)
-}}
-{{- range $route := $routes }}
+{{- range $route := (include "gateway.browserRoutes" . | fromYamlArray) }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

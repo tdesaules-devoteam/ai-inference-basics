@@ -1,0 +1,32 @@
+{{- $origin := .Values.origin | default (printf "%s://%s:%v" (ternary "http" "https" .Values.localHttp) .Values.hostname .Values.nodePort) -}}
+{{- $web := dict "index" (printf "%s/" $origin) -}}
+{{- range $route := (include "gateway.browserRoutes" . | fromYamlArray) -}}
+{{- $_ := set $web (trimPrefix "/" $route.path) (printf "%s%s/" $origin $route.path) -}}
+{{- end -}}
+{{- $models := list -}}
+{{- range $model, $path := .Values.modelPaths -}}
+{{- $models = append $models (dict "model" $model "method" "POST" "url" (printf "%s%s" $.Values.modelApiOrigin $path)) -}}
+{{- if $.Values.splitModelGateway -}}
+{{- if eq $path "/v1/chat/completions" -}}
+{{- $models = append $models (dict "model" $model "method" "POST" "url" (printf "%s/v1/responses" $.Values.modelApiOrigin)) -}}
+{{- else if eq $path "/v2/rerank" -}}
+{{- $models = append $models (dict "model" $model "method" "POST" "url" (printf "%s/score" $.Values.modelApiOrigin)) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- $index := dict "web" $web "models" $models -}}
+{{- if .Values.splitModelGateway -}}
+{{- $_ := set $index "discovery" (dict "openapi" (printf "%s/openapi.json" .Values.modelApiOrigin) "models" (printf "%s/v1/models" .Values.modelApiOrigin)) -}}
+{{- end -}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: endpoint-index
+  namespace: {{ .Release.Namespace }}
+spec:
+  directResponse:
+    statusCode: 200
+    contentType: application/json
+    body:
+      type: Inline
+      inline: {{ $index | toJson | quote }}

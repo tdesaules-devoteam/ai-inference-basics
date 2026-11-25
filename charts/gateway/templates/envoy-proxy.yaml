@@ -78,8 +78,8 @@ spec:
           value:
             spec:
               ports:
-                - name: https
-                  port: 443
+                - name: {{ if .Values.localHttp }}http{{ else }}https{{ end }}
+                  port: {{ if .Values.localHttp }}80{{ else }}443{{ end }}
                   protocol: TCP
-                  targetPort: 10443
+                  targetPort: {{ if .Values.localHttp }}10080{{ else }}10443{{ end }}
                   nodePort: {{ .Values.nodePort }}

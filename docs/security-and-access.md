@@ -14,6 +14,9 @@ Domain-local Helm hook Jobs generate and preserve credentials in Kubernetes:
 - `oauth2-proxy/oauth-config`: Kyverno combines the local OIDC client and session key.
 - `oauth2-proxy/browser-session`: the stable cookie key.
 - `gateway/lab-api-key`: the separate static model API key.
+- `requester/lab-api-key` (devenv): Kyverno copies the model key for the
+  Dex-protected Scalar UI. The authenticated admin can inspect the key; the
+  public OpenAPI document and anonymous browser responses never contain it.
 - `rustfs/s3-observability`: separate credentials restricted to the five telemetry buckets.
 - `rustfs/s3-models`: shared read/write credentials for the models bucket.
 
@@ -23,8 +26,7 @@ Each model's serving workload receives the shared bucket credential and no
 Kubernetes API token. The account can read/write all model prefixes; other
 application buckets remain excluded.
 
-The web and model gateways in devenv terminate HTTPS separately using cert-manager-issued certificates from the lab
-CA. Its private key stays in `gateway`; a public CA ConfigMap supplies client trust.
+Both devenv listeners use HTTP on the trusted local bridge. Passwords, session cookies and Bearer keys are not encrypted in transit.
 Internal Dex/oauth2-proxy traffic remains HTTP. Browser access uses one Dex session
 through oauth2-proxy; there is no second Zellij token. Model APIs require their own
 Bearer key and reject browser cookies as authorization.
@@ -55,7 +57,7 @@ import hash checks do not implement S3 Object Lock. Storage qualification checks
 cross-prefix reads/writes and denies all five observability buckets.
 
 Kyverno transforms the shared S3 source on Secret updates, then uses synchronized
-clones for consumers. Public CA generation watches the source ConfigMap, and
+clones for consumers. In TLS environments public CA generation watches the source ConfigMap, and
 oauth configuration watches its local source Secrets. Data-changing updates to
 bastion, Dex and oauth2-proxy credential Secrets trigger scoped MutatingPolicies
 that change a Deployment Pod-template annotation. This rolls out processes that
@@ -65,7 +67,7 @@ do not trigger a rollout. The background controller has namespaced permissions
 restricted to the three named Deployments. Rotation can briefly interrupt the
 single-instance applications and requires runtime qualification.
 
-The public CA is distributed through `gateway/lab-ca` and consumer trust
+Only in TLS environments, the public CA is distributed through `gateway/lab-ca` and consumer trust
 configuration. Private CA/server keys remain in cert-manager Secrets; publishing
 the public CA does not publish those keys. The VM's administrative kubeconfig
 uses the X.509 identity `kubernetes-admin` in `system:masters`; the bastion uses

@@ -1,3 +1,4 @@
+{{- if not .Values.localHttp }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -6,3 +7,4 @@ metadata:
 spec:
   ca:
     secretName: lab-root-ca
+{{- end }}

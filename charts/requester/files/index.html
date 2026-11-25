@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab model API</title>
+</head>
+<body>
+  <main id="app"></main>
+  <script src="/scalar/scalar.js"></script>
+  <script>
+    async function start() {
+      const config = {{ env "API_REFERENCE_CONFIG" }};
+      const response = await fetch('/scalar/session-token', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Session unavailable');
+      config.authentication = {
+        preferredSecurityScheme: 'modelKey',
+        securitySchemes: { modelKey: { token: await response.text() } }
+      };
+      Scalar.createApiReference('#app', config);
+    }
+    start().catch(() => { document.querySelector('#app').textContent = 'Could not load the lab session. Reload to sign in again.'; });
+  </script>
+</body>
+</html>

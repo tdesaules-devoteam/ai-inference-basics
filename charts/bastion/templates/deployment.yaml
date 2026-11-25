@@ -96,7 +96,7 @@ spec:
             - name: LAB_NAMESPACE
               value: bastion
             - name: TERMINAL_BASE_PATH
-              value: /terminal
+              value: /ttyd
             - name: OPENAI_BASE_URL
               value: {{ $.Values.apiBaseUrl | quote }}
             - name: OPENAI_API_KEY
@@ -104,6 +104,7 @@ spec:
                 secretKeyRef:
                   name: lab-api-key
                   key: lab
+        {{- if not $.Values.localHttp }}
             - name: SSL_CERT_FILE
               value: /workspace/.config/lab-ca-bundle.pem
             - name: REQUESTS_CA_BUNDLE
@@ -112,12 +113,13 @@ spec:
               value: /workspace/.config/lab-ca-bundle.pem
             - name: NODE_EXTRA_CA_CERTS
               value: /etc/lab-ca/ca.crt
+        {{- end }}
           ports:
             - name: {{ $component }}
               containerPort: {{ if eq $component "terminal" }}7681{{ else }}8080{{ end }}
           readinessProbe:
             httpGet:
-              path: {{ if eq $component "terminal" }}/terminal/{{ else }}/healthz{{ end }}
+              path: {{ if eq $component "terminal" }}/ttyd/{{ else }}/healthz{{ end }}
               port: {{ $component }}
             initialDelaySeconds: 5
           resources:
@@ -133,9 +135,11 @@ spec:
               readOnly: true
             - name: workspace
               mountPath: /workspace
+        {{- if not $.Values.localHttp }}
             - name: ca
               mountPath: /etc/lab-ca
               readOnly: true
+        {{- end }}
             - name: temporary
               mountPath: /tmp
         {{- end }}
@@ -146,9 +150,11 @@ spec:
         - name: workspace
           persistentVolumeClaim:
             claimName: bastion
+        {{- if not $.Values.localHttp }}
         - name: ca
           secret:
             secretName: lab-ca
+        {{- end }}
         - name: temporary
           emptyDir:
             sizeLimit: 1Gi

@@ -10,15 +10,14 @@ Project charts own gateway, bastion, Dex configuration and the selected models.
 Each model's chart, release, namespace and S3 prefix have the same normalized name.
 
 ```text
-Browser → HTTPS :30443 → Envoy → Dex / oauth2-proxy → bastion, Headlamp, Grafana
-API client → HTTPS :30444 → agentgateway (Bearer) → KServe predictor → vLLM
+Browser → HTTP :30443 → Envoy → Dex / oauth2-proxy → bastion, Headlamp, Grafana
+API client → HTTP :30444 → agentgateway (Bearer) → KServe predictor → vLLM
 ```
 
-The two TLS listeners use separate leaf certificates issued by the local CA.
+The two local listeners serve plain HTTP.
 Agentgateway is not an Envoy extension. Its upstream standalone chart reads
 routes generated from the enabled models in the environment definition. A
-focused configuration chart owns its fixed NodePort, ingress policy and leaf
-certificate distribution. The CA private key stays in `gateway`. The Scaleway
+focused configuration chart owns its fixed NodePort and ingress policy. The Scaleway
 sample still uses TheAgentRouter; its two public addresses are a separate milestone.
 
 One Dex account, `cluster-admin`, uses the shared workspace and Headlamp. Both Kubernetes

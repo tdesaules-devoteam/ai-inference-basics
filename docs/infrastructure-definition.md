@@ -55,9 +55,9 @@ they are software pins, not a second set of environment defaults.
 Set `network.httpsNodePort` (web, default sample 30443) and `network.apiNodePort`
 (models, default sample 30444) to different available NodePorts. Add the API port
 to existing private devenv definitions before validating them. Both listeners use
-`network.hostname` and the lab CA, but terminate TLS independently. Helmfile renders
+`network.hostname` over HTTP; the historical `httpsNodePort` field selects the web port regardless of scheme. Helmfile renders
 only the SHA-256 verifier of the API key into the agentgateway ConfigMap. The
-bastion reaches `https://agentgateway.agentgateway.svc.cluster.local/v1`.
+bastion reaches `http://agentgateway.agentgateway.svc.cluster.local/v1`.
 A devenv environment can enable at most one model per operation.
 
 For a retained cluster that ran TheAgentRouter, reconcile the Envoy configuration,

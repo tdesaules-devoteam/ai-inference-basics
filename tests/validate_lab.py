@@ -9,6 +9,9 @@ import subprocess
 import tempfile
 
 import yaml
+from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
 
 root = Path(__file__).resolve().parent.parent
 os.environ['INFRA_DEFINITION'] = str(root / 'infra/infra-definition.sample.json')
@@ -77,7 +80,7 @@ assert headlamp_binding['roleRef']['name'] == 'cluster-admin'
 find('Job', 'dex-config', 'dex')
 find('Job', 'oauth2-proxy-session', 'oauth2-proxy')
 find('Job', 'rustfs-accounts', 'rustfs')
-for policy in ('model-bucket-sources', 'model-bucket-access', 'oauth2-proxy-oidc-client', 'oauth2-proxy-config', 'gateway-public-ca', 'bastion-api-key', 'bastion-public-ca'):
+for policy in ('model-bucket-sources', 'model-bucket-access', 'oauth2-proxy-oidc-client', 'oauth2-proxy-config', 'bastion-api-key'):
     find('GeneratingPolicy', policy, '')
 for namespace in ('bastion', 'dex', 'oauth2-proxy'):
     policy = find('MutatingPolicy', namespace + '-reload-credentials', '')['spec']
@@ -87,8 +90,9 @@ for namespace in ('bastion', 'dex', 'oauth2-proxy'):
     assert role['resourceNames'] == [namespace] and role['verbs'] == ['get', 'update', 'patch']
     subject = find('RoleBinding', 'credential-reload', namespace)['subjects'][0]
     find('ServiceAccount', subject['name'], subject['namespace'])
-find('Certificate', 'lab-root-ca', 'gateway')
-find('Certificate', 'lab-tls', 'gateway')
+assert not any(o['kind'] in ('Issuer', 'Certificate') and o['metadata'].get('namespace') in ('gateway', 'agentgateway') for o in objects)
+assert not any(o['metadata']['name'] in ('gateway-public-ca', 'bastion-public-ca') for o in objects)
+assert 'lab-ca' not in str(find('Deployment', 'bastion', 'bastion')['spec'])
 assert find('Role', 'gateway-credentials', 'gateway')['rules'] == [
     {'apiGroups': [''], 'resources': ['secrets'], 'resourceNames': ['lab-api-key'], 'verbs': ['get', 'update']},
     {'apiGroups': [''], 'resources': ['secrets'], 'verbs': ['create']},
@@ -100,30 +104,58 @@ assert service['ports'][0]['nodePort'] == definition['network']['apiNodePort']
 assert service['ports'][0]['nodePort'] != definition['network']['httpsNodePort']
 config = yaml.safe_load(find('ConfigMap', 'agentgateway-config', 'agentgateway')['data']['config.yaml'])
 listener = config['binds'][0]['listeners'][0]
-assert listener['protocol'] == 'HTTPS' and listener['policies']['apiKey']['mode'] == 'strict'
-assert {r['name'] for r in listener['routes']} == set(names)
-for route in listener['routes']:
-    backend = route['backends'][0]['ai']
-    name = route['name']
-    assert backend['hostOverride'] == f'{name}-predictor.{name}.svc.cluster.local:80'
-    assert 'authorization' in backend['policies']['requestHeaderModifier']['remove']
-    assert find('NetworkPolicy', 'model-apis-gateway-only', name)['spec']['ingress'][0]['from'][0] == {
-        'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'agentgateway'}},
-        'podSelector': {'matchLabels': {'app.kubernetes.io/instance': 'agentgateway'}},
-    }
-assert listener['policies']['apiKey']['keys'] == [{'keyHash': 'sha256:' + hashlib.sha256(definition['access']['apiBearerToken'].encode()).hexdigest()}]
-web_origin = 'https://{}:{}'.format(definition['network']['hostname'], definition['network']['httpsNodePort'])
+assert listener['protocol'] == 'HTTP' and 'tls' not in listener
+routes = {r['matches'][0]['path']['exact']: r for r in listener['routes']}
+assert len(routes) == len(listener['routes']) == 7
+expected_hash = 'sha256:' + hashlib.sha256(definition['access']['apiBearerToken'].encode()).hexdigest()
+for path, route in routes.items():
+    if path == '/openapi.json':
+        assert 'apiKey' not in route['policies']
+    else:
+        assert route['policies']['apiKey'] == {'keys': [{'keyHash': expected_hash}], 'mode': 'strict'}
+    if 'backends' not in route:
+        continue
+    target = route['backends'][0]
+    name = target.get('ai', {}).get('name', 'qwen3-reranker-0-6b')
+    assert target.get('host', target.get('ai', {}).get('hostOverride')) == f'{name}-predictor.{name}.svc.cluster.local:80'
+    assert 'authorization' in target.get('ai', target)['policies']['requestHeaderModifier']['remove']
+    assert find('NetworkPolicy', 'model-apis-gateway-only', name)['spec']['ingress'][0]['from'][0]['namespaceSelector']['matchLabels']['kubernetes.io/metadata.name'] == 'agentgateway'
+assert {m['id'] for m in json.loads(routes['/v1/models']['policies']['directResponse']['body'])['data']} == set(names)
+assert find('Gateway', 'ai-inference-basics', 'gateway')['spec']['listeners'][0]['protocol'] == 'HTTP'
+web_origin = 'http://{}:{}'.format(definition['network']['hostname'], definition['network']['httpsNodePort'])
 assert listener['policies']['cors']['allowOrigins'] == [web_origin]
 assert not listener['policies']['cors'].get('allowCredentials', False)
 def collection():
     return yaml.safe_load(find('ConfigMap', 'requester-collection', 'requester')['data']['models.yaml'])
 
-spec = collection()
-assert spec['servers'] == [{'url': 'https://{}:{}'.format(definition['network']['hostname'], definition['network']['apiNodePort'])}]
+spec = json.loads(routes['/openapi.json']['policies']['directResponse']['body'])
+assert set(routes) == set(spec['paths'])
+assert 'models.yaml' not in find('ConfigMap', 'requester-collection', 'requester')['data']
+root_rule, = find('HTTPRoute', 'browser-root', 'gateway')['spec']['rules']
+assert root_rule['matches'] == [{'path': {'type': 'Exact', 'value': '/'}}]
+extension, = root_rule['filters']
+assert extension['type'] == 'ExtensionRef'
+response = find('HTTPRouteFilter', extension['extensionRef']['name'], 'gateway')['spec']['directResponse']
+assert (response['statusCode'], response['contentType']) == (200, 'application/json')
+directory = json.loads(response['body']['inline'])
+assert set(directory['web'].values()) == {web_origin + path for path in
+    ('/', '/ttyd/', '/scalar/', '/code/', '/headlamp/', '/grafana/', '/dex/', '/oauth2/')}
+assert {entry['url'] for entry in directory['models']} == {spec['servers'][0]['url'] + path for path in spec['paths'] if 'post' in spec['paths'][path]}
+assert spec['servers'] == [{'url': 'http://{}:{}'.format(definition['network']['hostname'], definition['network']['apiNodePort'])}]
 assert spec['security'] == [{'modelKey': []}]
-assert set(spec['paths']) == {'/v1/chat/completions', '/v1/embeddings', '/cohere/v2/rerank'}
+registry = Registry().with_resource('urn:lab:openapi', Resource.from_contents(spec, default_specification=DRAFT202012))
+for path, endpoints in spec['paths'].items():
+    if 'post' not in endpoints:
+        continue
+    media = endpoints['post']['requestBody']['content']['application/json']
+    pointer = path.replace('/', '~1')
+    validator = Draft202012Validator({'$ref': f'urn:lab:openapi#/paths/{pointer}/post/requestBody/content/application~1json/schema'}, registry=registry)
+    for example in media['examples'].values():
+        validator.validate(example['value'])
+    assert not validator.is_valid(dict(media['examples']['default']['value'], model='unknown-model'))
+assert set(spec['paths']) == {'/v1/chat/completions', '/v1/embeddings', '/v2/rerank', '/score', '/v1/responses', '/v1/models', '/openapi.json'}
 assert {operation['post']['requestBody']['content']['application/json']['examples']['default']['value']['model']
-        for operation in spec['paths'].values()} == set(names)
+        for operation in spec['paths'].values() if 'post' in operation} == set(names)
 assert definition['access']['apiBearerToken'] not in str(spec)
 assert not any(o['kind'] == 'HTTPRoute' and o['metadata']['name'] == 'model-api' for o in objects)
 assert not any(o['metadata'].get('namespace') in ('inference-service', 'lab-a', 'lab-b') for o in objects)
@@ -178,6 +210,9 @@ with tempfile.TemporaryDirectory() as directory:
     path.write_text(json.dumps(definition))
     os.environ['INFRA_DEFINITION'] = str(path)
     objects = list(filter(None, yaml.safe_load_all(subprocess.check_output(helmfile + ['-e', 'scaleway', 'template'], text=True))))
+assert find('Gateway', 'ai-inference-basics', 'gateway')['spec']['listeners'][0]['protocol'] == 'HTTPS'
+find('Certificate', 'lab-root-ca', 'gateway')
+find('Certificate', 'lab-tls', 'gateway')
 assert {o['metadata']['name'] for o in objects if o['kind'] == 'InferenceService'} == set(gpu_names)
 assert {operation['post']['requestBody']['content']['application/json']['examples']['default']['value']['model']
         for operation in collection()['paths'].values()} == set(gpu_names)
@@ -205,6 +240,8 @@ assert not any(o['kind'] in ('InferenceService', 'AIGatewayRoute', 'AIServiceBac
 assert not any(o['kind'] == 'Job' and o['metadata']['name'] == 'model-import' for o in disabled)
 api_config = next(o['data']['config.yaml'] for o in disabled if o['kind'] == 'ConfigMap'
                   and o['metadata']['name'] == 'agentgateway-config')
-assert yaml.safe_load(api_config)['binds'][0]['listeners'][0]['routes'] == []
+discovery = yaml.safe_load(api_config)['binds'][0]['listeners'][0]['routes']
+assert {r['name'] for r in discovery} == {'models', 'openapi'}
+assert json.loads(next(r for r in discovery if r['name'] == 'models')['policies']['directResponse']['body'])['data'] == []
 print(json.dumps({'releases': len(releases), 'models_installed_in_cpu_sample': len(names), 'shared_admin_workspace': True,
                   'pinned_workload_images': len(images), 'runtime_tested': False}))

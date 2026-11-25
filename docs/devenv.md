@@ -80,7 +80,8 @@ custom_copies = [
 Additional custom copies place the Helmfile and per-component values
 from `platform/helmfile/` under `/etc/ai-inference-basics/platform/helmfile`.
 The authored charts are copied to `/etc/ai-inference-basics/charts`, including
-their templates, Python hook programs and model lock. Bootstrap pulls bastion
+all templates (also `*.tpl`), Python hook programs, model locks and Scalar theme/font files.
+Copy `platform/helmfile/openapi/*.json` alongside the Helmfile scripts. Bootstrap pulls bastion
 and provision by public GHCR manifest digest.
 Local custom copies include the JSON schema, private environment definition
 (mode 0600), shared `infra/helmfile/lab.yaml.gotmpl` adapter and readiness checks.

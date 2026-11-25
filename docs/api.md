@@ -1,27 +1,38 @@
 # Model APIs
 
-In devenv, agentgateway exposes the model APIs on their own TLS listener. Envoy serves browser traffic only. Browser sessions and
+In devenv, agentgateway exposes the model APIs on their own HTTP listener. Envoy serves browser traffic only. Browser sessions and
 model API credentials are independent: APIs require `Authorization: Bearer <key>`.
 
 | Endpoint | CPU sample model name and namespace |
 | --- | --- |
 | `POST /v1/chat/completions` | `qwen3-0-6b` |
+| `POST /v1/responses` | `qwen3-0-6b` |
 | `POST /v1/embeddings` | `qwen3-embedding-0-6b` |
-| `POST /cohere/v2/rerank` | `qwen3-reranker-0-6b` |
+| `POST /v2/rerank` | `qwen3-reranker-0-6b` |
+| `POST /score` | `qwen3-reranker-0-6b` (pairwise score) |
+| `GET /v1/models` | Configured active models (`enabled` and one desired replica), not a readiness probe |
+| `GET /openapi.json` | Public specification for Scalar and API clients |
+
+Agentgateway restricts paths and methods; vLLM validates inference payloads. The
+specification endpoint is the only unauthenticated GET. The legacy Completions API
+is not published. Responses creation supports streaming; stored response lookup
+and cancellation are not exposed. The `platform/helmfile/openapi` fragments come
+from the pinned CPU predictors, not from a union of every vLLM endpoint. On an
+upgrade, fetch `/openapi.json` from each predictor after verifying `/version`,
+then run `python3 platform/helmfile/scripts/model-contract.py extract TASK FILE`
+for `chat`, `embeddings` and `rerank`. Review the changes before reconciling.
 
 The CPU sample uses KServe `InferenceService` and vLLM CPU for all three.
 For the GPU sample, use the [corresponding GPU model names](gpu.md#environment-selection). They start automatically
 according to the environment JSON. Setting a model's `replicas` to zero stops selected
 models as described in [lab operations](lab.md); requests do not wake stopped models.
 
-The admin bastion has `OPENAI_BASE_URL`, `OPENAI_API_KEY` and CA trust configured.
-Outside the cluster, use the native VM hostname on port 30444 and the public lab
-CA. The API key is stored in `gateway/lab-api-key`; do not put it in Git or logs.
+The admin bastion has `OPENAI_BASE_URL` and `OPENAI_API_KEY` configured.
+Outside the cluster, use the native VM hostname over HTTP on port 30444. The API key is stored in `gateway/lab-api-key`; do not put it in Git or logs.
 
 ## Requests from the bastion terminal
 
-The terminal already provides `OPENAI_API_KEY`, `OPENAI_BASE_URL` and
-`CURL_CA_BUNDLE`. Derive the shared origin once:
+The terminal already provides `OPENAI_API_KEY` and `OPENAI_BASE_URL`. Derive the shared origin once:
 
 ```sh
 BASE_URL="${OPENAI_BASE_URL%/v1}"
@@ -77,7 +88,7 @@ five values; the API response contains the complete vectors.
 ### Reranking
 
 ```sh
-curl --fail-with-body -sS "$BASE_URL/cohere/v2/rerank" \
+curl --fail-with-body -sS "$BASE_URL/v2/rerank" \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -102,19 +113,13 @@ Expect `401`, including when a browser session is authenticated.
 
 ## Requests from the workstation
 
-Run from the repository root. These commands retrieve the API key without printing
-it and configure the public CA for curl:
+Run from the repository root. These commands retrieve the API key without printing it:
 
 ```sh
 VM_HOST="$(cat .devenv/.uuid).local"
 VM="$(id -un)@$VM_HOST"
-BASE_URL="https://$VM_HOST:30444"
+BASE_URL="http://$VM_HOST:30444"
 OPENAI_API_KEY="$(ssh "$VM" 'kubectl -n gateway get secret lab-api-key -o jsonpath="{.data.lab}" | base64 -d')"
-umask 077
-CA_DIR="$(mktemp -d)"
-ssh "$VM" 'kubectl -n gateway get configmap lab-ca -o jsonpath="{.data.ca\.crt}"' > "$CA_DIR/ca.crt"
-export CURL_CA_BUNDLE="$CA_DIR/ca.crt"
 ```
 
-Then use the same requests above. Afterward, `unset OPENAI_API_KEY` and remove
-`"$CA_DIR/ca.crt"` and its temporary directory.
+Then use the same requests above. Afterward, `unset OPENAI_API_KEY`.

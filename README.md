@@ -38,7 +38,7 @@ See [the lab](docs/lab.md) for browser paths, model APIs, credentials and image 
 **Developer tools:** [terminal and editor](docs/workspaces.md) and the [Scalar HTTP requester](docs/requester.md) share one Dex login.
 
 **Local endpoints:** Envoy serves the browser on `:30443`; agentgateway serves the
-model APIs directly on `:30444`. Both use HTTPS and the native VM hostname.
+model APIs directly on `:30444`. Both use HTTP and the native VM hostname.
 
 **Current layout:** one Dex account named `cluster-admin` for pair training, full Kubernetes
 administration from the bastion and Headlamp, separate Bearer model APIs and

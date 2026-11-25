@@ -1,7 +1,8 @@
+{{- if .Values.splitModelGateway }}
 apiVersion: policies.kyverno.io/v1
 kind: GeneratingPolicy
 metadata:
-  name: agentgateway-serving-certificate
+  name: requester-api-key
 spec:
   evaluation:
     generateExisting:
@@ -20,10 +21,10 @@ spec:
         resources:
           - secrets
         resourceNames:
-          - model-api-tls
+          - lab-api-key
   matchConditions:
-    - name: issued-leaf
-      expression: object.metadata.namespace == "gateway" && object.type == "kubernetes.io/tls"
+    - name: gateway-source
+      expression: object.metadata.namespace == "gateway" && has(object.data) && "lab" in object.data
   generate:
     - template:
         interpolate: cel
@@ -31,9 +32,9 @@ spec:
           apiVersion: v1
           kind: Secret
           metadata:
-            name: model-api-tls
+            name: lab-api-key
             namespace: {{ .Release.Namespace }}
-          type: kubernetes.io/tls
+          type: Opaque
           data:
-            tls.crt: (( object.data["tls.crt"] ))
-            tls.key: (( object.data["tls.key"] ))
+            lab: (( object.data.lab ))
+{{- end }}

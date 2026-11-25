@@ -7,15 +7,24 @@ import { qualifyRequester } from './requester.mjs';
 
 const base = process.env.LAB_ORIGIN;
 const state = JSON.parse(fs.readFileSync(process.env.LAB_CREDENTIALS_FILE, 'utf8'));
-assert(base?.startsWith('https://'));
+assert(['http:', 'https:'].includes(new URL(base).protocol));
 const host = new URL(base).hostname;
 const args = process.env.LAB_NODE_IP ? [`--host-resolver-rules=MAP ${host} ${process.env.LAB_NODE_IP}`] : [];
 const browser = await chromium.launch({ headless: true, args });
 let phase = 'startup';
 try {
-  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  const context = await browser.newContext({ ignoreHTTPSErrors: false });
   phase = 'anonymous-access';
-  for (const path of ['/terminal/', '/code/', '/headlamp/', '/grafana/', '/requester/', '/requester/openapi/models.yaml']) {
+  const index = await context.request.get(`${base}/`, { maxRedirects: 0 });
+  assert.equal(index.status(), 200);
+  const directory = await index.json();
+  assert.equal(directory.web.ttyd, `${base}/ttyd/`);
+  assert.equal(directory.web.scalar, `${base}/scalar/`);
+  assert.equal(directory.discovery.openapi, `${process.env.LAB_API_ORIGIN}/openapi.json`);
+  for (const path of ['/terminal/', '/requester/']) {
+    assert.equal((await context.request.get(base + path, { maxRedirects: 0 })).status(), 404);
+  }
+  for (const path of ['/ttyd/', '/code/', '/headlamp/', '/grafana/', '/scalar/', '/scalar/openapi/geist-mono.woff2', '/scalar/session-token']) {
     const response = await context.request.get(base + path, {
       maxRedirects: 0, headers: { 'X-Forwarded-Email': state.email },
     });
@@ -26,7 +35,7 @@ try {
   let markerSeen = false;
   let terminalPreferences = {};
   page.on('websocket', socket => {
-    if (new URL(socket.url()).pathname.startsWith('/terminal/')) {
+    if (new URL(socket.url()).pathname.startsWith('/ttyd/')) {
       socket.on('framereceived', frame => {
         const text = Buffer.from(frame.payload).toString('utf8');
         if (text.startsWith('2{')) terminalPreferences = JSON.parse(text.slice(1));
@@ -36,7 +45,7 @@ try {
     }
   });
   phase = 'admin-login';
-  await page.goto(`${base}/terminal/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${base}/ttyd/`, { waitUntil: 'domcontentloaded' });
   const login = page.locator('input[name="login"]');
   if (!(await login.isVisible())) {
     const emailLink = page.getByText('Log in with Email', { exact: true });
@@ -48,7 +57,7 @@ try {
   await page.locator('button[type="submit"]').click();
   const grant = page.getByRole('button', { name: 'Grant Access', exact: true });
   if (await grant.isVisible()) await grant.click();
-  await page.waitForURL(url => url.origin === base && url.pathname === '/terminal/', { timeout: 60000 });
+  await page.waitForURL(url => url.origin === base && url.pathname === '/ttyd/', { timeout: 60000 });
   phase = 'terminal-command';
   await page.locator('.xterm-helper-textarea').waitFor({ state: 'attached', timeout: 30000 });
   for (let attempt = 0; attempt < 200 && output.length < 100; attempt++) await page.waitForTimeout(100);
@@ -86,8 +95,9 @@ try {
   phase = 'headlamp';
   await page.goto(`${base}/headlamp/`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Namespaces', { exact: true }).first().waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(46, 52, 64)');
   phase = 'requester';
-  await qualifyRequester(page, base, process.env.LAB_API_ORIGIN, state.api_key);
+  await qualifyRequester(page, base, process.env.LAB_API_ORIGIN);
   phase = 'grafana-telemetry';
   await qualifyTelemetry(context.request, base, state);
   phase = 'api-cookie-rejection';

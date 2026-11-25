@@ -1,0 +1,21 @@
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/scalar/openapi/geist-mono.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root, .dark-mode {
+  --scalar-background-1: #2e3440;
+  --scalar-background-2: #3b4252;
+  --scalar-background-3: #434c5e;
+  --scalar-border-color: #4c566a;
+  --scalar-color-1: #eceff4;
+  --scalar-color-2: #e5e9f0;
+  --scalar-color-3: #d8dee9;
+  --scalar-color-accent: #88c0d0;
+  --scalar-button-1: #88c0d0;
+  --scalar-button-1-color: #2e3440;
+  --scalar-button-1-hover: #8fbcbb;
+  --scalar-font-code: "Geist Mono", monospace;
+}

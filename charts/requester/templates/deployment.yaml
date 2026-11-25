@@ -14,6 +14,7 @@ spec:
         app: requester
       annotations:
         checksum/collection: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        checksum/ui: {{ include (print $.Template.BasePath "/config-map-ui.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -28,11 +29,15 @@ spec:
           image: {{ .Values.image | quote }}
           env:
             - name: BASE_PATH
-              value: /requester
+              value: /scalar
             - name: CDN_URL
-              value: /requester/scalar.js
+              value: /scalar/scalar.js
             - name: API_REFERENCE_CONFIG
-              value: '{"theme":"deepSpace","telemetry":false,"withDefaultFonts":false,"persistAuth":false,"showDeveloperTools":"never","hideClientButton":true}'
+              {{- $config := dict "theme" "none" "forceDarkModeState" "dark" "hideDarkModeToggle" true "customCss" (.Files.Get "files/nord.css") "telemetry" false "withDefaultFonts" false "persistAuth" false "showDeveloperTools" "never" "hideClientButton" true }}
+              {{- if .Values.splitModelGateway }}
+              {{- $_ := set $config "url" (printf "%s/openapi.json" .Values.modelApiOrigin) }}
+              {{- end }}
+              value: {{ $config | toJson | quote }}
           ports:
             - name: http
               containerPort: 8080
@@ -53,6 +58,15 @@ spec:
               drop:
                 - ALL
           volumeMounts:
+            {{- if .Values.splitModelGateway }}
+            - name: ui
+              mountPath: /usr/share/caddy/index.html
+              subPath: index.html
+              readOnly: true
+            - name: session
+              mountPath: /usr/share/caddy/session
+              readOnly: true
+            {{- end }}
             - name: docs
               mountPath: /docs
               readOnly: true
@@ -63,6 +77,17 @@ spec:
             - name: data
               mountPath: /data
       volumes:
+        {{- if .Values.splitModelGateway }}
+        - name: ui
+          configMap:
+            name: scalar-ui
+        - name: session
+          secret:
+            secretName: lab-api-key
+            items:
+              - key: lab
+                path: token.bin
+        {{- end }}
         - name: docs
           configMap:
             name: requester-collection

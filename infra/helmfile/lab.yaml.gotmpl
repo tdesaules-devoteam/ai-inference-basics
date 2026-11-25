@@ -1,5 +1,6 @@
 {{- $infra := .Values.infra -}}
 {{/* Route only enabled releases. A stopped but installed model retains its route. */}}
+{{- $scheme := ternary "http" "https" (eq $infra.environment "devenv") -}}
 {{- $models := list -}}
 {{- range $name, $model := $infra.models -}}
 {{- if $model.enabled -}}
@@ -8,7 +9,8 @@
 {{- end -}}
 hostname: {{ $infra.network.hostname | quote }}
 nodePort: {{ $infra.network.httpsNodePort }}
-origin: {{ printf "https://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
+localHttp: {{ eq $infra.environment "devenv" }}
+origin: {{ printf "%s://%s:%v" $scheme $infra.network.hostname $infra.network.httpsNodePort | quote }}
 bastionImage: {{ $infra.images.bastion | quote }}
 provisionImage: {{ $infra.images.provision | quote }}
 imagePullPolicy: {{ $infra.images.pullPolicy | quote }}
@@ -17,6 +19,10 @@ modelNames:
 splitModelGateway: {{ eq $infra.environment "devenv" }}
 {{ if eq $infra.environment "devenv" -}}
 apiNodePort: {{ $infra.network.apiNodePort }}
-apiBaseUrl: https://agentgateway.agentgateway.svc.cluster.local/v1
+apiBaseUrl: http://agentgateway.agentgateway.svc.cluster.local/v1
 {{ end -}}
-modelApiOrigin: {{ printf "https://%s:%v" $infra.network.hostname (index $infra.network "apiNodePort" | default $infra.network.httpsNodePort) | quote }}
+modelPaths:
+{{- range $name := $models }}
+  {{ $name }}: {{ index (dict "chat" "/v1/chat/completions" "embeddings" "/v1/embeddings" "rerank" (ternary "/v2/rerank" "/cohere/v2/rerank" (eq $infra.environment "devenv"))) (readFile (printf "../../charts/%s/values.yaml" $name) | fromYaml).task | quote }}
+{{- end }}
+modelApiOrigin: {{ printf "%s://%s:%v" $scheme $infra.network.hostname (index $infra.network "apiNodePort" | default $infra.network.httpsNodePort) | quote }}

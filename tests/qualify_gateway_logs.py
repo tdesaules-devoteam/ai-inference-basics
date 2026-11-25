@@ -13,7 +13,7 @@ import uuid
 root = Path(__file__).resolve().parent.parent
 origin = os.environ['LAB_API_ORIGIN']
 key = json.loads(Path(os.environ['LAB_CREDENTIALS_FILE']).read_text())['api_key']
-tls = ssl.create_default_context(cafile=os.environ['LAB_CA_FILE'])
+tls = ssl.create_default_context(cafile=os.environ.get('LAB_CA_FILE')) if origin.startswith('https://') else None
 host = os.environ.get('LAB_SSH_HOST', getpass.getuser() + '@' + (root / '.devenv/.uuid').read_text().strip() + '.local')
 ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=yes',
        '-o', 'UserKnownHostsFile=' + os.environ.get('LAB_KNOWN_HOSTS', str(Path.home() / '.ssh/known_hosts')), '-o', 'LogLevel=ERROR', '-o', 'ProxyCommand=none', host]

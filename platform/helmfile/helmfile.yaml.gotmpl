@@ -223,7 +223,7 @@ releases:
     values:
       - values/dex.yaml
       - podAnnotations:
-          checksum/domain-config: '{{ printf "%s%s%s" (readFile "../../charts/dex-config/files/configure.py") (toJson $infra.access) (toJson $infra.network) | sha256sum }}'
+          checksum/domain-config: '{{ printf "%s%s%s%s" (ternary "http" "https" (eq $infra.environment "devenv")) (readFile "../../charts/dex-config/files/configure.py") (toJson $infra.access) (toJson $infra.network) | sha256sum }}'
 
   - name: headlamp
     namespace: headlamp
@@ -246,6 +246,8 @@ releases:
   - name: requester
     namespace: requester
     chart: ../../charts/requester
+    needs:
+      - gateway/gateway
     values:
       - ../../infra/helmfile/lab.yaml.gotmpl
 
@@ -262,6 +264,10 @@ releases:
     values:
       - values/oauth2-proxy.yaml
       - ../../infra/helmfile/lab.yaml.gotmpl
+{{- if eq $infra.environment "devenv" }}
+      - config:
+          cookieName: _lab_http_session
+{{- end }}
       - podAnnotations:
           checksum/browser-router: '{{ readFile "values/oauth2-proxy.yaml" | sha256sum }}'
 
@@ -287,6 +293,13 @@ releases:
         args: [-n, gateway, wait, gateway/ai-inference-basics, --for=condition=Programmed, --timeout=180s]
 
 {{- if eq $infra.environment "devenv" }}
+{{- $serving := dict }}
+{{- range $name, $settings := $infra.models }}
+{{- if $settings.enabled }}
+{{- $_ := set $serving $name (dict "replicas" $settings.replicas "task" (readFile (printf "../../charts/%s/values.yaml" $name) | fromYaml).task) }}
+{{- end }}
+{{- end }}
+{{- $contract := exec "python3" (list "scripts/model-contract.py" "render" (printf "http://%s:%v" $infra.network.hostname $infra.network.apiNodePort) (toJson $serving)) | fromJson }}
   - name: agentgateway-config
     namespace: agentgateway
     chart: ../../charts/agentgateway-config
@@ -303,61 +316,77 @@ releases:
       - values/agentgateway.yaml
       - config:
           binds:
-            - port: 8443
+            - port: 8080
               listeners:
                 - name: model-api
-                  protocol: HTTPS
-                  tls:
-                    cert: /tls/tls.crt
-                    key: /tls/tls.key
+                  protocol: HTTP
                   policies:
                     cors:
                       allowOrigins:
-                        - {{ printf "https://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
+                        - {{ printf "http://%s:%v" $infra.network.hostname $infra.network.httpsNodePort | quote }}
                       allowMethods:
+                        - GET
                         - POST
                       allowHeaders:
                         - authorization
                         - content-type
-                    apiKey:
-                      mode: strict
-                      keys:
-                        - keyHash: sha256:{{ $infra.access.apiBearerToken | sha256sum }}
-{{- $hasRoutes := false }}
-{{- range $settings := $infra.models }}{{ if $settings.enabled }}{{ $hasRoutes = true }}{{ end }}{{ end }}
-                  routes:{{ if not $hasRoutes }} []{{ end }}
-{{- $tasks := dict }}
-{{- range $model, $settings := $infra.models }}
-{{- if $settings.enabled }}
-{{- $task := (readFile (printf "../../charts/%s/values.yaml" $model) | fromYaml).task }}
-{{- if hasKey $tasks $task }}{{ fail (printf "devenv API requires at most one enabled %s model" $task) }}{{- end }}
-{{- $_ := set $tasks $task true }}
-{{- $path := index (dict "chat" "/v1/chat/completions" "embeddings" "/v1/embeddings" "rerank" "/cohere/v2/rerank") $task }}
-{{- $format := index (dict "chat" "completions" "embeddings" "embeddings" "rerank" "rerank") $task }}
-                    - name: {{ $model }}
-                      hostnames:
+                  routes:
+{{- range $name, $body := dict "openapi" $contract.spec "models" $contract.catalog }}
+                    - name: {{ $name }}
+                      hostnames: &discoveryHosts{{ $name }}
                         - {{ $infra.network.hostname | quote }}
                         - agentgateway.agentgateway.svc.cluster.local
                       matches:
-                        - method: OPTIONS
+{{- range $method := list "GET" "OPTIONS" }}
+                        - method: {{ $method }}
                           path:
-                            exact: {{ $path }}
-                        - method: POST
-                          path:
-                            exact: {{ $path }}
+                            exact: {{ ternary "/openapi.json" "/v1/models" (eq $name "openapi") }}
+{{- end }}
                       policies:
+{{- if eq $name "models" }}
+                        apiKey: &modelAuth
+                          mode: strict
+                          keys:
+                            - keyHash: sha256:{{ $infra.access.apiBearerToken | sha256sum }}
+{{- end }}
+                        directResponse:
+                          status: 200
+                          headers:
+                            content-type: "'application/json'"
+                          # Keep JSON Schema $ref keys literal through agentgateway's environment expansion.
+                          body: {{ $body | toJson | replace "$" "\\u0024" | quote }}
+{{- end }}
+{{- range $op := $contract.operations }}
+                    - name: {{ $op.name }}
+                      hostnames: *discoveryHostsmodels
+                      matches:
+{{- range $method := list "POST" "OPTIONS" }}
+                        - method: {{ $method }}
+                          path:
+                            exact: {{ $op.path }}
+{{- end }}
+                      policies:
+                        apiKey: *modelAuth
+{{- if eq $op.format "http" }}
+                      backends:
+                        - host: {{ $op.model }}-predictor.{{ $op.model }}.svc.cluster.local:80
+                          policies:
+                            requestHeaderModifier:
+                              remove:
+                                - authorization
+{{- else }}
                         ai:
                           routes:
-                            {{ $path }}: {{ $format }}
+                            {{ $op.path }}: {{ $op.format }}
                       backends:
                         - ai:
-                            name: {{ $model }}
-                            hostOverride: {{ $model }}-predictor.{{ $model }}.svc.cluster.local:80
+                            name: {{ $op.model }}
+                            hostOverride: {{ $op.model }}-predictor.{{ $op.model }}.svc.cluster.local:80
                             provider:
                               custom:
                                 formats:
-                                  - type: {{ $format }}
-                                    path: {{ if eq $task "rerank" }}/v2/rerank{{ else }}{{ $path }}{{ end }}
+                                  - type: {{ $op.format }}
+                                    path: {{ $op.path }}
                             policies:
                               requestHeaderModifier:
                                 remove:

@@ -11,6 +11,11 @@ spec:
       kind: EnvoyProxy
       name: ai-inference-basics
   listeners:
+    {{- if .Values.localHttp }}
+    - name: http
+      port: 80
+      protocol: HTTP
+    {{- else }}
     - name: https
       port: 443
       protocol: HTTPS
@@ -18,6 +23,7 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: lab-tls
+    {{- end }}
       allowedRoutes:
         namespaces:
           from: Same

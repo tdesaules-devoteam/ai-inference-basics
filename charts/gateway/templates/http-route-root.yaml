@@ -14,9 +14,8 @@ spec:
             type: Exact
             value: /
       filters:
-        - type: RequestRedirect
-          requestRedirect:
-            path:
-              type: ReplaceFullPath
-              replaceFullPath: /headlamp/
-            statusCode: 302
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: endpoint-index
