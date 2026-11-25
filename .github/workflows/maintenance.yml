@@ -5,7 +5,7 @@ jobs:
   maintenance:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - name: Validate maintenance event
@@ -27,7 +27,7 @@ jobs:
           files: ${{ steps.files.outputs.files }}
           full: ${{ steps.files.outputs.full }}
       - name: Create repository-scoped bot token
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc
         id: bot
         with:
           app-id: ${{ vars.BOT_APP_ID }}
@@ -75,7 +75,7 @@ jobs:
           sbom: provision.spdx.json
           output: provision.grype.json
           fail-on: none
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() && steps.plan.outputs.digests != '' }}
         continue-on-error: true
         with:

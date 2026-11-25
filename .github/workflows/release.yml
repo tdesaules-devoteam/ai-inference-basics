@@ -32,7 +32,7 @@ jobs:
       scan_only: ${{ steps.plan.outputs.scan_only }}
       reused: ${{ steps.plan.outputs.reused }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -60,7 +60,7 @@ jobs:
       - check
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Validate shell
         uses: tdesaules/github-actions/lint/shellcheck@be037a8ee89b4431dde66fe72c482b5e9c66d137
         with:
@@ -95,7 +95,7 @@ jobs:
     if: ${{ !cancelled() && needs.check.result == 'success' && needs.lint.result == 'success' && needs.check.outputs.has_build == 'true' && (inputs.images-only
       || needs.check.outputs.changed == 'true') }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -117,7 +117,7 @@ jobs:
           architecture: amd64
           revision: ${{ github.sha }}
           version: ${{ github.sha }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: build-${{ matrix.image }}
           path: dist/
@@ -138,15 +138,15 @@ jobs:
       == 'tag' || inputs.images-only || needs.check.outputs.changed == 'true') }}
     services:
       candidate-registry:
-        image: ghcr.io/tdesaules/github-actions/workflow-start-test-registry@sha256:e428ed0f7c5a8d1f9062a041aeeeddbfeb86cf11dcaf8f24a83a4d55173bbb8a
+        image: ghcr.io/tdesaules/github-actions/workflow-start-test-registry@sha256:547299ae6d1a04bb99e7c874fd3ca14b1616ef1a38619843038023b153ff7250
         ports:
           - 5000/tcp
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: build-${{ matrix.image }}
           path: dist
@@ -192,7 +192,7 @@ jobs:
           qualification: dist/qualified.json
           tested-digest: ${{ steps.candidate.outputs.digest }}
         if: contains(fromJSON(needs.check.outputs.build_images), matrix.image)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: qualified-${{ matrix.image }}
           path: dist/
@@ -220,7 +220,7 @@ jobs:
           sbom: sbom.spdx.json
           report: grype.json
           output: security.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: advisory-${{ matrix.image }}
           path: |-
@@ -252,18 +252,18 @@ jobs:
       id-token: write
     steps:
       - if: ${{ !inputs.images-only }}
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc
         with:
           app-id: ${{ vars.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ai-inference-basics
         id: bot
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           token: ${{ steps.bot.outputs.token || github.token }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: qualified-bastion
           path: dist/bastion
@@ -286,7 +286,7 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ github.token }}
         if: ${{ github.event_name == 'workflow_dispatch' && contains(fromJSON(needs.check.outputs.build_images), 'bastion') }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: qualified-provision
           path: dist/provision
