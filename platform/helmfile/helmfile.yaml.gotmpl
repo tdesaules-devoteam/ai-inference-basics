@@ -58,7 +58,7 @@ releases:
   - name: rustfs
     namespace: rustfs
     chart: rustfs/rustfs
-    version: "1.0.5"
+    version: "1.0.6"
     needs:
       - local-path-provisioner/local-path-provisioner
       - kyverno/kyverno
@@ -99,7 +99,7 @@ releases:
   - name: agent-router-crds
     namespace: agent-router
     # Upstream chart v1.2.1; product renamed, upstream artifact names unchanged.
-    chart: oci://docker.io/envoyproxy/ai-gateway-crds-helm@sha256:b1eafd2c27cd02e827210bcf6b3f05ebe9d2344f54152a7e0280420ed4edcf5e
+    chart: oci://docker.io/envoyproxy/ai-gateway-crds-helm@sha256:03a81d91fc93a2b47b03779f71b7e2b2180dccfdf6561d2fbccafc598125aa80
     hooks:
       - events: [postsync]
         showlogs: true
@@ -108,7 +108,7 @@ releases:
 
   - name: agent-router
     namespace: agent-router
-    chart: oci://docker.io/envoyproxy/ai-gateway-helm@sha256:21bf51ed7ff44d1bcebefea8ab211f2e69af0ec7833b492d65a9abc5150c85af
+    chart: oci://docker.io/envoyproxy/ai-gateway-helm@sha256:a78d01521215b0a3fe9fe2ab3eaa35991e6b571fe00969765a0abce3ca3b9dde
     needs:
       - cert-manager/cert-manager
       - envoy-gateway/envoy-gateway
@@ -159,7 +159,7 @@ releases:
 
   - name: loki
     namespace: loki
-    chart: oci://ghcr.io/grafana/helm-charts/loki@sha256:ff9d8a3a4b01fdacd1ccc1132bf8f1ed79b255612b526b9abce4a68b7349080a
+    chart: oci://ghcr.io/grafana/helm-charts/loki@sha256:8d708161a019689e331fd04769e2b4232d01fbb7f627551bd63d6b89438a3aba
     needs:
       - rustfs/rustfs
     values:
@@ -183,7 +183,7 @@ releases:
 
   - name: otel-node
     namespace: opentelemetry-collector
-    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:707c0f9dddaeeb368ce84fd20778acca2860820dae0a045e75c79bcbce91f346
+    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:09b3563b7b35dab243a642ceb9cb459ad23e76b559fcdfe778fbfdb6e6967c06
     needs:
       - loki/loki
       - mimir/mimir
@@ -192,7 +192,7 @@ releases:
 
   - name: otel-cluster
     namespace: opentelemetry-collector
-    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:707c0f9dddaeeb368ce84fd20778acca2860820dae0a045e75c79bcbce91f346
+    chart: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-collector@sha256:09b3563b7b35dab243a642ceb9cb459ad23e76b559fcdfe778fbfdb6e6967c06
     needs:
       - loki/loki
       - mimir/mimir
@@ -203,7 +203,7 @@ releases:
 
   - name: grafana
     namespace: grafana
-    chart: oci://ghcr.io/grafana-community/helm-charts/grafana@sha256:ca3feec1043924488cbac6e6b0545bc148b3457c9edca110b303a917359d315f
+    chart: oci://ghcr.io/grafana-community/helm-charts/grafana@sha256:d67763577c04eafaaa11601a322a960ad91bfad49d49621e6b5cac9a1c894140
     needs:
       - dex/dex
       - loki/loki
@@ -368,7 +368,7 @@ releases:
   - name: gpu-operator
     namespace: gpu-operator
     chart: nvidia/gpu-operator
-    version: v26.7.2
+    version: v26.7.3
     values:
       - values/gpu-operator.yaml
 

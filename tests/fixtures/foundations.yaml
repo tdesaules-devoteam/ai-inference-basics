@@ -16,7 +16,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: upstream
-          image: docker.io/envoyproxy/ai-gateway-testupstream:v1.2.1@sha256:55e5d5840a9f558277824087682685535f1f6ca7e7439f9efc1b72362fd84405
+          image: docker.io/envoyproxy/ai-gateway-testupstream:v1.3.0@sha256:2245792d8190dd7c98607b05a721621099e3afa02c4d8c66ce4d4d4034910ab3
           env:
             - name: TESTUPSTREAM_ID
               value: platform-smoke

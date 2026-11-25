@@ -3,7 +3,7 @@ provisionImage: ""
 apiBearerToken: ""
 nodePort: 30443
 bufferLimit: 32Mi
-envoyImage: docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a
+envoyImage: docker.io/envoyproxy/envoy@sha256:8de97e654644827d62afdbf7e1d3dc9fee01a8690d410dd1c63a30dc6b6cecbb
 modelNames:
   - qwen3-0-6b
   - qwen3-embedding-0-6b

@@ -10,19 +10,19 @@ of the current deployment; see [lab operations](lab.md) for the full stack.
 | Release | Namespace | Chart version | Upstream source |
 | --- | --- | --- | --- |
 | local-path-provisioner | local-path-provisioner | 0.0.37 | OCI ghcr.io/rancher/local-path-provisioner/charts/local-path-provisioner |
-| rustfs | rustfs | 1.0.5 | <https://charts.rustfs.com> |
+| rustfs | rustfs | 1.0.6 | <https://charts.rustfs.com> |
 | cert-manager | cert-manager | v1.21.3 | OCI quay.io/jetstack/charts/cert-manager |
 | envoy-gateway | envoy-gateway | v1.10.0 | OCI docker.io/envoyproxy/gateway-helm |
 | agentgateway (devenv) | agentgateway | v1.7.0 | OCI cr.agentgateway.dev/charts/agentgateway-standalone |
-| agent-router-crds (Scaleway sample) | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-crds-helm |
-| agent-router (Scaleway sample) | agent-router | v1.2.1 | OCI docker.io/envoyproxy/ai-gateway-helm |
+| agent-router-crds (Scaleway sample) | agent-router | v1.3.0 | OCI docker.io/envoyproxy/ai-gateway-crds-helm |
+| agent-router (Scaleway sample) | agent-router | v1.3.0 | OCI docker.io/envoyproxy/ai-gateway-helm |
 
 The complete OCI manifest digests are recorded directly in
-`platform/helmfile/helmfile.yaml.gotmpl`. Helmfile 1.8.3 / Helm 4.3.1 fetch these official
+`platform/helmfile/helmfile.yaml.gotmpl`. Helmfile 1.8.5 / Helm 4.3.2 fetch these official
 references directly; there is no custom downloader, artifact lock or required
 PLATFORM_ARTIFACTS directory. The qualified RustFS HTTP archive SHA-256 is checked
 by `tests/validate_storage.py`. Its version pin is not OCI content addressing:
-runtime installation trusts the upstream HTTP repository for version 1.0.5.
+runtime installation trusts the upstream HTTP repository for version 1.0.6.
 
 The OCI Local Path Provisioner chart has the same templates and values as the
 previous GitHub source chart; its Chart.yaml differs only in serialization.
@@ -140,7 +140,7 @@ explicit migration; merely omitting a release from Helmfile does not uninstall i
 
 ## Validation
 
-With Helm 4.3.1, Helmfile 1.8.3 and a Python environment containing `requirements-dev.txt`:
+With Helm 4.3.2, Helmfile 1.8.5 and a Python environment containing `requirements-dev.txt`:
 
 ```sh
 export INFRA_DEFINITION="$PWD/infra/infra-definition.sample.json"

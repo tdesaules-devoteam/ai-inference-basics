@@ -108,14 +108,14 @@ for name in foundation:
     block = declared.split('  - name: ' + name + '\n', 1)[1].split('\n  - name:', 1)[0]
     chart = re.search(r'^    chart: (.+)$', block, re.M).group(1)
     if name == 'rustfs':
-        assert chart == 'rustfs/rustfs' and 'version: "1.0.5"' in block
+        assert chart == 'rustfs/rustfs' and 'version: "1.0.6"' in block
     else:
         assert re.fullmatch(r'oci://.+@sha256:[a-f0-9]{64}', chart)
 # HTTP charts are version-pinned, not addressed by OCI manifest digest. Verify
 # the qualified archive independently without adding a deployment downloader.
 with tempfile.TemporaryDirectory() as directory:
     subprocess.run(['helm', 'pull', 'rustfs', '--repo', 'https://charts.rustfs.com',
-                    '--version', '1.0.5', '--destination', directory], check=True)
-    assert hashlib.sha256((Path(directory) / 'rustfs-1.0.5.tgz').read_bytes()).hexdigest() == '9b074f7a2d2143246b3e2ef9908c6791bbf05009766294a20e5a558bb44a6d96'
+                    '--version', '1.0.6', '--destination', directory], check=True)
+    assert hashlib.sha256((Path(directory) / 'rustfs-1.0.6.tgz').read_bytes()).hexdigest() == '6b8658b00e6520c2c483ec127efb4d3011e57666dd78080e6f37cc3c9048e730'
 print(json.dumps({'releases': len(releases), 'pinned_images': len(images),
                   'storage_contract': 'valid', 'runtime_tested': False}))

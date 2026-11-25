@@ -1,7 +1,7 @@
 controller:
   fullnameOverride: agent-router
   image:
-    tag: v1.2.1@sha256:bf8feef1ed87c9aafd7318c835261d45308be0eaa475519ac930f0809532a4e7
+    tag: v1.3.0@sha256:10849676ab2b9015d456a30ec4c56e3b974f601116714adf63a5a45fe80564a0
   mutatingWebhook:
     certManager:
       enable: true
@@ -15,6 +15,6 @@ controller:
       memory: 512Mi
 extProc:
   image:
-    tag: v1.2.1@sha256:0b89182007856fa5402d7ec346ba093ce74239d1da45618af631b4a65febb424
+    tag: v1.3.0@sha256:6df5c4eb99ede8a6e6f774bb2af543bf18dd7f557c222c1c0001f2d3cf30d8fe
 envoyGateway:
   namespace: envoy-gateway

@@ -6,15 +6,15 @@
 | KCL | Operator-managed 0.13.3; rendering verified with the upstream correction |
 | Fedora CoreOS | Lab config: 45.20261030.3.1 stable, with Fedora 45 SELinux policy for Cockpit |
 | Native k0s | v1.37.2+k0s.1, binary checksum pinned; native addon defaults |
-| Host/guest Helm | 4.3.1 |
-| Helmfile | 1.8.3 |
+| Host/guest Helm | 4.3.2 |
+| Helmfile | 1.8.5 |
 | Local Path Provisioner | 0.0.37, official OCI chart pinned by manifest digest |
-| RustFS | 1.0.5, official HTTP Helm repository, exact version |
+| RustFS | 1.0.6, official HTTP Helm repository, exact version |
 | cert-manager | v1.21.3, official OCI chart pinned by manifest digest |
 | Envoy Gateway | v1.10.0, official OCI chart pinned by manifest digest |
 | agentgateway (devenv model API) | v1.7.0 standalone, OCI chart and proxy image pinned by digest |
-| Agent Router (Scaleway sample) | v1.2.1 controller and CRD charts, official OCI digests |
-| Guest kubectl / k9s / Task | 1.37.2 / 0.51.0 / 3.54.0 |
+| Agent Router (Scaleway sample) | v1.3.0 controller and CRD charts, official OCI digests |
+| Guest kubectl / k9s / Task | 1.37.3 / 0.51.0 / 3.54.0 |
 | Bastion | Fedora Minimal 45; tool versions and hashes in `oci/bastion/tools.lock` |
 
 `platform/helmfile/helmfile.yaml.gotmpl` is the active dependency contract; Helmfile

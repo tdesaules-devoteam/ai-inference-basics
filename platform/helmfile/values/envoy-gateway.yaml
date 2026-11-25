@@ -3,7 +3,7 @@ global:
     envoyGateway:
       image: docker.io/envoyproxy/gateway@sha256:c2243d43518bed91d3ed8c2db849a4b7a14ac9b96eb019f2ab104bb1ca8572b1
     envoyProxy:
-      image: docker.io/envoyproxy/envoy@sha256:dced08cf7c472e1a1d067f906878266078eeeb63c110b4961882c039a622853a
+      image: docker.io/envoyproxy/envoy@sha256:8de97e654644827d62afdbf7e1d3dc9fee01a8690d410dd1c63a30dc6b6cecbb
     ratelimit:
       image: docker.io/envoyproxy/ratelimit@sha256:b95206e32b1a5f824fb06062fbb85bbdfb7f5de54135e92afe8462f22c979681
 config:

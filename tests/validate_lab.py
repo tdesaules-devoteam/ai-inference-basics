@@ -144,7 +144,7 @@ for name in names:
 assert 'oauth2-proxy/oauth2-proxy' not in releases['gateway']['needs']
 http_charts = [
     ('hami', 'https://project-hami.github.io/HAMi', '2.11.0', '2530d25ba1a953a5ffa8070c308a373f756c6108c5bb39fce49943f614dd9315'),
-    ('gpu-operator', 'https://helm.ngc.nvidia.com/nvidia', 'v26.7.2', 'a94a88628a90fac1df8d47469baf14dd352126553f30fd1ecd8e182516ae1bf6'),
+    ('gpu-operator', 'https://helm.ngc.nvidia.com/nvidia', 'v26.7.3', '506898724dc23aa55bbc9cbe6f3e28d413c20867e76715e726b6fff6ef13d4c7'),
     ('dcgm-exporter', 'https://nvidia.github.io/dcgm-exporter/helm-charts', '4.9.0', '912363f217914b33c993628a7471ca4497b9ee7e0c3e99016f9b55ed205b5e3e'),
     ('dex', 'https://charts.dexidp.io', '0.26.0', '3b22c1447935221a040870508274bff85a68b2b841902097d6fcacb3e9badd03'),
     ('headlamp', 'https://kubernetes-sigs.github.io/headlamp/', '0.46.0', 'faa471a8c5c55125b3dceed1cf73000e1ced18f07e2088e5e12e75292fb9ae62'),

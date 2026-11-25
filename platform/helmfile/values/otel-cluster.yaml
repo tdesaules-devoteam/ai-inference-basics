@@ -3,8 +3,8 @@ mode: deployment
 replicaCount: 1
 image:
   repository: docker.io/otel/opentelemetry-collector-contrib
-  tag: 0.163.2
-  digest: sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849
+  tag: 0.166.0
+  digest: sha256:3e18fe04181de50bdd72e23ad4a4d6214b54351e63d496f1c58127cc4541ad7f
 command:
   name: otelcol-contrib
 resources:

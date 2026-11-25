@@ -48,7 +48,7 @@ releases:
   - name: rustfs-hook-check
     namespace: $namespace
     chart: rustfs/rustfs
-    version: "1.0.5"
+    version: "1.0.6"
     values:
       - "$temporary/values.yaml"
       - storageclass:

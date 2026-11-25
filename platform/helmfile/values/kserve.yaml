@@ -5,7 +5,7 @@ kserve:
     deploymentMode: Standard
     image: docker.io/kserve/kserve-controller
     tag: v0.21.0@sha256:74c5de4f166f04a12e5926af37751554e8f4be900bdf3368d0a348abf5f7b0a6
-    rbacProxyImage: quay.io/brancz/kube-rbac-proxy@sha256:754ab2a723c8fc7ea8e09ae1224f8af5be91849b8b2f2a3735c6237f1c534187
+    rbacProxyImage: quay.io/brancz/kube-rbac-proxy@sha256:c280684dd23793fb2f287d1f4efc84b7800b3e01205d770b98694827bfe514cb
     gateway:
       domain: svc.cluster.local
       domainTemplate: '{{ .Name }}-predictor.{{ .Namespace }}.{{ .IngressDomain }}'
