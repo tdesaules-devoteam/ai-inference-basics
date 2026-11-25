@@ -27,4 +27,18 @@ export async function qualifyRequester(page, base, apiOrigin) {
   const payload = await response.json();
   assert.equal(payload.data.length, 2);
   assert.equal(payload.data[0].embedding.length, 1024);
+
+  // Zen can request both cache headers when the developer tools disable caching.
+  const chat = await page.evaluate(async origin => {
+    const token = await (await fetch('/scalar/session-token', { cache: 'no-store' })).text();
+    const r = await fetch(`${origin}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      body: JSON.stringify({ model: 'qwen3-0-6b', messages: [{ role: 'user', content: 'Say OK.' }],
+        max_tokens: 16, chat_template_kwargs: { enable_thinking: false } }),
+    });
+    return { status: r.status, choices: (await r.json()).choices?.length };
+  }, apiOrigin);
+  assert.deepEqual(chat, { status: 200, choices: 1 });
 }

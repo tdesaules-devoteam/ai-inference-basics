@@ -329,7 +329,9 @@ releases:
                         - POST
                       allowHeaders:
                         - authorization
+                        - cache-control
                         - content-type
+                        - pragma
                   routes:
 {{- range $name, $body := dict "openapi" $contract.spec "models" $contract.catalog }}
                     - name: {{ $name }}
