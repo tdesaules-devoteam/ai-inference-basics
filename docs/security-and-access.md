@@ -35,11 +35,6 @@ NetworkPolicies restrict incoming traffic to browser backends and model servers.
 This is a shared administration lab, not isolated multi-tenancy. See [lab access](lab.md)
 for private credential retrieval and the distinction between active/stopped models.
 
-`task lab:access` explicitly prints the current browser login and API key for private
-operator use. It reads live Kubernetes Secrets rather than a Terraform output or
-tracked values file. Terraform does not currently provision this lab; exposing
-credentials through Terraform outputs would also place them in its state.
-
 Initialization Jobs use cryptographic random generation for missing technical
 keys. The Dex Job also calculates bcrypt. There are no credentials.py or kube.py
 files. Kyverno policies implement cross-namespace distribution. ConfigMaps contain

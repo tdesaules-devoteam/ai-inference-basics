@@ -5,7 +5,6 @@ Run these tasks on the workstation from the repository root, after completing
 
 | Task | Effect |
 | --- | --- |
-| `task infra:validate` | Validate the private environment definition without displaying its credentials. |
 | `task devenv:up attach=false` | Start or provision the VM without attaching an interactive SSH session. |
 | `task devenv:ssh` | Connect to the guest using its native bridge and mDNS name. |
 | `task devenv:stop` | Stop the VM and retain its disk, workspace and buckets. |

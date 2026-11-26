@@ -31,8 +31,8 @@ For context settings, see
 Install `requirements-dev.txt` into your Python environment, then:
 
 ```sh
-task infra:validate
 export INFRA_DEFINITION="$PWD/infra/infra-definition.devenv.json"
+python3 platform/helmfile/scripts/validate-infra.py "$INFRA_DEFINITION"
 helmfile -f platform/helmfile/helmfile.yaml.gotmpl template
 # With explicit authorization to modify the target cluster:
 helmfile -f platform/helmfile/helmfile.yaml.gotmpl sync
