@@ -7,7 +7,7 @@
   ],
   "network": {"hostname": "lab.example.test", "httpsNodePort": 30443, "apiNodePort": 30444},
   "access": {
-    "adminEmail": "cluster-admin@devoteam.com",
+    "adminEmail": "admin@devoteam.com",
     "adminPassword": "REPLACE_ME",
     "apiBearerToken": "REPLACE_ME"
   },
