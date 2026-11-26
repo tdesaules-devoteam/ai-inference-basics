@@ -54,7 +54,7 @@ for name in names:
     model = find('InferenceService', name, name)
     native = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())['nativeContextTokens']
     container = find('ServingRuntime', name, name)['spec']['containers'][0]
-    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native
+    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native == 32_768
     config = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())
     # All pinned Qwen 0.6B configurations have 28 layers, 8 KV heads and
     # head_dim=128. CPU pooling also reserves BF16 KV in this vLLM version.
@@ -225,7 +225,7 @@ for name in gpu_names:
     env = find('ServingRuntime', name, name)['spec']['containers'][0]['env']
     native = yaml.safe_load((root / 'charts' / name / 'values.yaml').read_text())['nativeContextTokens']
     container = find('ServingRuntime', name, name)['spec']['containers'][0]
-    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native
+    assert int(container['args'][container['args'].index('--max-model-len') + 1]) == native == 32_768
     assert not any(e['name'].startswith('VLLM_CPU') for e in env)
 # An infrastructure-only environment must neither import models nor publish API routes.
 definition = json.loads((root / 'infra/infra-definition.sample.json').read_text())

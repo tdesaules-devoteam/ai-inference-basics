@@ -4,9 +4,9 @@ endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: qwen3-0-6b
 task: chat
-# max_position_embeddings in the pinned config.json, without RoPE extrapolation.
-nativeContextTokens: 40960
-maxModelLen: 40960
+# Serving window documented by Qwen, without RoPE extrapolation.
+nativeContextTokens: 32768
+maxModelLen: 32768
 kvCacheGiB: 5
 threads: "4"
 cores: "0-3"

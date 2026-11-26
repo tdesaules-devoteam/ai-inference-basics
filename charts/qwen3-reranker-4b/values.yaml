@@ -4,8 +4,8 @@ endpoint: http://rustfs-svc.rustfs.svc.cluster.local:9000
 bucket: models
 modelName: qwen3-reranker-4b
 task: rerank
-nativeContextTokens: 40960
-maxModelLen: 40960
+nativeContextTokens: 32768
+maxModelLen: 32768
 threads: "4"
 memory: 24Gi
 requestMemory: 12Gi

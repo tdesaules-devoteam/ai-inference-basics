@@ -46,10 +46,9 @@ Provisional HAMi budgets are 24576 MiB / 50% cores for chat and 20480 MiB / 20%
 each for embeddings and reranking. H100 runtime behavior and these budgets
 require qualification on real hardware.
 
-The 4B pooling models also reserve KV cache in vLLM. Their 40,960-token native
-windows require about 5.625 GiB of BF16 KV data in addition to weights, so the
-former 16-GiB HAMi shares with 80% vLLM utilization were insufficient even before
-runtime overhead. The revised shares total 64 GiB on the intended 80-GB H100;
+The 4B pooling models also reserve KV cache in vLLM. At the documented 32,768-token
+window, budget about 4.5 GiB of BF16 KV data per model in addition to weights
+and runtime overhead. The revised shares total 64 GiB on the intended 80-GB H100;
 they are configuration estimates, not hardware qualification.
 
 ## Metrics and public access
