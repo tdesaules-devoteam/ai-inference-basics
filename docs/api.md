@@ -23,6 +23,12 @@ then run `python3 platform/helmfile/scripts/model-contract.py extract TASK FILE`
 for `chat`, `embeddings` and `rerank`. Review the changes before reconciling.
 
 The CPU sample uses KServe `InferenceService` and vLLM CPU for all three.
+For reranking, both `/score` and `/v2/rerank` use the publisher's
+`/mnt/models/chat_template.jinja` explicitly. The template formats each query/document
+pair before vLLM scores the `yes` and `no` tokens. The CPU acceptance test compares
+both operations against the pinned Qwen checkpoint's Transformers reference on
+two matching and two unrelated pairs. Matching the order alone is insufficient:
+without the scoring template, unrelated pairs also received high scores.
 For the GPU sample, use the [corresponding GPU model names](gpu.md#environment-selection). They start automatically
 according to the environment JSON. Setting a model's `replicas` to zero stops selected
 models as described in [lab operations](lab.md); requests do not wake stopped models.

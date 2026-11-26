@@ -80,8 +80,23 @@ with request('/v1/responses', body) as response:
 with request('/v1/responses', body | {'stream': True}) as response:
     events = response.read().decode()
     assert 'response.created' in events and any(t in events for t in ('response.completed', 'response.incomplete'))
-with request('/score', {'model': 'qwen3-reranker-0-6b', 'text_1': 'Capital of France?', 'text_2': 'Paris'}) as response:
-    assert math.isfinite(json.load(response)['data'][0]['score'])
+# Publisher's two example pairs, plus their crossed negatives. Reference values
+# are softmax([no, yes])[yes] from the pinned BF16 checkpoint in Transformers.
+documents = ['The capital of China is Beijing.',
+             'Gravity is a force that attracts two bodies towards each other. It gives weight to physical objects and is responsible for the movement of planets around the sun.']
+for query, reference in [('What is the capital of China?', [0.9995122, 0.00000525]),
+                         ('Explain gravity', [0.00004909, 0.9993333])]:
+    model = {'model': 'qwen3-reranker-0-6b'}
+    with request('/v2/rerank', model | {'query': query, 'documents': documents}) as response:
+        ranked = json.load(response)['results']
+    assert [item['index'] for item in ranked] == sorted(range(2), key=reference.__getitem__, reverse=True)
+    for item in ranked:
+        i = item['index']
+        with request('/score', model | {'text_1': query, 'text_2': documents[i]}) as response:
+            score = json.load(response)['data'][0]['score']
+        assert abs(score - item['relevance_score']) < 0.001
+        assert abs(score - reference[i]) < 0.01, (query, i, score, reference[i])
+        print(f'Rerank reference: document={i}, score={score:.6f}, expected={reference[i]:.6f}')
 print(json.dumps({'transport': origin.split(':', 1)[0], 'bearer_rejection': 'passed', 'chat': 'passed',
                   'sse': 'passed', 'embedding_dimensions': len(embeddings[0]['embedding']), 'rerank': 'passed',
                   'responses_and_sse': 'passed', 'score': 'passed', 'catalog': 'passed', 'openapi': 'passed'}))
