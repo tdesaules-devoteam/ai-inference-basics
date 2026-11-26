@@ -31,7 +31,7 @@ data:
       {{ $path }}:
         post:
           operationId: {{ $task }}
-          summary: {{ index (dict "chat" "Chat completion" "embeddings" "Generate embeddings" "rerank" "Rank documents") $task }}
+          summary: {{ $path | quote }}
           requestBody:
             required: true
             content:

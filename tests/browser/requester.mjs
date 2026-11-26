@@ -5,11 +5,14 @@ export async function qualifyRequester(page, base, apiOrigin) {
   const loaded = page.waitForResponse(r => r.url() === `${apiOrigin}/openapi.json` && r.status() === 200);
   const session = page.waitForResponse(r => r.url() === `${base}/scalar/session-token`);
   await page.goto(`${base}/scalar/`, { waitUntil: 'domcontentloaded' });
-  assert((await (await loaded).json()).paths['/score']);
+  const { paths } = await (await loaded).json();
+  for (const [path, operation] of Object.entries(paths)) {
+    assert.equal((operation.get ?? operation.post).summary, path);
+  }
   const credential = await session;
   assert.equal(credential.status(), 200);
   assert.match(credential.headers()['cache-control'] ?? '', /no-store/);
-  await page.getByText('Generate embeddings', { exact: true }).first().click();
+  await page.getByRole('link', { name: /\/v1\/embeddings/i }).first().click();
   const test = page.getByRole('button', { name: /Test Request.*\/v1\/embeddings/i });
   assert.equal(await test.evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(136, 192, 208)');
   await test.click();

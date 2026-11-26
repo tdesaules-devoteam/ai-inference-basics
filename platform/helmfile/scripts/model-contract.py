@@ -5,18 +5,18 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / 'openapi'
-# Route type, title and a short request usable in Scalar's Test Request client.
+# Route type and a short request usable in Scalar's Test Request client.
 OPERATIONS = {
     'chat': {
-        '/v1/chat/completions': ('completions', 'Chat completion', {
+        '/v1/chat/completions': ('completions', {
             'messages': [{'role': 'user', 'content': 'Explain embeddings in one sentence.'}],
             'max_tokens': 64, 'chat_template_kwargs': {'enable_thinking': False}}),
-        '/v1/responses': ('responses', 'Create a response', {'input': 'Say hello.', 'max_output_tokens': 64, 'store': False}),
+        '/v1/responses': ('responses', {'input': 'Say hello.', 'max_output_tokens': 64, 'store': False}),
     },
-    'embeddings': {'/v1/embeddings': ('embeddings', 'Generate embeddings', {'input': ['Paris is in France.', 'Berlin is in Germany.']})},
+    'embeddings': {'/v1/embeddings': ('embeddings', {'input': ['Paris is in France.', 'Berlin is in Germany.']})},
     'rerank': {
-        '/v2/rerank': ('rerank', 'Rank documents', {'query': 'Capital of France?', 'documents': ['Paris', 'Berlin'], 'top_n': 2}),
-        '/score': ('http', 'Score a pair', {'text_1': 'Capital of France?', 'text_2': 'Paris'}),
+        '/v2/rerank': ('rerank', {'query': 'Capital of France?', 'documents': ['Paris', 'Berlin'], 'top_n': 2}),
+        '/score': ('http', {'text_1': 'Capital of France?', 'text_2': 'Paris'}),
     },
 }
 
@@ -54,11 +54,11 @@ def render(origin, models):
         spec['components']['schemas'].update(fragment['schemas'])
         if settings['replicas']:
             catalog['data'].append({'id': model, 'object': 'model', 'owned_by': 'lab', 'created': 0})
-        for path, (fmt, title, example) in OPERATIONS[task].items():
+        for path, (fmt, example) in OPERATIONS[task].items():
             if path in spec['paths']:
                 raise ValueError(f'Multiple enabled predictors for {path}')
             op = fragment['paths'][path]['post']
-            op['summary'] = title
+            op['summary'] = path
             content = op['requestBody']['content']['application/json']
             content['schema'] = {'allOf': [content['schema'], {'type': 'object', 'required': ['model'],
                                 'properties': {'model': {'type': 'string', 'enum': [model]}}}]}
@@ -70,10 +70,10 @@ def render(origin, models):
             operations.append({'name': model + '-' + path.strip('/').replace('/', '-'), 'model': model, 'path': path, 'format': fmt})
     entry = {'type': 'object', 'required': ['id', 'object', 'created', 'owned_by'], 'properties': {
         'id': {'type': 'string'}, 'object': {'const': 'model'}, 'created': {'type': 'integer'}, 'owned_by': {'type': 'string'}}}
-    spec['paths']['/v1/models'] = {'get': {'operationId': 'listModels', 'summary': 'List active models', 'responses': {
+    spec['paths']['/v1/models'] = {'get': {'operationId': 'listModels', 'summary': '/v1/models', 'responses': {
         '200': {'description': 'Configured active models', 'content': {'application/json': {'schema': {'type': 'object',
         'properties': {'object': {'const': 'list'}, 'data': {'type': 'array', 'items': entry}}}}}}}}}
-    spec['paths']['/openapi.json'] = {'get': {'operationId': 'getContract', 'summary': 'Read the API contract',
+    spec['paths']['/openapi.json'] = {'get': {'operationId': 'getContract', 'summary': '/openapi.json',
         'security': [], 'responses': {'200': {'description': 'Public OpenAPI document',
         'content': {'application/json': {'schema': {'type': 'object'}}}}}}}
     return {'spec': spec, 'catalog': catalog, 'operations': operations}

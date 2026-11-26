@@ -8,7 +8,7 @@ the same Geist Mono font as the terminal, served locally under `/scalar/`.
 
 On devenv, Scalar fetches `GET /openapi.json` directly from the model API origin.
 
-1. Select an operation such as **Chat completion**, **Generate embeddings** or **Rank documents**.
+1. Select an operation such as `/v1/chat/completions`, `/v1/embeddings` or `/v2/rerank`.
 2. Click **Test Request** to open the embedded API client. Edit the JSON body or
    headers. Chat also offers a streaming example.
 3. Click **Send**. On devenv, Scalar fetches the shared admin's model key from
